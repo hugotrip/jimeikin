@@ -15,8 +15,8 @@ android {
         applicationId = "com.wanderwildwood.jimeikin"
         minSdk = 28
         targetSdk = 36
-        versionCode = 8
-        versionName = "2.2.0"
+        versionCode = 9
+        versionName = "2.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -111,7 +111,15 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.4")
 
     // Mudita Mindful Design Framework
-    implementation("com.mudita:MMD:1.0.0")
+    // 1.0.2, not 1.0.0. The scrollbar's thumb offset is (trackHeight - thumbHeight), handed
+    // to coerceIn as its maximum. In 1.0.0 that subtraction has no floor: when the track
+    // measures less than the 16px minimum thumb - which it does while the list is still
+    // being laid out - the maximum goes negative and coerceIn throws
+    // "maximum -16.0 is less than minimum 0.0" from inside draw, on the main thread, and
+    // takes the app down. Confirmed by disassembly rather than by reading the source: at the
+    // same offset 1.0.0 is `fsub; fstore` and 1.0.2 is `fsub; fconst_0; coerceAtLeast;
+    // fstore`. 1.0.2 also guards the denominator against zero.
+    implementation("com.mudita:MMD:1.0.2")
 
     // Room database for songs
     val roomVersion = "2.8.4"
