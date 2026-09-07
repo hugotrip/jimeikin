@@ -1,0 +1,1998 @@
+package com.wanderwildwood.jimeikin
+
+import android.app.Activity
+import android.content.ComponentName
+import android.content.Intent
+import android.os.Bundle
+import android.content.Context
+import android.net.Uri
+import android.os.storage.StorageManager
+import android.os.PowerManager
+import android.provider.DocumentsContract
+import android.provider.Settings
+import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import androidx.navigation.NavDestination
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.wanderwildwood.jimeikin.data.StreamingProvider
+import com.wanderwildwood.jimeikin.ui.AboutDialog
+import com.wanderwildwood.jimeikin.ui.AlbumDetailsScreen
+import com.wanderwildwood.jimeikin.ui.AlbumUiModel
+import com.wanderwildwood.jimeikin.ui.AlbumsScreen
+import com.wanderwildwood.jimeikin.ui.ArtistDetailsScreen
+import com.wanderwildwood.jimeikin.ui.ArtistsScreen
+import com.wanderwildwood.jimeikin.ui.DownloadsScreen
+import com.wanderwildwood.jimeikin.ui.MoreScreen
+import com.wanderwildwood.jimeikin.ui.NowPlayingScreen
+import com.wanderwildwood.jimeikin.ui.PlaylistAddSongsScreen
+import com.wanderwildwood.jimeikin.ui.PlaylistDetailsScreen
+import com.wanderwildwood.jimeikin.ui.PlaylistEditScreen
+import com.wanderwildwood.jimeikin.ui.PlaylistItem
+import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
+import com.wanderwildwood.jimeikin.ui.PlaylistsScreen
+import com.wanderwildwood.jimeikin.ui.RadioScreen
+import com.wanderwildwood.jimeikin.ui.SearchScreen
+import com.wanderwildwood.jimeikin.ui.SettingsScreen
+import com.wanderwildwood.jimeikin.ui.SongUiModel
+import com.wanderwildwood.jimeikin.ui.SongsScreen
+import com.wanderwildwood.jimeikin.ui.YouTubeArtistDetailsScreen
+import com.wanderwildwood.jimeikin.ui.YouTubeLoginScreen
+import com.wanderwildwood.jimeikin.ui.YoutubeArtistUiModel
+import com.mudita.mmd.ThemeMMD
+import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
+import com.mudita.mmd.components.bottom_sheet.SheetStateMMD
+import com.mudita.mmd.components.bottom_sheet.rememberModalBottomSheetMMDState
+import com.mudita.mmd.components.buttons.ButtonMMD
+import com.mudita.mmd.components.buttons.OutlinedButtonMMD
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
+import com.mudita.mmd.components.lazy.LazyColumnMMD
+import com.mudita.mmd.components.snackbar.SnackbarDurationMMD
+import com.mudita.mmd.components.snackbar.SnackbarHostMMD
+import com.mudita.mmd.components.snackbar.SnackbarHostStateMMD
+import com.mudita.mmd.components.text.TextMMD
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+class MainActivity : ComponentActivity() {
+
+    private val app: CalmMusic
+        @androidx.annotation.OptIn(UnstableApi::class)
+        get() = application as CalmMusic
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            ThemeMMD {
+                CalmMusic(app)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CalmMusic(app: CalmMusic) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+    val activity = context as? Activity
+    val appContext = context.applicationContext
+    val searchScope = rememberCoroutineScope()
+    val playlistScope = rememberCoroutineScope()
+    val libraryScope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
+    val snackbarHostState = remember { SnackbarHostStateMMD() }
+
+    val settingsManager = app.settingsManager
+
+    val viewModel: CalmMusicViewModel = viewModel(factory = CalmMusicViewModel.factory(app))
+    val playbackState by viewModel.playbackState.collectAsState()
+    val downloadStatuses by app.youTubeDownloadManager.downloads.collectAsState()
+
+    var localMediaController by remember { mutableStateOf<MediaController?>(null) }
+    var lastCompletedDownloadUUIDs by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    val externalMediaState by ExternalMediaRepository.mediaState.collectAsState()
+    val showExternalControls = externalMediaState.hasActiveSession && playbackState.nowPlayingSong == null
+
+    LaunchedEffect(downloadStatuses) {
+        val currentCompletedDownloads = downloadStatuses
+            .filter { it.state == YouTubeDownloadStatus.State.COMPLETED }
+
+        val currentCompletedUUIDs = currentCompletedDownloads.map { it.id }.toSet()
+        val newCompletedUUIDs = currentCompletedUUIDs - lastCompletedDownloadUUIDs
+
+        if (newCompletedUUIDs.isNotEmpty()) {
+            viewModel.refreshLibraryFromDatabase()
+
+            val newSongIds = currentCompletedDownloads
+                .filter { it.id in newCompletedUUIDs }
+                .map { it.songId }
+
+            newSongIds.forEach { songId ->
+                viewModel.onSongDownloaded(songId, localMediaController)
+            }
+        }
+        lastCompletedDownloadUUIDs = currentCompletedUUIDs
+    }
+
+    val includeLocalMusicState = settingsManager.includeLocalMusic.collectAsState()
+    val localMusicFoldersState = settingsManager.localMusicFolders.collectAsState()
+    val includeLocalMusic = includeLocalMusicState.value
+    val localMusicFolders = localMusicFoldersState.value
+    val completeAlbumsWithYouTubeState = settingsManager.completeAlbumsWithYouTube.collectAsState()
+    val completeAlbumsWithYouTube = completeAlbumsWithYouTubeState.value
+    val youtubeAccountCookieState = settingsManager.youtubeAccountCookie.collectAsState()
+    val isYoutubeAccountConnected = youtubeAccountCookieState.value != null
+    var hasBatteryOptimizationExemption by rememberSaveable { mutableStateOf(false) }
+
+    fun updateBatteryOptimizationState() {
+        val powerManager = context.getSystemService(PowerManager::class.java)
+        hasBatteryOptimizationExemption =
+            powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+    }
+
+    LaunchedEffect(Unit) {
+        updateBatteryOptimizationState()
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                updateBatteryOptimizationState()
+
+                val intent = activity?.intent
+                val fromRadio = intent?.getBooleanExtra("FROM_RADIO_TUNER", false) ?: false
+                if (fromRadio) {
+                    if (viewModel.playbackState.value.isPlaybackPlaying) {
+                        viewModel.togglePlayback(localMediaController)
+                    }
+                    intent?.removeExtra("FROM_RADIO_TUNER")
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+
+    val playlistsViewModel: PlaylistsViewModel = viewModel(factory = PlaylistsViewModel.factory(app))
+
+    val overlayState by app.playbackStateManager.state.collectAsState()
+    val addToPlaylistSheetState: SheetStateMMD = rememberModalBottomSheetMMDState(
+        skipPartiallyExpanded = true,
+    )
+    val removeSongsSheetState: SheetStateMMD = rememberModalBottomSheetMMDState(
+        skipPartiallyExpanded = true,
+    )
+    val deletePlaylistsSheetState: SheetStateMMD = rememberModalBottomSheetMMDState(
+        skipPartiallyExpanded = true,
+    )
+
+    val canNavigateBack = navController.previousBackStackEntry != null
+    val streamingProviderState = settingsManager.streamingProvider.collectAsState()
+    val streamingProvider = streamingProviderState.value
+
+    val librarySongs by viewModel.librarySongs.collectAsState()
+    val librarySongIds = remember(librarySongs) {
+        librarySongs.map { it.id }.toSet()
+    }
+
+    val libraryAlbums by viewModel.libraryAlbums.collectAsState()
+    val libraryArtists by viewModel.libraryArtists.collectAsState()
+    val libraryPlaylistsState by playlistsViewModel.playlists.collectAsState()
+    val isLoadingSongs by viewModel.isLoadingSongs.collectAsState()
+    val isLoadingAlbums by viewModel.isLoadingAlbums.collectAsState()
+
+    var libraryPlaylists by remember { mutableStateOf<List<PlaylistUiModel>>(emptyList()) }
+    var songsError by remember { mutableStateOf<String?>(null) }
+    var albumsError by remember { mutableStateOf<String?>(null) }
+
+    var selectedAlbum by remember { mutableStateOf<AlbumUiModel?>(null) }
+
+    var selectedPlaylist by remember { mutableStateOf<PlaylistUiModel?>(null) }
+    var playlistAddSongsSelectionIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    var isPlaylistsEditMode by remember { mutableStateOf(false) }
+    var isPlaylistDetailsMenuExpanded by remember { mutableStateOf(false) }
+    val playlistEditSelectionIds = remember { mutableSetOf<String>() }
+    var playlistEditSelectionCount by remember { mutableStateOf(0) }
+    var showDeletePlaylistsConfirmation by remember { mutableStateOf(false) }
+
+    var isPlaylistDetailsEditMode by remember { mutableStateOf(false) }
+    val playlistDetailsSelectionIds = remember { mutableSetOf<String>() }
+    var playlistDetailsSelectionCount by remember { mutableStateOf(0) }
+    var showDeletePlaylistSongsConfirmation by remember { mutableStateOf(false) }
+
+    var selectedArtist by remember { mutableStateOf<String?>(null) }
+    var selectedArtistId by remember { mutableStateOf<String?>(null) }
+    var selectedYoutubeArtist by remember { mutableStateOf<YoutubeArtistUiModel?>(null) }
+
+    val playbackQueue = playbackState.playbackQueue
+    val currentSongId = playbackState.currentSongId
+    val nowPlayingSong = playbackState.nowPlayingSong
+    var isPlaybackPlaying = playbackState.isPlaybackPlaying
+
+    var showNowPlaying by remember { mutableStateOf(false) }
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    var songsToAddToPlaylist by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
+    var pendingAddToNewPlaylistSong by remember { mutableStateOf<SongUiModel?>(null) }
+
+    var searchQuery by remember { mutableStateOf("") }
+    var searchSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
+    var searchAlbums by remember { mutableStateOf<List<AlbumUiModel>>(emptyList()) }
+    var searchArtists by remember { mutableStateOf<List<YoutubeArtistUiModel>>(emptyList()) }
+    var searchLocalSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
+    var searchSelectedTab by remember { mutableStateOf(0) }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+
+    var isRescanningLocal by remember { mutableStateOf(false) }
+    var localScanProgress by remember { mutableStateOf(0f) }
+    var isIngestingLocal by remember { mutableStateOf(false) }
+    var localIngestProgress by remember { mutableStateOf(0f) }
+    var localScanTotalDiscovered by remember { mutableStateOf<Int?>(null) }
+    var localScanSkippedUnchanged by remember { mutableStateOf<Int?>(null) }
+    var localScanIndexedNewOrUpdated by remember { mutableStateOf<Int?>(null) }
+    var localScanDeletedMissing by remember { mutableStateOf<Int?>(null) }
+    var localScanUnreadableFolders by remember { mutableStateOf<Int?>(null) }
+    var showAbout by remember { mutableStateOf(false) }
+
+    val isLibrarySyncInProgress by remember {
+        derivedStateOf { isRescanningLocal || isIngestingLocal }
+    }
+    val hasAnySongs by remember {
+        derivedStateOf { librarySongs.isNotEmpty() }
+    }
+
+
+    fun performSearch() {
+        if (searchQuery.isBlank()) return
+
+        val query = searchQuery.trim()
+        searchLocalSongs = librarySongs.filter { song ->
+            song.title.contains(query, ignoreCase = true) ||
+                    song.artist.contains(query, ignoreCase = true) ||
+                    (song.album?.contains(query, ignoreCase = true) == true)
+        }
+
+        if (isSearching) return
+
+        searchScope.launch {
+            isSearching = true
+            searchError = null
+            searchSelectedTab = 0
+            try {
+                val songResults = app.youTubeInnertubeClient.searchSongs(
+                    query = searchQuery,
+                    limit = 25,
+                )
+                val albumResults = app.youTubeInnertubeClient.searchAlbums(
+                    query = searchQuery,
+                    limit = 25,
+                )
+                val artistResults = app.youTubeInnertubeClient.searchArtists(
+                    query = searchQuery,
+                    limit = 25,
+                )
+                searchSongs = songResults.map {
+                    SongUiModel(
+                        id = it.videoId,
+                        title = it.title,
+                        artist = it.artist,
+                        durationText = formatDurationMillis(it.durationMillis),
+                        durationMillis = it.durationMillis,
+                        trackNumber = null,
+                        sourceType = "YOUTUBE",
+                        audioUri = it.videoId,
+                        album = it.album,
+                    )
+                }
+                searchAlbums = albumResults.map { album ->
+                    AlbumUiModel(
+                        id = album.albumId,
+                        title = album.title,
+                        artist = album.artist,
+                        sourceType = "YOUTUBE",
+                        releaseYear = album.year,
+                    )
+                }
+                searchArtists = artistResults.map { artist ->
+                    YoutubeArtistUiModel(
+                        browseId = artist.browseId,
+                        name = artist.name,
+                    )
+                }
+
+                val topVideoIds = songResults.take(5).map { it.videoId }
+                app.youTubePrecacheManager.precacheSearchResults(topVideoIds)
+            } catch (e: Exception) {
+                searchError = "The search did not reach YouTube"
+                searchSongs = emptyList()
+                searchAlbums = emptyList()
+                searchArtists = emptyList()
+            } finally {
+                isSearching = false
+            }
+        }
+    }
+
+    suspend fun resyncLocalLibrary(
+        includeLocal: Boolean,
+        folders: Set<String>,
+    ) {
+        if (isRescanningLocal) return
+        isRescanningLocal = true
+        localScanProgress = 0f
+        isIngestingLocal = false
+        localIngestProgress = 0f
+        localScanTotalDiscovered = null
+        localScanSkippedUnchanged = null
+        localScanIndexedNewOrUpdated = null
+        localScanDeletedMissing = null
+        localScanUnreadableFolders = null
+        songsError = null
+        try {
+            val result = viewModel.resyncLocalLibrary(
+                includeLocal = includeLocal,
+                folders = folders,
+                onScanProgress = { progress ->
+                    localScanProgress = progress.coerceIn(0f, 1f)
+                },
+                onIngestProgress = { progress ->
+                    isIngestingLocal = true
+                    localIngestProgress = progress.coerceIn(0f, 1f)
+                },
+            )
+
+            songsError = result.errorMessage
+
+            result.stats?.let { stats ->
+                localScanTotalDiscovered = stats.totalDiscovered
+                localScanSkippedUnchanged = stats.skippedUnchanged
+                localScanIndexedNewOrUpdated = stats.indexedNewOrUpdated
+                localScanDeletedMissing = stats.deletedMissing
+                localScanUnreadableFolders = stats.unreadableFolders
+            }
+        } finally {
+            isRescanningLocal = false
+            isIngestingLocal = false
+        }
+    }
+
+    fun togglePlayback() {
+        nowPlayingSong ?: return
+        viewModel.togglePlayback(localMediaController)
+        isPlaybackPlaying = !isPlaybackPlaying
+    }
+
+    fun startPlaybackFromQueue(
+        queue: List<SongUiModel>,
+        startIndex: Int,
+        isNewQueue: Boolean = true,
+    ) {
+        if (queue.isEmpty() || startIndex !in queue.indices) return
+
+        val song = queue[startIndex]
+        val controller = localMediaController
+
+        val needsLocalController = song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE" || song.sourceType == "YOUTUBE_DOWNLOAD"
+        if (needsLocalController && controller == null) {
+            libraryScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = "Playback is still starting",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
+            return
+        }
+
+        viewModel.startPlaybackFromQueue(
+            queue = queue,
+            startIndex = startIndex,
+            isNewQueue = isNewQueue,
+            localController = controller,
+        )
+
+        showNowPlaying = true
+    }
+
+    fun startShuffledPlaybackFromQueue(queue: List<SongUiModel>) {
+        if (queue.isEmpty()) return
+
+        viewModel.startShuffledPlaybackFromQueue(
+            queue = queue,
+            localController = localMediaController,
+        )
+
+        showNowPlaying = true
+    }
+
+    fun addSongToPlaylist(song: SongUiModel, playlist: PlaylistUiModel) {
+        playlistScope.launch {
+            var snackbarMessage: String?
+            try {
+                val result = playlistsViewModel.addSongToPlaylist(song, playlist)
+                if (result.newSongCount != null) {
+                    val count = result.newSongCount
+                    libraryPlaylists = libraryPlaylists.map { existingPlaylist ->
+                        if (existingPlaylist.id == playlist.id) {
+                            existingPlaylist.copy(songCount = count)
+                        } else {
+                            existingPlaylist
+                        }
+                    }
+                }
+                snackbarMessage = when {
+                    result.wasAdded -> "Added \"${song.title}\" to \"${playlist.name}\""
+                    result.alreadyInPlaylist -> "This song is already in \"${playlist.name}\""
+                    else -> null
+                }
+                if (result.wasAdded || result.alreadyInPlaylist) {
+                    showAddToPlaylistDialog = false
+                }
+            } catch (_: Exception) {
+                snackbarMessage = "That song was not added to the playlist"
+            }
+            snackbarMessage?.let { message ->
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
+        }
+    }
+
+    /** A whole album or a whole artist, through the same picker as one song. */
+    fun addSongsToPlaylist(songs: List<SongUiModel>, playlist: PlaylistUiModel) {
+        playlistScope.launch {
+            val message = try {
+                val result = playlistsViewModel.addSongsToPlaylist(
+                    playlistId = playlist.id,
+                    selectedSongIds = songs.map { it.id }.toSet(),
+                )
+                libraryPlaylists = libraryPlaylists.map { existingPlaylist ->
+                    if (existingPlaylist.id == playlist.id) {
+                        existingPlaylist.copy(songCount = result.totalSongCount)
+                    } else {
+                        existingPlaylist
+                    }
+                }
+                when {
+                    result.addedCount == 0 -> "Every one of those is already in \"${playlist.name}\""
+                    result.addedCount == 1 -> "Added one song to \"${playlist.name}\""
+                    else -> "Added ${result.addedCount} songs to \"${playlist.name}\""
+                }
+            } catch (_: Exception) {
+                "Those songs were not added to the playlist"
+            }
+            snackbarHostState.showSnackbar(
+                message = message,
+                withDismissAction = false,
+                duration = SnackbarDurationMMD.Short,
+            )
+        }
+    }
+
+    val onAddToPlaylist: (SongUiModel) -> Unit = { song ->
+        songsToAddToPlaylist = listOf(song)
+        showAddToPlaylistDialog = true
+    }
+
+    val onAddAllToPlaylist: (List<SongUiModel>) -> Unit = { songs ->
+        if (songs.isNotEmpty()) {
+            songsToAddToPlaylist = songs
+            showAddToPlaylistDialog = true
+        }
+    }
+
+    val onRemoveFromLibrary: (SongUiModel) -> Unit = { song ->
+        libraryScope.launch {
+            try {
+                viewModel.removeSongFromLibrary(song)
+                snackbarHostState.showSnackbar(
+                    message = "Removed from library",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar(
+                    message = "Failed to remove: ${e.message}",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
+        }
+    }
+
+    val onDelete: (SongUiModel) -> Unit = { song ->
+        libraryScope.launch {
+            when (song.sourceType) {
+                "YOUTUBE" -> {
+                    val download = downloadStatuses.find { it.songId == song.id }
+                    if (download != null) {
+                        app.youTubeDownloadManager.cancelDownload(download.id)
+                        snackbarHostState.showSnackbar(
+                            message = "Deleting download...",
+                            withDismissAction = false,
+                            duration = SnackbarDurationMMD.Short,
+                        )
+                    }
+                }
+
+                "LOCAL_FILE", "YOUTUBE_DOWNLOAD" -> {
+                    val success = try {
+                        viewModel.deleteLocalMediaSong(song)
+                    } catch (_: Exception) {
+                        false
+                    }
+
+                    snackbarHostState.showSnackbar(
+                        message = if (success) "Deleted file" else "Couldn't delete file",
+                        withDismissAction = false,
+                        duration = SnackbarDurationMMD.Short,
+                    )
+                }
+
+                else -> {
+                    snackbarHostState.showSnackbar(
+                        message = "This one is streamed, so there is nothing on the phone to delete",
+                        withDismissAction = false,
+                        duration = SnackbarDurationMMD.Short,
+                    )
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(currentDestination) {
+        if (currentDestination?.route == Screen.Search.route) {
+            focusRequester.requestFocus()
+        } else {
+            app.youTubePrecacheManager.clearSearchWindow()
+        }
+        if (currentDestination?.route != Screen.Playlists.route && isPlaylistsEditMode) {
+            isPlaylistsEditMode = false
+            playlistEditSelectionIds.clear()
+            playlistEditSelectionCount = 0
+        }
+        val isPlaylistDetails = currentDestination.isPlaylistDetails()
+
+        if (!isPlaylistDetails && isPlaylistDetailsEditMode) {
+            isPlaylistDetailsEditMode = false
+            playlistDetailsSelectionIds.clear()
+            playlistDetailsSelectionCount = 0
+        }
+    }
+
+    LaunchedEffect(libraryPlaylistsState) {
+        libraryPlaylists = libraryPlaylistsState
+    }
+
+    LaunchedEffect(playbackQueue) {
+        app.playbackStateManager.updateQueue(playbackQueue)
+    }
+
+    LaunchedEffect(nowPlayingSong, isPlaybackPlaying) {
+        if (nowPlayingSong != null) {
+            app.playbackStateManager.updateState(
+                songId = nowPlayingSong.id,
+                title = nowPlayingSong.title,
+                artist = nowPlayingSong.artist,
+                isPlaying = isPlaybackPlaying,
+                sourceType = nowPlayingSong.sourceType,
+            )
+        } else {
+            app.playbackStateManager.clearState()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val context = appContext
+        try {
+            val sessionToken = SessionToken(
+                context,
+                ComponentName(context, PlaybackService::class.java)
+            )
+            val future = MediaController.Builder(context, sessionToken).buildAsync()
+            future.addListener({
+                try {
+                    localMediaController = future.get()
+                } catch (_: Exception) {
+                }
+            }, ContextCompat.getMainExecutor(context))
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to connect to PlaybackService", e)
+        }
+    }
+
+    LaunchedEffect(localMediaController) {
+        val controller = localMediaController ?: return@LaunchedEffect
+        viewModel.startLocalPlaybackMonitoring(controller)
+
+        PlaybackService.registerErrorCallback { error ->
+            var cause: Throwable? = error
+            var lastCause: Throwable? = null
+            while (cause != null && cause !== lastCause) {
+                lastCause = cause
+                cause = cause.cause
+            }
+            val root = lastCause ?: error
+            val className = root.javaClass.name
+            val message = root.message ?: error.message ?: ""
+
+            val isNewPipeContentNotAvailable =
+                className == "org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException" ||
+                        message.contains("page needs to be reloaded", ignoreCase = true) ||
+                        message.contains("ContentNotAvailable", ignoreCase = true)
+
+            if (isNewPipeContentNotAvailable) {
+                libraryScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "YouTube reported this track can't be played. Skipping.",
+                        withDismissAction = false,
+                        duration = SnackbarDurationMMD.Short,
+                    )
+                }
+                viewModel.playNextInQueue(controller)
+            }
+        }
+    }
+
+    LaunchedEffect(includeLocalMusic, localMusicFolders) {
+        delay(500L)
+        resyncLocalLibrary(includeLocalMusic, localMusicFolders)
+    }
+
+    val openStreamingSettings: () -> Unit = {
+        navController.navigate(Screen.Settings.route) {
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    val openLocalSettings: () -> Unit = {
+        navController.navigate(Screen.Settings.route) {
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    fun NavGraphBuilder.playlistsNavGraph() {
+        composable(Screen.Playlists.route) {
+            PlaylistsScreen(
+                playlists = libraryPlaylists,
+                isInEditMode = isPlaylistsEditMode,
+                onPlaylistClick = { playlist: PlaylistUiModel ->
+                    selectedPlaylist = playlist
+                    navController.navigate("${Screen.PlaylistDetails.route}/${playlist.id}") {
+                        launchSingleTop = true
+                    }
+                },
+                onAddPlaylistClick = {
+                    selectedPlaylist = null
+                    navController.navigate(Screen.PlaylistEdit.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onSelectionChanged = { selectedIds ->
+                    playlistEditSelectionIds.clear()
+                    playlistEditSelectionIds.addAll(selectedIds)
+                    playlistEditSelectionCount = selectedIds.size
+                },
+            )
+        }
+
+        composable(
+            route = "${Screen.PlaylistDetails.route}/{playlistId}",
+            arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val playlistId = backStackEntry.arguments?.getString("playlistId")
+
+            LaunchedEffect(playlistId, libraryPlaylists) {
+                if (playlistId != null && (selectedPlaylist == null || selectedPlaylist?.id != playlistId)) {
+                    val found = libraryPlaylists.find { it.id == playlistId }
+                    if (found != null) {
+                        selectedPlaylist = found
+                    }
+                }
+            }
+
+            PlaylistDetailsScreen(
+                playlistId = playlistId,
+                playbackViewModel = viewModel,
+                playlistsViewModel = playlistsViewModel,
+                isInEditMode = isPlaylistDetailsEditMode,
+                selectedSongIds = playlistDetailsSelectionIds.toSet(),
+                onSongSelectionChange = { songId, isSelected ->
+                    if (isSelected) {
+                        playlistDetailsSelectionIds.add(songId)
+                    } else {
+                        playlistDetailsSelectionIds.remove(songId)
+                    }
+                    playlistDetailsSelectionCount = playlistDetailsSelectionIds.size
+                },
+                onPlaySongClick = { song: SongUiModel, songs: List<SongUiModel> ->
+                    val index = songs.indexOfFirst { it.id == song.id }
+                    val startIndex = if (index >= 0) index else 0
+                    startPlaybackFromQueue(songs, startIndex)
+                },
+                onAddSongsClick = {
+                    if (selectedPlaylist != null) {
+                        playlistAddSongsSelectionIds = emptySet()
+                        navController.navigate(Screen.PlaylistAddSongs.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
+                onShuffleClick = { songs ->
+                    startShuffledPlaybackFromQueue(songs)
+                },
+                onAddToPlaylistClick = onAddToPlaylist,
+                onRemoveFromLibraryClick = onRemoveFromLibrary,
+                onDeleteClick = onDelete,
+            )
+        }
+        composable(Screen.PlaylistAddSongs.route) {
+            var existingIds by remember { mutableStateOf(emptySet<String>()) }
+            LaunchedEffect(selectedPlaylist?.id) {
+                val id = selectedPlaylist?.id
+                if (id != null) {
+                    try {
+                        val songs = playlistsViewModel.getPlaylistSongs(id)
+                        existingIds = songs.map { it.id }.toSet()
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            val candidateSongs = librarySongs.filter { it.id !in existingIds }
+
+            PlaylistAddSongsScreen(
+                songs = candidateSongs,
+                initialSelectedSongIds = playlistAddSongsSelectionIds,
+                onSelectionChanged = { selectedIds ->
+                    playlistAddSongsSelectionIds = selectedIds
+                },
+            )
+        }
+        composable(Screen.PlaylistEdit.route) {
+            val editing = selectedPlaylist
+            PlaylistEditScreen(
+                initialName = editing?.name ?: "",
+                isEditing = editing != null,
+                onConfirm = { newName ->
+                    val trimmed = newName.trim()
+                    if (trimmed.isEmpty()) return@PlaylistEditScreen
+                    playlistScope.launch {
+                        var navigatedToDetails = false
+                        var shouldPopBack = false
+                        try {
+                            val songToAdd = pendingAddToNewPlaylistSong
+                            val editingPlaylist = editing
+
+                            val result = playlistsViewModel.createOrUpdatePlaylist(
+                                params = PlaylistsViewModel.EditPlaylistParams(
+                                    playlistId = editingPlaylist?.id,
+                                    name = trimmed,
+                                    description = editingPlaylist?.description,
+                                    songToAdd = songToAdd,
+                                )
+                            )
+
+                            val playlists = playlistsViewModel.refreshPlaylists()
+                            libraryPlaylists = playlists
+
+                            val finalPlaylistId = result.playlistId
+                            val targetPlaylist = libraryPlaylists.firstOrNull { it.id == finalPlaylistId }
+                                ?: PlaylistUiModel(
+                                    id = finalPlaylistId,
+                                    name = trimmed,
+                                    description = null,
+                                    songCount = result.songCount,
+                                )
+
+                            selectedPlaylist = targetPlaylist
+                            navigatedToDetails = true
+
+                            navController.navigate("${Screen.PlaylistDetails.route}/$finalPlaylistId") {
+                                popUpTo(Screen.Playlists.route) { saveState = true }
+                                launchSingleTop = true
+                            }
+                        } catch (_: Exception) {
+                            shouldPopBack = true
+                        } finally {
+                            pendingAddToNewPlaylistSong = null
+                            if (shouldPopBack && !navigatedToDetails) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+                },
+                onCancel = {
+                    pendingAddToNewPlaylistSong = null
+                    navController.popBackStack()
+                },
+            )
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                Column {
+                    CalmMusicTopAppBar(
+                        currentDestination = currentDestination,
+                        canNavigateBack = canNavigateBack,
+                        focusRequester = focusRequester,
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        onPerformSearchClick = { performSearch() },
+                        selectedAlbum = selectedAlbum,
+                        selectedArtistName = selectedArtist ?: selectedYoutubeArtist?.name,
+                        selectedPlaylist = selectedPlaylist,
+                        isPlaylistsEditMode = isPlaylistsEditMode,
+                        isPlaylistDetailsEditMode = isPlaylistDetailsEditMode,
+                        playlistEditSelectionCount = playlistEditSelectionCount,
+                        playlistDetailsSelectionCount = playlistDetailsSelectionCount,
+                        isPlaylistDetailsMenuExpanded = isPlaylistDetailsMenuExpanded,
+                        hasNowPlaying = nowPlayingSong != null,
+                        onBackClick = { navController.navigateUp() },
+                        onCancelPlaylistsEditClick = {
+                            isPlaylistsEditMode = false
+                            playlistEditSelectionIds.clear()
+                            playlistEditSelectionCount = 0
+                        },
+                        onCancelPlaylistDetailsEditClick = {
+                            isPlaylistDetailsEditMode = false
+                            playlistDetailsSelectionIds.clear()
+                            playlistDetailsSelectionCount = 0
+                        },
+                        onEnterPlaylistsEditClick = { isPlaylistsEditMode = true },
+                        onNavigateToSearchClick = {
+                            navController.navigate(Screen.Search.route) { launchSingleTop = true }
+                        },
+                        onPlaylistDetailsMenuToggle = {
+                            isPlaylistDetailsMenuExpanded = !isPlaylistDetailsMenuExpanded
+                        },
+                        onPlaylistDetailsEditClick = {
+                            if (!isPlaylistDetailsEditMode) {
+                                isPlaylistDetailsMenuExpanded = false
+                                isPlaylistDetailsEditMode = true
+                                playlistDetailsSelectionIds.clear()
+                                playlistDetailsSelectionCount = 0
+                            }
+                        },
+                        onPlaylistDetailsAddSongsClick = {
+                            isPlaylistDetailsMenuExpanded = false
+                            val playlist = selectedPlaylist
+                            if (playlist != null) {
+                                playlistAddSongsSelectionIds = emptySet()
+                                navController.navigate(Screen.PlaylistAddSongs.route) { launchSingleTop = true }
+                            }
+                        },
+                        onPlaylistDetailsRenameClick = {
+                            isPlaylistDetailsMenuExpanded = false
+                            pendingAddToNewPlaylistSong = null
+                            playlistAddSongsSelectionIds = emptySet()
+                            navController.navigate(Screen.PlaylistEdit.route) { launchSingleTop = true }
+                        },
+                        onPlaylistDetailsDeleteClick = {
+                            isPlaylistDetailsMenuExpanded = false
+                            val playlist = selectedPlaylist
+                            if (playlist != null) {
+                                playlistEditSelectionIds.clear()
+                                playlistEditSelectionIds.add(playlist.id)
+                                playlistEditSelectionCount = 1
+                                showDeletePlaylistsConfirmation = true
+                            }
+                        },
+                        onShowDeletePlaylistSongsConfirmationClick = {
+                            if (playlistDetailsSelectionCount > 0) {
+                                showDeletePlaylistSongsConfirmation = true
+                            }
+                        },
+                        onShowDeletePlaylistsConfirmationClick = {
+                            if (playlistEditSelectionCount > 0) {
+                                showDeletePlaylistsConfirmation = true
+                            }
+                        },
+                        onPlaylistAddSongsDoneClick = {
+                            val playlist = selectedPlaylist
+                            val selectedIds = playlistAddSongsSelectionIds
+                            if (playlist == null || selectedIds.isEmpty()) {
+                                navController.popBackStack()
+                            } else {
+                                playlistScope.launch {
+                                    var snackbarMessage: String?
+                                    try {
+                                        val result = playlistsViewModel.addSongsToPlaylist(
+                                            playlistId = playlist.id,
+                                            selectedSongIds = selectedIds,
+                                        )
+
+                                        libraryPlaylists = libraryPlaylists.map { existingPlaylist ->
+                                            if (existingPlaylist.id == playlist.id) {
+                                                existingPlaylist.copy(songCount = result.totalSongCount)
+                                            } else {
+                                                existingPlaylist
+                                            }
+                                        }
+
+                                        snackbarMessage = when {
+                                            result.addedCount == 1 ->
+                                                "Added 1 song to \"${playlist.name}\""
+                                            result.addedCount > 1 ->
+                                                "Added ${result.addedCount} songs to \"${playlist.name}\""
+                                            result.allSelectedAlreadyPresent ->
+                                                "All selected songs are already in \"${playlist.name}\""
+                                            else -> null
+                                        }
+                                    } catch (_: Exception) {
+                                        snackbarMessage = "Couldn't add songs to playlist"
+                                    } finally {
+                                        playlistAddSongsSelectionIds = emptySet()
+                                        navController.popBackStack()
+                                    }
+
+                                    snackbarMessage?.let { message ->
+                                        snackbarHostState.showSnackbar(
+                                            message = message,
+                                            withDismissAction = false,
+                                            duration = SnackbarDurationMMD.Short,
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        onNowPlayingClick = { showNowPlaying = true },
+                        onNavigateToSettingsClick = {
+                            navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                        },
+                        onShowAboutClick = { showAbout = true },
+                    )
+                    HorizontalDividerMMD(thickness = 3.dp)
+                }
+            },
+            bottomBar = {
+                CalmMusicBottomBar(
+                    currentDestination = currentDestination,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
+            },
+            snackbarHost = {},
+        ) { paddingValues ->
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Songs.route,
+                modifier = Modifier.padding(paddingValues),
+            ) {
+                playlistsNavGraph()
+
+                composable(Screen.Artists.route) {
+                    ArtistsScreen(
+                        artists = libraryArtists,
+                        isLoading = isLoadingSongs || isLoadingAlbums,
+                        errorMessage = null,
+                        isSyncInProgress = isLibrarySyncInProgress,
+                        hasAnySongs = hasAnySongs,
+                        onOpenStreamingSettingsClick = openStreamingSettings,
+                        onOpenLocalSettingsClick = openLocalSettings,
+                        onArtistClick = { artist ->
+                            val artistName = artist.name
+                            selectedArtist = artistName
+                            selectedArtistId = artist.id
+                            navController.navigate(Screen.ArtistDetails.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+                composable(Screen.Songs.route) {
+                    SongsScreen(
+                        songs = librarySongs,
+                        isLoading = isLoadingSongs,
+                        errorMessage = songsError,
+                        currentSongId = currentSongId,
+                        isSyncInProgress = isLibrarySyncInProgress,
+                        onPlaySongClick = { song: SongUiModel ->
+                            val index = librarySongs.indexOfFirst { it.id == song.id }
+                            val startIndex = if (index >= 0) index else 0
+                            startPlaybackFromQueue(librarySongs, startIndex)
+                        },
+                        onShuffleClick = {
+                            startShuffledPlaybackFromQueue(librarySongs)
+                        },
+                        onAddToPlaylistClick = onAddToPlaylist,
+                        onRemoveFromLibraryClick = onRemoveFromLibrary,
+                        onDeleteClick = onDelete,
+                        onOpenStreamingSettingsClick = openStreamingSettings,
+                        onOpenLocalSettingsClick = openLocalSettings,
+                    )
+                }
+                composable(Screen.Albums.route) {
+                    AlbumsScreen(
+                        albums = libraryAlbums,
+                        isLoading = isLoadingAlbums,
+                        errorMessage = albumsError,
+                        isSyncInProgress = isLibrarySyncInProgress,
+                        hasAnySongs = hasAnySongs,
+                        onOpenStreamingSettingsClick = openStreamingSettings,
+                        onOpenLocalSettingsClick = openLocalSettings,
+                        onAlbumClick = { album ->
+                            selectedAlbum = album
+                            navController.navigate(Screen.AlbumDetails.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+                composable(Screen.Search.route) {
+                    SearchScreen(
+                        isSearching = isSearching,
+                        errorMessage = searchError,
+                        songs = searchSongs,
+                        albums = searchAlbums,
+                        artists = searchArtists,
+                        localSongs = searchLocalSongs,
+                        selectedTab = searchSelectedTab,
+                        onSelectedTabChange = { searchSelectedTab = it },
+                        onPlaySongClick = { song: SongUiModel ->
+                            if (song.sourceType == "LOCAL_FILE") {
+                                val index = searchLocalSongs.indexOfFirst { it.id == song.id }
+                                val startIndex = if (index >= 0) index else 0
+                                startPlaybackFromQueue(searchLocalSongs, startIndex)
+                            } else {
+                                val songs = searchSongs
+                                val index = songs.indexOfFirst { it.id == song.id }
+                                val startIndex = if (index >= 0) index else 0
+                                startPlaybackFromQueue(songs, startIndex)
+                            }
+                        },
+                        onAlbumClick = { album: AlbumUiModel ->
+                            selectedAlbum = album
+                            navController.navigate(Screen.AlbumDetails.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onArtistClick = { artist: YoutubeArtistUiModel ->
+                            selectedYoutubeArtist = artist
+                            navController.navigate(Screen.YoutubeArtistDetails.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        librarySongIds = librarySongIds,
+                        onAddToPlaylistClick = onAddToPlaylist,
+                        onRemoveFromLibraryClick = onRemoveFromLibrary,
+                        onDeleteClick = onDelete,
+                    )
+                }
+                composable(Screen.AlbumDetails.route) {
+                    AlbumDetailsScreen(
+                        album = selectedAlbum,
+                        viewModel = viewModel,
+                        onPlaySongClick = { song, songs ->
+                            val index = songs.indexOfFirst { it.id == song.id }
+                            val startIndex = if (index >= 0) index else 0
+                            startPlaybackFromQueue(songs, startIndex)
+                        },
+                        onShuffleClick = { songs ->
+                            startShuffledPlaybackFromQueue(songs)
+                        },
+                        librarySongIds = librarySongIds,
+                        onAddToPlaylistClick = onAddToPlaylist,
+                        onRemoveFromLibraryClick = onRemoveFromLibrary,
+                        onDeleteClick = onDelete,
+                        onAddAllToPlaylistClick = onAddAllToPlaylist,
+                    )
+                }
+                composable(Screen.ArtistDetails.route) {
+                    ArtistDetailsScreen(
+                        artistId = selectedArtistId ?: libraryArtists.find { it.name == selectedArtist }?.id,
+                        viewModel = viewModel,
+                        onPlaySongClick = { song, songs ->
+                            val index = songs.indexOfFirst { it.id == song.id }
+                            val startIndex = if (index >= 0) index else 0
+                            startPlaybackFromQueue(songs, startIndex)
+                        },
+                        onAlbumClick = { album ->
+                            selectedAlbum = album
+                            navController.navigate(Screen.AlbumDetails.route) { launchSingleTop = true }
+                        },
+                        onShuffleSongsClick = { songs ->
+                            startShuffledPlaybackFromQueue(songs)
+                        },
+                        onAddToPlaylistClick = onAddToPlaylist,
+                        onRemoveFromLibraryClick = onRemoveFromLibrary,
+                        onDeleteClick = onDelete,
+                        onAddAllToPlaylistClick = onAddAllToPlaylist,
+                    )
+                }
+                composable(Screen.YoutubeArtistDetails.route) {
+                    YouTubeArtistDetailsScreen(
+                        browseId = selectedYoutubeArtist?.browseId,
+                        viewModel = viewModel,
+                        onPlaySongClick = { song, songs ->
+                            val index = songs.indexOfFirst { it.id == song.id }
+                            val startIndex = if (index >= 0) index else 0
+                            startPlaybackFromQueue(songs, startIndex)
+                        },
+                        onAlbumClick = { album ->
+                            selectedAlbum = album
+                            navController.navigate(Screen.AlbumDetails.route) { launchSingleTop = true }
+                        },
+                        onShuffleSongsClick = { songs ->
+                            startShuffledPlaybackFromQueue(songs)
+                        },
+                        onAddToPlaylistClick = onAddToPlaylist,
+                        onRemoveFromLibraryClick = onRemoveFromLibrary,
+                        onDeleteClick = onDelete,
+                    )
+                }
+
+                composable(Screen.More.route) {
+                    MoreScreen(
+                        onNavigateToDownloads = {
+                            navController.navigate(Screen.Downloads.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onNavigateToRadio = {
+                            navController.navigate(Screen.Radio.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onNavigateToSettings = {
+                            navController.navigate(Screen.Settings.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+
+                composable(Screen.Radio.route) {
+                    RadioScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onPausePlayback = { viewModel.togglePlayback(localMediaController) },
+                        isAppPlaying = playbackState.isPlaybackPlaying
+                    )
+                }
+
+                composable(Screen.Downloads.route) {
+                    val downloads by app.youTubeDownloadManager.downloads.collectAsStateWithLifecycle()
+
+                    DownloadsScreen(
+                        downloads = downloads,
+                        onCancelDownload = { id -> app.youTubeDownloadManager.cancelDownload(id) },
+                        onClearFinished = { app.youTubeDownloadManager.clearFinishedDownloads() }
+                    )
+                }
+
+                composable(Screen.Settings.route) {
+                    val context = LocalContext.current
+                    val lifecycleOwner = LocalLifecycleOwner.current
+
+                    var hasBatteryOptimizationExemption by remember { mutableStateOf(false) }
+
+                    fun updateBatteryOptimizationState() {
+                        val powerManager = context.getSystemService(PowerManager::class.java)
+                        hasBatteryOptimizationExemption =
+                            powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+                    }
+
+                    LaunchedEffect(Unit) {
+                        updateBatteryOptimizationState()
+                    }
+
+                    DisposableEffect(lifecycleOwner) {
+                        val observer = LifecycleEventObserver { _, event ->
+                            if (event == Lifecycle.Event.ON_RESUME) {
+                                updateBatteryOptimizationState()
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(observer)
+                        onDispose {
+                            lifecycleOwner.lifecycle.removeObserver(observer)
+                        }
+                    }
+
+                    val folderPickerLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.OpenDocumentTree(),
+                    ) { uri ->
+                        if (uri != null) {
+                            val flags =
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                            try {
+                                context.contentResolver.takePersistableUriPermission(uri, flags)
+                            } catch (_: SecurityException) {
+                            }
+                            settingsManager.addLocalMusicFolder(uri.toString())
+                        }
+                    }
+
+                    fun requestBatteryOptimizationExemption() {
+                        val powerManager = context.getSystemService(PowerManager::class.java)
+                        if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = "package:${context.packageName}".toUri()
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        }
+                    }
+
+                    SettingsScreen(
+                        completeAlbumsWithYouTube = completeAlbumsWithYouTube,
+                        onCompleteAlbumsWithYouTubeChange = { enabled ->
+                            settingsManager.setCompleteAlbumsWithYouTube(enabled)
+                        },
+                        includeLocalMusic = includeLocalMusic,
+                        localFolders = localMusicFolders.toList(),
+                        isYoutubeAccountConnected = isYoutubeAccountConnected,
+                        onConnectYoutubeAccountClick = {
+                            navController.navigate(Screen.YouTubeLogin.route)
+                        },
+                        onDisconnectYoutubeAccountClick = {
+                            settingsManager.clearYouTubeAccountCookie()
+                        },
+                        hasBatteryOptimizationExemption = hasBatteryOptimizationExemption,
+                        onRequestBatteryOptimizationExemption = { requestBatteryOptimizationExemption() },
+                        onIncludeLocalMusicChange = { enabled ->
+                            settingsManager.setIncludeLocalMusic(enabled)
+                        },
+                        onAddFolderClick = {
+                            folderPickerLauncher.launch(initialFolderPickerUri(context))
+                        },
+                        onRemoveFolderClick = { uri ->
+                            settingsManager.removeLocalMusicFolder(uri)
+                        },
+                        onRescanLocalMusicClick = {
+                            libraryScope.launch {
+                                resyncLocalLibrary(includeLocalMusic, localMusicFolders)
+                            }
+                        },
+                        isRescanningLocal = isRescanningLocal,
+                        localScanProgress = localScanProgress,
+                        isIngestingLocal = isIngestingLocal,
+                        localIngestProgress = localIngestProgress,
+                        localScanTotalDiscovered = localScanTotalDiscovered,
+                        localScanSkippedUnchanged = localScanSkippedUnchanged,
+                        localScanIndexedNewOrUpdated = localScanIndexedNewOrUpdated,
+                        localScanDeletedMissing = localScanDeletedMissing,
+                        localScanUnreadableFolders = localScanUnreadableFolders,
+                    )
+                }
+                composable(Screen.YouTubeLogin.route) {
+                    YouTubeLoginScreen(
+                        onLoginSuccess = { cookie ->
+                            settingsManager.setYouTubeAccountCookie(cookie)
+                            navController.navigateUp()
+                        },
+                        onBackClick = { navController.navigateUp() },
+                    )
+                }
+            }
+        }
+
+        if (showAbout) {
+            AboutDialog(onDismiss = { showAbout = false })
+        }
+
+        if (showExternalControls) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 80.dp)
+                    .padding(horizontal = 16.dp)
+            ) {
+                ExternalMediaWidget(externalMediaState)
+            }
+        }
+
+        if (showNowPlaying && playbackState.nowPlayingSong != null) {
+            val song = playbackState.nowPlayingSong!!
+
+            val isInLibrary = librarySongIds.contains(song.id)
+
+            val displayDuration = when {
+                playbackState.nowPlayingDurationMs > 0L -> playbackState.nowPlayingDurationMs
+                song.durationMillis != null && song.durationMillis > 0L -> song.durationMillis
+                else -> 0L
+            }
+
+            val isLocalVideo = if (song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE_DOWNLOAD") {
+                val uriString = song.audioUri ?: song.id
+                try {
+                    val lastSegment = uriString.toUri().lastPathSegment ?: ""
+                    lastSegment.substringAfterLast('.', "").lowercase() == "mp4"
+                } catch (_: Exception) {
+                    false
+                }
+            } else {
+                false
+            }
+
+            BackHandler {
+                showNowPlaying = false
+            }
+
+            NowPlayingScreen(
+                title = song.title,
+                artist = song.artist.ifBlank { if (song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE_DOWNLOAD") "Local file" else "" },
+                album = song.album,
+                isPlaying = playbackState.isPlaybackPlaying,
+                isLoading = playbackState.isBuffering,
+                currentPosition = playbackState.nowPlayingPositionMs.coerceAtMost(displayDuration),
+                duration = displayDuration,
+                repeatMode = playbackState.repeatMode,
+                isShuffleOn = playbackState.isShuffleOn,
+                onPlayPauseClick = { togglePlayback() },
+                onSeek = { positionMs ->
+                    when (song.sourceType) {
+                        "LOCAL_FILE", "YOUTUBE", "YOUTUBE_DOWNLOAD" -> {
+                            localMediaController?.seekTo(positionMs)
+                        }
+                    }
+                },
+                onSeekBackwardClick = {
+                    viewModel.playPreviousInQueue(localMediaController)
+                },
+                onSeekForwardClick = {
+                    viewModel.playNextInQueue(localMediaController)
+                },
+                onShuffleClick = {
+                    viewModel.toggleShuffleMode(localMediaController)
+                },
+                onRepeatClick = {
+                    viewModel.cycleRepeatMode(localMediaController)
+                },
+                onAddToPlaylistClick = {
+                    songsToAddToPlaylist = listOfNotNull(playbackState.nowPlayingSong)
+                    showAddToPlaylistDialog = true
+                },
+                onBackClick = { showNowPlaying = false },
+                isVideo = isLocalVideo,
+                player = if (isLocalVideo) localMediaController else null,
+                canDownload = (streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE"),
+                isDownloadInProgress = downloadStatuses.any { it.songId == song.id && (it.state == YouTubeDownloadStatus.State.PENDING || it.state == YouTubeDownloadStatus.State.IN_PROGRESS) },
+                onDownloadClick = {
+                    var albumArtist: String? = null
+
+                    if (song.album != null) {
+                        val libraryMatch = libraryAlbums.find {
+                            it.title.equals(song.album, ignoreCase = true)
+                        }
+                        if (libraryMatch != null) {
+                            albumArtist = libraryMatch.artist
+                        } else {
+                            if (selectedAlbum?.title.equals(song.album, ignoreCase = true)) {
+                                albumArtist = selectedAlbum?.artist
+                            }
+                        }
+                    }
+
+                    app.youTubeDownloadManager.enqueueDownload(song, albumArtist)
+                    libraryScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Download started",
+                            withDismissAction = false,
+                            duration = SnackbarDurationMMD.Short,
+                        )
+                    }
+                },
+                onCancelDownloadClick = {
+                    val active = downloadStatuses.firstOrNull { it.songId == song.id && (it.state == YouTubeDownloadStatus.State.PENDING || it.state == YouTubeDownloadStatus.State.IN_PROGRESS) }
+                    if (active != null) {
+                        app.youTubeDownloadManager.cancelDownload(active.id)
+                    }
+                },
+                canAddToLibrary = (streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE" && !isInLibrary),
+                onAddToLibraryClick = {
+                    libraryScope.launch {
+                        try {
+                            viewModel.addStreamingSongToLibrary(song)
+                            snackbarHostState.showSnackbar(
+                                message = "Added to library",
+                                withDismissAction = false,
+                                duration = SnackbarDurationMMD.Short,
+                            )
+                        } catch (_: Exception) {
+                            snackbarHostState.showSnackbar(
+                                message = "Couldn't add to library",
+                                withDismissAction = false,
+                                duration = SnackbarDurationMMD.Short,
+                            )
+                        }
+                    }
+                },
+                isInLibrary = isInLibrary,
+                sourceType = song.sourceType,
+                streamResolverLabel = if (song.sourceType == "YOUTUBE") overlayState.streamResolverLabel else null,
+            )
+        }
+
+        if (showAddToPlaylistDialog && songsToAddToPlaylist.isNotEmpty()) {
+            val songs = songsToAddToPlaylist
+            val song = songs.first()
+            val configuration = LocalConfiguration.current
+            val screenHeight = configuration.screenHeightDp.dp
+
+            ModalBottomSheetMMD(
+                onDismissRequest = { showAddToPlaylistDialog = false },
+                sheetState = addToPlaylistSheetState,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        TextMMD(
+                            text = if (songs.size == 1) {
+                                "Add to playlist"
+                            } else {
+                                "Add ${songs.size} songs to playlist"
+                            },
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+
+                        IconButton(
+                            onClick = { showAddToPlaylistDialog = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Cancel adding to a playlist"
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (libraryPlaylists.isEmpty()) {
+                        Text(
+                            text = "You have not created any playlist yet...",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else {
+                        val lastPlaylistId = libraryPlaylists.lastOrNull()?.id
+                        LazyColumnMMD(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = screenHeight * 0.6f),
+                            contentPadding = PaddingValues(vertical = 4.dp)
+                        ) {
+                            items(
+                                items = libraryPlaylists,
+                                key = { it.id },
+                            ) { playlist ->
+                                val isLast = playlist.id == lastPlaylistId
+                                PlaylistItem(
+                                    playlist = playlist,
+                                    onClick = {
+                                        showAddToPlaylistDialog = false
+                                        if (songs.size == 1) {
+                                            addSongToPlaylist(song, playlist)
+                                        } else {
+                                            addSongsToPlaylist(songs, playlist)
+                                        }
+                                    },
+                                    showDivider = !isLast,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ButtonMMD(
+                        onClick = {
+                            pendingAddToNewPlaylistSong = song
+                            showAddToPlaylistDialog = false
+                            showNowPlaying = false
+                            selectedPlaylist = null
+                            navController.navigate(Screen.PlaylistEdit.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(12.dp)
+                    ) {
+                        TextMMD(
+                            text = "New playlist",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+
+        if (showDeletePlaylistSongsConfirmation && playlistDetailsSelectionCount > 0 && selectedPlaylist != null) {
+            val playlist = selectedPlaylist
+            val idsToRemove = playlistDetailsSelectionIds.toSet()
+            if (playlist != null && idsToRemove.isNotEmpty()) {
+                ModalBottomSheetMMD(
+                    onDismissRequest = { showDeletePlaylistSongsConfirmation = false },
+                    sheetState = removeSongsSheetState,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            TextMMD(
+                                text = if (playlistDetailsSelectionCount == 1) {
+                                    "Remove song from \"${playlist.name}\""
+                                } else {
+                                    "Remove songs from \"${playlist.name}\""
+                                },
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+
+                            IconButton(
+                                onClick = { showDeletePlaylistSongsConfirmation = false },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Cancel song removal",
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = if (playlistDetailsSelectionCount == 1) {
+                                "This will remove the selected song from this playlist. The song will remain in your library."
+                            } else {
+                                "This will remove the selected songs from this playlist. The songs will remain in your library."
+                            },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Normal,
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        ButtonMMD(
+                            onClick = {
+                                playlistScope.launch {
+                                    var snackbarMessage: String?
+                                    try {
+                                        val updatedCount = playlistsViewModel.removeSongsFromPlaylist(
+                                            playlistId = playlist.id,
+                                            songIds = idsToRemove,
+                                        )
+
+                                        libraryPlaylists = libraryPlaylists.map { existingPlaylist ->
+                                            if (existingPlaylist.id == playlist.id) {
+                                                existingPlaylist.copy(songCount = updatedCount)
+                                            } else {
+                                                existingPlaylist
+                                            }
+                                        }
+
+                                        val removedCount = idsToRemove.size
+                                        snackbarMessage = if (removedCount == 1) {
+                                            "Removed 1 song from \"${playlist.name}\""
+                                        } else {
+                                            "Removed $removedCount songs from \"${playlist.name}\""
+                                        }
+                                    } catch (_: Exception) {
+                                        snackbarMessage = "Couldn't remove songs from playlist"
+                                    } finally {
+                                        playlistDetailsSelectionIds.clear()
+                                        playlistDetailsSelectionCount = 0
+                                        isPlaylistDetailsEditMode = false
+                                        showDeletePlaylistSongsConfirmation = false
+                                    }
+
+                                    snackbarMessage?.let { message ->
+                                        snackbarHostState.showSnackbar(
+                                            message = message,
+                                            withDismissAction = false,
+                                            duration = SnackbarDurationMMD.Short,
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(12.dp),
+                        ) {
+                            TextMMD(
+                                text = "Remove",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButtonMMD(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(12.dp),
+                            onClick = { showDeletePlaylistSongsConfirmation = false },
+                        ) {
+                            TextMMD(
+                                text = "Back",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showDeletePlaylistsConfirmation && playlistEditSelectionCount > 0) {
+            val idsToDelete = playlistEditSelectionIds.toSet()
+            if (idsToDelete.isNotEmpty()) {
+                ModalBottomSheetMMD(
+                    onDismissRequest = { showDeletePlaylistsConfirmation = false },
+                    sheetState = deletePlaylistsSheetState,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            TextMMD(
+                                text = "Delete playlist${if (playlistEditSelectionCount > 1) "s" else ""}",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+
+                            IconButton(
+                                onClick = { showDeletePlaylistsConfirmation = false },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Cancel playlist deletion",
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = if (playlistEditSelectionCount == 1) {
+                                "This will permanently remove the selected playlist. Songs in your library will not be deleted."
+                            } else {
+                                "This will permanently remove the selected playlists. Songs in your library will not be deleted."
+                            },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Normal,
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        ButtonMMD(
+                            onClick = {
+                                playlistScope.launch {
+                                    val currentPlaylistsById = libraryPlaylists.associateBy { it.id }
+                                    var snackbarMessage: String?
+
+                                    try {
+                                        val playlistsToDelete = idsToDelete.mapNotNull { id ->
+                                            currentPlaylistsById[id]
+                                        }
+                                        val remainingPlaylists = playlistsViewModel.deletePlaylists(playlistsToDelete)
+                                        libraryPlaylists = remainingPlaylists
+
+                                        val deletedIds = idsToDelete
+                                        val currentDetailsPlaylist = selectedPlaylist
+                                        if (
+                                            currentDestination.isPlaylistDetails() &&
+                                            currentDetailsPlaylist != null &&
+                                            deletedIds.contains(currentDetailsPlaylist.id)
+                                        ) {
+                                            selectedPlaylist = null
+                                            navController.popBackStack(
+                                                Screen.Playlists.route,
+                                                inclusive = false
+                                            )
+                                        }
+
+                                        val deletedCount = idsToDelete.size
+                                        snackbarMessage = if (deletedCount == 1) {
+                                            "Deleted 1 playlist"
+                                        } else {
+                                            "Deleted $deletedCount playlists"
+                                        }
+                                    } catch (_: Exception) {
+                                        snackbarMessage = "Couldn't delete playlists"
+                                    } finally {
+                                        playlistEditSelectionIds.clear()
+                                        playlistEditSelectionCount = 0
+                                        isPlaylistsEditMode = false
+                                        showDeletePlaylistsConfirmation = false
+                                    }
+
+                                    snackbarMessage?.let { message ->
+                                        snackbarHostState.showSnackbar(
+                                            message = message,
+                                            withDismissAction = false,
+                                            duration = SnackbarDurationMMD.Short,
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(12.dp),
+                        ) {
+                            TextMMD(
+                                text = "Delete",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButtonMMD(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(12.dp),
+                            onClick = { showDeletePlaylistsConfirmation = false },
+                        ) {
+                            TextMMD(
+                                text = "Back",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            SnackbarHostMMD(
+                snackbarHostState
+            )
+        }
+    }
+}
+
+@Composable
+fun ExternalMediaWidget(state: ExternalMediaState) {
+    val context = LocalContext.current
+    if (!isNotificationServiceEnabled(context)) {
+        Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+            ButtonMMD(
+                onClick = {
+                    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                TextMMD("Tap to let this control the music", fontSize = 14.sp)
+            }
+        }
+    } else {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Playing on ${state.packageName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = state.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = state.artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { ExternalMediaRepository.skipToPrevious() }) {
+                        Icon(Icons.Default.SkipPrevious, "Prev")
+                    }
+
+                    androidx.compose.material3.FilledIconButton(onClick = { ExternalMediaRepository.togglePlayPause() }) {
+                        Icon(if(state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play")
+                    }
+
+                    IconButton(onClick = { ExternalMediaRepository.skipToNext() }) {
+                        Icon(Icons.Default.SkipNext, "Next")
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun isNotificationServiceEnabled(context: android.content.Context): Boolean {
+    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+    return flat != null && flat.contains(context.packageName)
+}
+
+@Composable
+fun getAppBarTitle(currentDestination: NavDestination?): String {
+    return when {
+        currentDestination?.route == Screen.Playlists.route -> "Playlists"
+        currentDestination?.route == Screen.Songs.route -> "Songs"
+        currentDestination?.route == Screen.Albums.route -> "Albums"
+        currentDestination?.route == Screen.AlbumDetails.route -> "Album"
+        currentDestination?.route == Screen.Artists.route -> "Artists"
+        currentDestination?.route == Screen.ArtistDetails.route -> "Artist"
+        currentDestination?.route == Screen.YoutubeArtistDetails.route -> "Artist"
+        currentDestination?.route == Screen.Search.route -> "Search"
+        currentDestination?.route == Screen.More.route -> "More"
+        currentDestination?.route == Screen.Radio.route -> "Radio"
+        currentDestination?.route == Screen.Downloads.route -> "Downloads"
+        currentDestination?.route == Screen.Settings.route -> "Settings"
+        currentDestination?.route == Screen.YouTubeLogin.route -> "Connect a YouTube account"
+        currentDestination?.route == Screen.PlaylistEdit.route -> "Edit playlist"
+        currentDestination?.route == Screen.PlaylistAddSongs.route -> "Add songs"
+        currentDestination.isPlaylistDetails() -> "Playlist"
+        currentDestination?.route?.startsWith("playlistDetails/") == true -> "Playlist"
+        else -> ""
+    }
+}
+
+fun formatDurationMillis(millis: Long?): String? {
+    val totalMillis = millis ?: return null
+    if (totalMillis <= 0) return null
+    val totalSeconds = totalMillis / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
+}
+
+/**
+ * Where the folder picker should open.
+ *
+ * It used to open wherever the system felt like, which on this phone is internal storage
+ * with the card reachable only through a burger menu the app never mentions - the single
+ * thing two readers of the review thread could not find. This points it at the card when
+ * there is one, and at the phone's own Music folder when there is not.
+ */
+private fun initialFolderPickerUri(context: Context): Uri? {
+    return try {
+        val storageManager = context.getSystemService(StorageManager::class.java)
+        val removable = storageManager?.storageVolumes?.firstOrNull {
+            it.isRemovable && !it.uuid.isNullOrBlank()
+        }
+        val documentId = if (removable != null) "${removable.uuid}:" else "primary:Music"
+        DocumentsContract.buildDocumentUri(
+            "com.android.externalstorage.documents",
+            documentId,
+        )
+    } catch (_: Exception) {
+        null
+    }
+}
