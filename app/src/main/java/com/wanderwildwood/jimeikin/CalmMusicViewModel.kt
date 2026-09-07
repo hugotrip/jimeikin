@@ -988,13 +988,11 @@ class CalmMusicViewModel(
     }
 
     suspend fun resyncLocalLibrary(
-        includeLocal: Boolean,
         folders: Set<String>,
         onScanProgress: (Float) -> Unit,
         onIngestProgress: (Float) -> Unit,
     ): LibraryRepository.LocalResyncResult {
         val result = libraryRepository.resyncLocalLibrary(
-            includeLocal,
             folders,
             onScanProgress,
             onIngestProgress

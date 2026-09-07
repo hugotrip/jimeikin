@@ -5,7 +5,6 @@ import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.LibraryMusic
-import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Radio // Add this import
 import androidx.compose.material.icons.outlined.Search
@@ -26,19 +25,24 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object YoutubeArtistDetails : Screen("youtubeArtistDetails", "Artist", Icons.Outlined.LibraryMusic)
     object Search : Screen("search", "Search", Icons.Outlined.Search)
 
-    object More : Screen("more", "More", Icons.Outlined.MoreHoriz)
     object Radio : Screen("radio", "Radio", Icons.Outlined.Radio) // Add this line
     object Downloads : Screen("downloads", "Downloads", Icons.Outlined.Download)
     object Settings : Screen("settings", "Settings", Icons.Outlined.Settings)
     object YouTubeLogin : Screen("youtubeLogin", "Connect a YouTube account", Icons.Outlined.PersonOutline)
 }
 
+/**
+ * Five places, no menu. The fifth slot used to open a screen holding three doors — a
+ * hamburger by another name, and the style keeps that shape for a menu of things to do
+ * rather than a menu of places. Settings went to a cog and Downloads went into it, which
+ * left Radio, and Radio is a place.
+ */
 val navItems = listOf(
     Screen.Playlists,
     Screen.Artists,
     Screen.Songs,
     Screen.Albums,
-    Screen.More,
+    Screen.Radio,
 )
 
 /**

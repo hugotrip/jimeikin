@@ -37,7 +37,6 @@ class LibraryRepository(
     )
 
     suspend fun resyncLocalLibrary(
-        includeLocal: Boolean,
         folders: Set<String>,
         onScanProgress: (Float) -> Unit,
         onIngestProgress: (Float) -> Unit,
@@ -46,16 +45,7 @@ class LibraryRepository(
         var stats: LocalResyncStats? = null
 
         try {
-            if (!includeLocal) {
-                onScanProgress(1f)
-                onIngestProgress(0f)
-                withContext(Dispatchers.IO) {
-                    songDao.deleteBySourceType("LOCAL_FILE")
-                    albumDao.deleteBySourceType("LOCAL_FILE")
-                    artistDao.deleteBySourceType("LOCAL_FILE")
-                }
-                onIngestProgress(1f)
-            } else {
+            run {
                 if (folders.isNotEmpty()) {
                     try {
                         val lastScanMillis = app.settingsManager.getLastLocalLibraryScanMillis()

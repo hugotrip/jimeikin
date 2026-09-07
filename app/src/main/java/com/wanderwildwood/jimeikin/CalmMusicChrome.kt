@@ -278,8 +278,12 @@ private fun CalmMusicTopAppBarActions(
                 contentDescription = "Settings",
             )
         }
+    }
 
-        // About is not a setting; it is the thing a stranger looks for before trusting an app.
+    // About is not a setting, but it is what a stranger looks for before trusting an app, and
+    // Settings is where they go looking. The other apps here put the i in the same corner of
+    // the same screen.
+    if (currentDestination?.route == Screen.Settings.route) {
         IconButton(onClick = onShowAboutClick) {
             Icon(
                 imageVector = Icons.Outlined.Info,

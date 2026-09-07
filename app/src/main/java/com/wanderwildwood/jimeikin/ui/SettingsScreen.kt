@@ -43,17 +43,16 @@ import kotlinx.coroutines.delay
 fun SettingsScreen(
     completeAlbumsWithYouTube: Boolean,
     onCompleteAlbumsWithYouTubeChange: (Boolean) -> Unit,
-    includeLocalMusic: Boolean,
     localFolders: List<String>,
     isYoutubeAccountConnected: Boolean,
     onConnectYoutubeAccountClick: () -> Unit,
     onDisconnectYoutubeAccountClick: () -> Unit,
     hasBatteryOptimizationExemption: Boolean,
     onRequestBatteryOptimizationExemption: () -> Unit,
-    onIncludeLocalMusicChange: (Boolean) -> Unit,
     onAddFolderClick: () -> Unit,
     onRemoveFolderClick: (String) -> Unit,
     onRescanLocalMusicClick: () -> Unit,
+    onNavigateToDownloadsClick: () -> Unit,
     isRescanningLocal: Boolean,
     isIngestingLocal: Boolean,
     localScanProgress: Float,
@@ -68,16 +67,7 @@ fun SettingsScreen(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
     ) {
-        item {
-            ArmedSwitchRow(
-                label = "Music on this phone",
-                armedLabel = "Turn off — the songs leave the library; tap again",
-                checked = includeLocalMusic,
-                onCheckedChange = onIncludeLocalMusicChange,
-            )
-        }
-
-        if (includeLocalMusic) {
+        run {
             if (localFolders.isEmpty()) {
                 item {
                     TextMMD(
@@ -196,6 +186,13 @@ fun SettingsScreen(
         }
 
         item {
+            // Downloads is transient status about streaming rather than a place of its own;
+            // it used to cost a row on a screen that existed only to hold three doors. The
+            // label carries itself, so it gets no second line.
+            LinkRow(label = "Downloads", onClick = onNavigateToDownloadsClick)
+        }
+
+        item {
             ValueRow(
                 label = "YouTube account",
                 value = if (isYoutubeAccountConnected) "Connected" else "Not connected",
@@ -217,60 +214,26 @@ fun SettingsScreen(
     }
 }
 
+/** A row that only opens somewhere. It has no value to show, so it shows none. */
+@Composable
+private fun LinkRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextMMD(text = label, fontSize = 16.sp)
+    }
+}
+
 @Composable
 private fun Separator() {
     HorizontalDividerMMD(
         thickness = 1.dp,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
-}
-
-/**
- * A switch whose off position throws something away. Turning it off empties the local index
- * — the files are untouched, but every folder has to be read again to get it back — so the
- * row says that before it does it. Turning it back on is not destructive and does not ask.
- */
-@Composable
-private fun ArmedSwitchRow(
-    label: String,
-    armedLabel: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    var armed by remember { mutableStateOf(false) }
-    LaunchedEffect(armed) {
-        if (armed) {
-            delay(4000)
-            armed = false
-        }
-    }
-
-    val act = {
-        if (!checked) {
-            onCheckedChange(true)
-        } else if (armed) {
-            armed = false
-            onCheckedChange(false)
-        } else {
-            armed = true
-        }
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { act() }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextMMD(
-            text = if (armed) armedLabel else label,
-            fontSize = 16.sp,
-            fontWeight = if (armed) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.weight(1f),
-        )
-        SwitchMMD(checked = checked, onCheckedChange = { act() })
-    }
 }
 
 @Composable

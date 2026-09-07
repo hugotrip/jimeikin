@@ -182,25 +182,32 @@ fun NowPlayingScreen(
                 .padding(horizontal = 4.dp),
             verticalArrangement = Arrangement.Bottom,
         ) {
+            // Laid out like Audio Reading's player: who it is by, then what it is, then
+            // where it came from - one bold line among three, sitting at the bottom of the
+            // space with the transport under it. The title used to be 42sp and bold with a
+            // bold artist under it, which made the block read as two headings rather than
+            // one thing being played.
+            if (!isVideo) {
+                TextMMD(
+                    text = artist,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
             TextMMD(
                 text = title,
-                fontSize = if (isVideo) 24.sp else 42.sp,
+                fontSize = if (isVideo) 24.sp else 26.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = if (isVideo) 1 else 2,
                 overflow = TextOverflow.Ellipsis
             )
 
             if (!isVideo) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                TextMMD(
-                    text = artist,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
                 val hasAlbum = !album.isNullOrBlank()
                 if (hasAlbum) {
                     Spacer(modifier = Modifier.height(4.dp))

@@ -90,7 +90,6 @@ import com.wanderwildwood.jimeikin.ui.AlbumsScreen
 import com.wanderwildwood.jimeikin.ui.ArtistDetailsScreen
 import com.wanderwildwood.jimeikin.ui.ArtistsScreen
 import com.wanderwildwood.jimeikin.ui.DownloadsScreen
-import com.wanderwildwood.jimeikin.ui.MoreScreen
 import com.wanderwildwood.jimeikin.ui.NowPlayingScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistAddSongsScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistDetailsScreen
@@ -193,9 +192,7 @@ fun CalmMusic(app: CalmMusic) {
         lastCompletedDownloadUUIDs = currentCompletedUUIDs
     }
 
-    val includeLocalMusicState = settingsManager.includeLocalMusic.collectAsState()
     val localMusicFoldersState = settingsManager.localMusicFolders.collectAsState()
-    val includeLocalMusic = includeLocalMusicState.value
     val localMusicFolders = localMusicFoldersState.value
     val completeAlbumsWithYouTubeState = settingsManager.completeAlbumsWithYouTube.collectAsState()
     val completeAlbumsWithYouTube = completeAlbumsWithYouTubeState.value
@@ -399,7 +396,6 @@ fun CalmMusic(app: CalmMusic) {
     }
 
     suspend fun resyncLocalLibrary(
-        includeLocal: Boolean,
         folders: Set<String>,
     ) {
         if (isRescanningLocal) return
@@ -415,7 +411,6 @@ fun CalmMusic(app: CalmMusic) {
         songsError = null
         try {
             val result = viewModel.resyncLocalLibrary(
-                includeLocal = includeLocal,
                 folders = folders,
                 onScanProgress = { progress ->
                     localScanProgress = progress.coerceIn(0f, 1f)
@@ -738,9 +733,9 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
-    LaunchedEffect(includeLocalMusic, localMusicFolders) {
+    LaunchedEffect(localMusicFolders) {
         delay(500L)
-        resyncLocalLibrary(includeLocalMusic, localMusicFolders)
+        resyncLocalLibrary(localMusicFolders)
     }
 
     // The activity is singleTask, so coming back to a resident app never re-ran the scan:
@@ -748,10 +743,10 @@ fun CalmMusic(app: CalmMusic) {
     // it was killed. Files whose size and date are unchanged are skipped, so a repeat costs
     // the directory walk and nothing else.
     LaunchedEffect(resumeCount) {
-        if (resumeCount == 0 || !includeLocalMusic || localMusicFolders.isEmpty()) return@LaunchedEffect
+        if (resumeCount == 0 || localMusicFolders.isEmpty()) return@LaunchedEffect
         val sinceLastScan = System.currentTimeMillis() - settingsManager.getLastLocalLibraryScanMillis()
         if (sinceLastScan > 5 * 60 * 1000L) {
-            resyncLocalLibrary(includeLocalMusic, localMusicFolders)
+            resyncLocalLibrary(localMusicFolders)
         }
     }
 
@@ -1153,7 +1148,6 @@ fun CalmMusic(app: CalmMusic) {
                         songs = searchSongs,
                         albums = searchAlbums,
                         artists = searchArtists,
-                        localSongs = searchLocalSongs,
                         selectedTab = searchSelectedTab,
                         onSelectedTabChange = { searchSelectedTab = it },
                         onPlaySongClick = { song: SongUiModel ->
@@ -1249,26 +1243,6 @@ fun CalmMusic(app: CalmMusic) {
                     )
                 }
 
-                composable(Screen.More.route) {
-                    MoreScreen(
-                        onNavigateToDownloads = {
-                            navController.navigate(Screen.Downloads.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onNavigateToRadio = {
-                            navController.navigate(Screen.Radio.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onNavigateToSettings = {
-                            navController.navigate(Screen.Settings.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                    )
-                }
-
                 composable(Screen.Radio.route) {
                     RadioScreen(
                         onPausePlayback = { viewModel.togglePlayback(localMediaController) },
@@ -1343,7 +1317,6 @@ fun CalmMusic(app: CalmMusic) {
                         onCompleteAlbumsWithYouTubeChange = { enabled ->
                             settingsManager.setCompleteAlbumsWithYouTube(enabled)
                         },
-                        includeLocalMusic = includeLocalMusic,
                         localFolders = localMusicFolders.toList(),
                         isYoutubeAccountConnected = isYoutubeAccountConnected,
                         onConnectYoutubeAccountClick = {
@@ -1354,18 +1327,18 @@ fun CalmMusic(app: CalmMusic) {
                         },
                         hasBatteryOptimizationExemption = hasBatteryOptimizationExemption,
                         onRequestBatteryOptimizationExemption = { requestBatteryOptimizationExemption() },
-                        onIncludeLocalMusicChange = { enabled ->
-                            settingsManager.setIncludeLocalMusic(enabled)
-                        },
                         onAddFolderClick = {
                             folderPickerLauncher.launch(initialFolderPickerUri(context))
                         },
                         onRemoveFolderClick = { uri ->
                             settingsManager.removeLocalMusicFolder(uri)
                         },
+                        onNavigateToDownloadsClick = {
+                            navController.navigate(Screen.Downloads.route) { launchSingleTop = true }
+                        },
                         onRescanLocalMusicClick = {
                             libraryScope.launch {
-                                resyncLocalLibrary(includeLocalMusic, localMusicFolders)
+                                resyncLocalLibrary(localMusicFolders)
                             }
                         },
                         isRescanningLocal = isRescanningLocal,
@@ -1980,7 +1953,6 @@ fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boole
         currentDestination?.route == Screen.ArtistDetails.route -> "Artist"
         currentDestination?.route == Screen.YoutubeArtistDetails.route -> "Artist"
         currentDestination?.route == Screen.Search.route -> "Search"
-        currentDestination?.route == Screen.More.route -> "More"
         currentDestination?.route == Screen.Radio.route -> "Radio"
         currentDestination?.route == Screen.Downloads.route -> "Downloads"
         currentDestination?.route == Screen.Settings.route -> "Settings"

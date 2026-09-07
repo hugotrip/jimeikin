@@ -315,7 +315,6 @@ internal suspend fun performYouTubeDownloadInternal(
         withContext(Dispatchers.IO) {
             try {
                 val settings = app.settingsManager
-                if (!settings.includeLocalMusic.value) settings.setIncludeLocalMusic(true)
 
                 val database = CalmMusicDatabase.getDatabase(app)
                 val songDao = database.songDao()

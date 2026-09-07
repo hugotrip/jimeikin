@@ -35,7 +35,6 @@ fun SearchScreen(
     songs: List<SongUiModel>,
     albums: List<AlbumUiModel>,
     artists: List<YoutubeArtistUiModel>,
-    localSongs: List<SongUiModel>,
     selectedTab: Int,
     onSelectedTabChange: (Int) -> Unit,
     onPlaySongClick: (SongUiModel) -> Unit,
@@ -78,17 +77,6 @@ fun SearchScreen(
                         text = "Artists",
                         fontSize = 16.sp,
                         fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal,
-                    )
-                },
-            )
-            TabMMD(
-                selected = selectedTab == 3,
-                onClick = { onSelectedTabChange(3) },
-                text = {
-                    TextMMD(
-                        text = "Local",
-                        fontSize = 16.sp,
-                        fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
             )
@@ -184,29 +172,6 @@ fun SearchScreen(
                     }
                 }
 
-                3 -> {
-                    if (localSongs.isNotEmpty()) {
-                        items(localSongs.size) { index ->
-                            val song = localSongs[index]
-                            SongItem(
-                                song = song,
-                                isCurrentlyPlaying = false,
-                                onClick = { onPlaySongClick(song) },
-                                onAddToPlaylist = { onAddToPlaylistClick(song) },
-                                onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
-                                onDelete = { onDeleteClick(song) },
-                                showDivider = song != localSongs.lastOrNull(),
-                                isInLibrary = true,
-                            )
-                        }
-                    }
-
-                    if (!isSearching && localSongs.isEmpty()) {
-                        item {
-                            TextMMD(text = "No local songs found.")
-                        }
-                    }
-                }
             }
         }
     }
