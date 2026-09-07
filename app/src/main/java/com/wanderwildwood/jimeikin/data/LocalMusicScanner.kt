@@ -465,7 +465,9 @@ private fun String.fixCommonTagMojibake(): String {
     return fixed
 }
 
-private fun String.normalizeForIdComponent(): String =
-    trim()
-        .replace(Regex("\\s+"), " ")
-        .lowercase()
+/**
+ * The same folding the artist grouping uses, so a song's artistId and the artist row it
+ * belongs to agree. Album names go through it too: an album spelled two ways is the same
+ * album for the same reasons.
+ */
+private fun String.normalizeForIdComponent(): String = ArtistNames.key(this)

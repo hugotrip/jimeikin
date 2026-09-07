@@ -87,7 +87,9 @@ class LibraryRepository(
                         withContext(Dispatchers.IO) {
                             val artistEntities = mutableListOf<ArtistEntity>()
 
-                            fun String.normalize() = trim().replace(Regex("\\s+"), " ").lowercase()
+                            // Björk and Bjork are one artist, and so are the three ways this
+                            // library spells Godspeed You! Black Emperor.
+                            fun String.normalize() = ArtistNames.key(this)
 
                             // The album artist is the one a reader means by "artist": an album
                             // tagged Gorillaz stays one row however many guests are credited on
@@ -118,7 +120,15 @@ class LibraryRepository(
                                 artistEntities.add(ArtistEntity(id, name, entity.sourceType))
                             }
 
-                            val uniqueArtists = artistEntities.distinctBy { it.id }
+                            val uniqueArtists = artistEntities
+                                .groupBy { it.id }
+                                .map { (id, rows) ->
+                                    ArtistEntity(
+                                        id = id,
+                                        name = ArtistNames.preferred(rows.map { it.name }),
+                                        sourceType = rows.first().sourceType,
+                                    )
+                                }
 
                             onIngestProgress(0.1f)
 

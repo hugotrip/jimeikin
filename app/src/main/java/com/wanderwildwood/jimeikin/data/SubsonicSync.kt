@@ -23,8 +23,7 @@ object SubsonicSync {
     /** Server ids are short and could collide with a document id, so they are namespaced. */
     private fun songId(id: String) = "SUBSONIC:$id"
     private fun albumId(id: String) = "SUBSONIC:ALBUM:$id"
-    private fun artistId(name: String) =
-        "SUBSONIC:ARTIST:" + name.trim().replace(Regex("\\s+"), " ").lowercase()
+    private fun artistId(name: String) = "SUBSONIC:ARTIST:" + ArtistNames.key(name)
 
     suspend fun sync(
         client: SubsonicClient,
@@ -69,10 +68,14 @@ object SubsonicSync {
             )
         }
 
+        // A server can disagree with itself the same way a folder of files can, so the
+        // spelling used most is the one shown.
         val artists = library.albums
             .map { it.artist }
-            .distinctBy { artistId(it) }
-            .map { name -> ArtistEntity(artistId(name), name, SOURCE_TYPE) }
+            .groupBy { artistId(it) }
+            .map { (id, spellings) ->
+                ArtistEntity(id, ArtistNames.preferred(spellings), SOURCE_TYPE)
+            }
 
         withContext(Dispatchers.IO) {
             // Replaced whole rather than merged: the server is the authority on what it has,
