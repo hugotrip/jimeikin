@@ -143,6 +143,16 @@ internal suspend fun performYouTubeDownloadInternal(
     client: OkHttpClient,
     onProgress: (Float) -> Unit,
 ): Boolean {
+    // Every 8 KB read used to publish, which on a panel that redraws in full is the worst
+    // rate the app can ask for. A whole percent is as fine as anything on screen can show.
+    var lastPublishedPercent = -1
+    val publishProgress: (Float) -> Unit = { fraction ->
+        val percent = (fraction * 100f).toInt().coerceIn(0, 100)
+        if (percent != lastPublishedPercent) {
+            lastPublishedPercent = percent
+            onProgress(fraction)
+        }
+    }
     var tmpFile: File? = null
     try {
         val videoId = song.id
@@ -228,7 +238,7 @@ internal suspend fun performYouTubeDownloadInternal(
                                         }
                                         offset += read
                                         val totalSoFar = downloaded.addAndGet(read.toLong())
-                                        onProgress((totalSoFar.toDouble() / contentLength.toDouble()).toFloat())
+                                        publishProgress((totalSoFar.toDouble() / contentLength.toDouble()).toFloat())
                                     }
                                 }
                             }
@@ -257,7 +267,7 @@ internal suspend fun performYouTubeDownloadInternal(
                                 out.write(buffer, 0, read)
                                 if (total > 0) {
                                     readSoFar += read
-                                    onProgress(readSoFar.toFloat() / total.toFloat())
+                                    publishProgress(readSoFar.toFloat() / total.toFloat())
                                 }
                             }
                         }
@@ -349,11 +359,19 @@ internal suspend fun performYouTubeDownloadInternal(
                 val effectiveAlbumArtist = albumArtist?.takeIf { it.isNotBlank() } ?: song.artist
                 val albumArtistKey = effectiveAlbumArtist.toIdComponent()
 
-                val artistId = "YOUTUBE_DOWNLOAD:$trackArtistKey"
-
                 val albumId = if (albumKey != null) {
                     "YOUTUBE_DOWNLOAD:$albumArtistKey:$albumKey"
                 } else null
+
+                // The same rule the local library follows: an album's songs are filed under
+                // the album artist, so a downloaded album stays one artist however many
+                // guests are credited on its tracks. Only a song with no album at all earns
+                // a row of its own under the track artist.
+                val artistId = if (albumId != null) {
+                    "YOUTUBE_DOWNLOAD:$albumArtistKey"
+                } else {
+                    "YOUTUBE_DOWNLOAD:$trackArtistKey"
+                }
 
                 val localSongEntity = scannedAudio.song.copy(
                     sourceType = "YOUTUBE_DOWNLOAD",
@@ -361,7 +379,7 @@ internal suspend fun performYouTubeDownloadInternal(
                     albumId = albumId
                 )
 
-                if (artistId.isNotBlank()) {
+                if (albumId == null && artistId.isNotBlank()) {
                     artistDao.upsertAll(listOf(ArtistEntity(
                         id = artistId,
                         name = song.artist,

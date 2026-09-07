@@ -1251,7 +1251,10 @@ class CalmMusicViewModel(
                     years.filterNotNull().maxOrNull()
                 }
 
+            // An album whose songs have all gone is not an album any more. Nothing is
+            // deleted here; the row simply stops being offered until a scan finds it again.
             val mergedAlbums = allAlbums
+                .filter { albumIdToYear.containsKey(it.id) }
                 .groupBy {
                     (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
                 }

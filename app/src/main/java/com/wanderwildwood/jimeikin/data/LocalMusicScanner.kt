@@ -366,15 +366,22 @@ object LocalMusicScanner {
     }
 
     private fun copyUriToTempFile(context: Context, uri: Uri): File? {
+        val tempFile = try {
+            File.createTempFile("scanner_probe", ".tmp", context.cacheDir)
+        } catch (e: Exception) {
+            return null
+        }
         return try {
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-            val tempFile = File.createTempFile("scanner_probe", ".tmp", context.cacheDir)
-            FileOutputStream(tempFile).use { output ->
-                inputStream.copyTo(output)
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(tempFile).use { output -> input.copyTo(output) }
+            } ?: run {
+                tempFile.delete()
+                return null
             }
-            inputStream.close()
             tempFile
         } catch (e: Exception) {
+            // A card pulled mid-scan used to leave its half-copied file in the cache for good.
+            tempFile.delete()
             null
         }
     }

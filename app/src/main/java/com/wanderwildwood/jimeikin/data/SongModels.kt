@@ -67,7 +67,7 @@ data class ArtistWithCounts(
 
 @Dao
 interface SongDao {
-    @Query("SELECT * FROM songs ORDER BY title")
+    @Query("SELECT * FROM songs ORDER BY title COLLATE NOCASE")
     suspend fun getAllSongs(): List<SongEntity>
 
     @Query("SELECT * FROM songs WHERE sourceType = :sourceType ORDER BY title")
@@ -75,9 +75,6 @@ interface SongDao {
 
     @Query("SELECT * FROM songs WHERE albumId = :albumId ORDER BY discNumber, trackNumber, title")
     suspend fun getSongsByAlbumId(albumId: String): List<SongEntity>
-
-    @Query("SELECT * FROM songs WHERE artist = :artist ORDER BY albumId, discNumber, trackNumber, title")
-    suspend fun getSongsByArtist(artist: String): List<SongEntity>
 
     @Query(
         "SELECT s.* FROM songs s " +
@@ -107,11 +104,8 @@ interface SongDao {
 
 @Dao
 interface AlbumDao {
-    @Query("SELECT * FROM albums ORDER BY name")
+    @Query("SELECT * FROM albums ORDER BY name COLLATE NOCASE")
     suspend fun getAllAlbums(): List<AlbumEntity>
-
-    @Query("SELECT * FROM albums WHERE artist = :artist ORDER BY name")
-    suspend fun getAlbumsByArtist(artist: String): List<AlbumEntity>
 
     @Query("SELECT * FROM albums WHERE artistId = :artistId ORDER BY name")
     suspend fun getAlbumsByArtistId(artistId: String): List<AlbumEntity>
@@ -136,6 +130,10 @@ interface ArtistDao {
                 "LEFT JOIN albums al ON al.artistId = a.id " +
                 "LEFT JOIN songs s ON (s.artistId = a.id OR s.albumId = al.id) " +
                 "GROUP BY a.id " +
+                // An artist whose last song has gone stayed on the list reading
+                // "0 songs, 0 albums". This hides them rather than deleting anything, so a
+                // rescan brings back whatever comes back.
+                "HAVING songCount > 0 " +
                 "ORDER BY a.name COLLATE NOCASE",
     )
     suspend fun getAllArtistsWithCounts(): List<ArtistWithCounts>
