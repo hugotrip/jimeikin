@@ -113,8 +113,13 @@ fun SettingsScreen(
             val scanLine = when {
                 isIngestingLocal ->
                     "Adding to the library, ${(localIngestProgress * 100f).toInt().coerceIn(0, 100)}%"
+                // Until the folders have been walked the app does not know how many songs
+                // there are, so it does not know what fraction of them it has read. It used
+                // to say 0% for the whole of that, which on a large card reads as stuck.
+                isRescanningLocal && localScanProgress <= 0f ->
+                    "Looking through the folders"
                 isRescanningLocal ->
-                    "Reading the folders, ${(localScanProgress * 100f).toInt().coerceIn(0, 100)}%"
+                    "Reading the songs, ${(localScanProgress * 100f).toInt().coerceIn(0, 100)}%"
                 else -> null
             }
             if (scanLine != null) {

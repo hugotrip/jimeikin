@@ -739,13 +739,18 @@ fun CalmMusic(app: CalmMusic) {
     }
 
     // The activity is singleTask, so coming back to a resident app never re-ran the scan:
-    // songs copied to the card while the app sat in the background stayed invisible until
-    // it was killed. Files whose size and date are unchanged are skipped, so a repeat costs
-    // the directory walk and nothing else.
+    // songs copied to the card while the app sat in the background stayed invisible until it
+    // was killed. Files whose size and date are unchanged are skipped, so a repeat is the
+    // directory walk and nothing else.
+    //
+    // Six hours, not five minutes. Five minutes meant that on a large card every return to
+    // the app after a short absence started another full walk - work the reader did not ask
+    // for, in the background, on battery. A card gains music on the order of days, so the
+    // rare case where a rescan is wanted has a button on it: Settings, "Read them again".
     LaunchedEffect(resumeCount) {
         if (resumeCount == 0 || localMusicFolders.isEmpty()) return@LaunchedEffect
         val sinceLastScan = System.currentTimeMillis() - settingsManager.getLastLocalLibraryScanMillis()
-        if (sinceLastScan > 5 * 60 * 1000L) {
+        if (sinceLastScan > 6 * 60 * 60 * 1000L) {
             resyncLocalLibrary(localMusicFolders)
         }
     }
