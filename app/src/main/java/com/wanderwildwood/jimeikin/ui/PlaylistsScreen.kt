@@ -63,7 +63,7 @@ fun PlaylistsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     TextMMD(
-                        text = "No playlists in your library yet",
+                        text = "No playlists yet",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                     )

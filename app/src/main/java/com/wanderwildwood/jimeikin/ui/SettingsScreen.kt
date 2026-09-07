@@ -69,8 +69,9 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.Top,
     ) {
         item {
-            SwitchRow(
+            ArmedSwitchRow(
                 label = "Music on this phone",
+                armedLabel = "Turn off — the songs leave the library; tap again",
                 checked = includeLocalMusic,
                 onCheckedChange = onIncludeLocalMusicChange,
             )
@@ -222,6 +223,54 @@ private fun Separator() {
         thickness = 1.dp,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
+}
+
+/**
+ * A switch whose off position throws something away. Turning it off empties the local index
+ * — the files are untouched, but every folder has to be read again to get it back — so the
+ * row says that before it does it. Turning it back on is not destructive and does not ask.
+ */
+@Composable
+private fun ArmedSwitchRow(
+    label: String,
+    armedLabel: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    var armed by remember { mutableStateOf(false) }
+    LaunchedEffect(armed) {
+        if (armed) {
+            delay(4000)
+            armed = false
+        }
+    }
+
+    val act = {
+        if (!checked) {
+            onCheckedChange(true)
+        } else if (armed) {
+            armed = false
+            onCheckedChange(false)
+        } else {
+            armed = true
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { act() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextMMD(
+            text = if (armed) armedLabel else label,
+            fontSize = 16.sp,
+            fontWeight = if (armed) FontWeight.Bold else FontWeight.Normal,
+            modifier = Modifier.weight(1f),
+        )
+        SwitchMMD(checked = checked, onCheckedChange = { act() })
+    }
 }
 
 @Composable

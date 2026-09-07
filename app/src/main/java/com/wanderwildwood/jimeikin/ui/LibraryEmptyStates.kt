@@ -57,7 +57,7 @@ fun LibraryOnboardingEmptyState(
             onClick = onOpenStreamingSettingsClick,
         ) {
             TextMMD(
-                text = "Set up streaming",
+                text = "Set up YouTube",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -71,7 +71,7 @@ fun LibraryOnboardingEmptyState(
             onClick = onOpenLocalSettingsClick,
         ) {
             TextMMD(
-                text = "Set up local",
+                text = "Choose a folder",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
             )

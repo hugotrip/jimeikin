@@ -49,6 +49,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -201,6 +202,7 @@ fun CalmMusic(app: CalmMusic) {
     val youtubeAccountCookieState = settingsManager.youtubeAccountCookie.collectAsState()
     val isYoutubeAccountConnected = youtubeAccountCookieState.value != null
     var hasBatteryOptimizationExemption by rememberSaveable { mutableStateOf(false) }
+    var resumeCount by remember { mutableIntStateOf(0) }
 
     fun updateBatteryOptimizationState() {
         val powerManager = context.getSystemService(PowerManager::class.java)
@@ -215,6 +217,7 @@ fun CalmMusic(app: CalmMusic) {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                resumeCount += 1
                 updateBatteryOptimizationState()
 
                 val intent = activity?.intent
@@ -645,6 +648,22 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
+    // On screen the back affordance in an edit mode is an X that cancels; the hardware
+    // button used to leave the screen instead, silently dropping the selection. The two
+    // agree now.
+    BackHandler(enabled = isPlaylistsEditMode || isPlaylistDetailsEditMode) {
+        if (isPlaylistsEditMode) {
+            isPlaylistsEditMode = false
+            playlistEditSelectionIds.clear()
+            playlistEditSelectionCount = 0
+        }
+        if (isPlaylistDetailsEditMode) {
+            isPlaylistDetailsEditMode = false
+            playlistDetailsSelectionIds.clear()
+            playlistDetailsSelectionCount = 0
+        }
+    }
+
     LaunchedEffect(libraryPlaylistsState) {
         libraryPlaylists = libraryPlaylistsState
     }
@@ -722,6 +741,18 @@ fun CalmMusic(app: CalmMusic) {
     LaunchedEffect(includeLocalMusic, localMusicFolders) {
         delay(500L)
         resyncLocalLibrary(includeLocalMusic, localMusicFolders)
+    }
+
+    // The activity is singleTask, so coming back to a resident app never re-ran the scan:
+    // songs copied to the card while the app sat in the background stayed invisible until
+    // it was killed. Files whose size and date are unchanged are skipped, so a repeat costs
+    // the directory walk and nothing else.
+    LaunchedEffect(resumeCount) {
+        if (resumeCount == 0 || !includeLocalMusic || localMusicFolders.isEmpty()) return@LaunchedEffect
+        val sinceLastScan = System.currentTimeMillis() - settingsManager.getLastLocalLibraryScanMillis()
+        if (sinceLastScan > 5 * 60 * 1000L) {
+            resyncLocalLibrary(includeLocalMusic, localMusicFolders)
+        }
     }
 
     val openStreamingSettings: () -> Unit = {
@@ -1541,7 +1572,7 @@ fun CalmMusic(app: CalmMusic) {
 
                     if (libraryPlaylists.isEmpty()) {
                         TextMMD(
-                            text = "You have not created any playlist yet...",
+                            text = "No playlists yet",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Normal
                         )

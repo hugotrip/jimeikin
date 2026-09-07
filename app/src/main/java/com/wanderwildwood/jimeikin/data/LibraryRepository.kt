@@ -32,9 +32,6 @@ class LibraryRepository(
     )
 
     data class LocalResyncResult(
-        val songs: List<SongUiModel>,
-        val albums: List<AlbumUiModel>,
-        val artists: List<ArtistUiModel>,
         val errorMessage: String?,
         val stats: LocalResyncStats? = null,
     )
@@ -261,74 +258,17 @@ class LibraryRepository(
                 }
             }
 
-            val (allSongs, allAlbums) = withContext(Dispatchers.IO) {
-                val songsFromDb = songDao.getAllSongs()
-                val albumsFromDb = albumDao.getAllAlbums()
-                songsFromDb to albumsFromDb
-            }
-            val allArtistsWithCounts = withContext(Dispatchers.IO) {
-                artistDao.getAllArtistsWithCounts()
-            }
-
-            val songModels = allSongs.map { entity ->
-                SongUiModel(
-                    id = entity.id,
-                    title = entity.title,
-                    artist = entity.artist,
-                    durationText = com.wanderwildwood.jimeikin.formatDurationMillis(entity.durationMillis),
-                    durationMillis = entity.durationMillis,
-                    trackNumber = entity.trackNumber,
-                    sourceType = entity.sourceType,
-                    audioUri = entity.audioUri,
-                    album = entity.album,
-                )
-            }
-            val albumIdToYear: Map<String, Int?> = allSongs
-                .mapNotNull { entity ->
-                    val albumId = entity.albumId ?: return@mapNotNull null
-                    albumId to entity.releaseYear
-                }
-                .groupBy(
-                    keySelector = { it.first },
-                    valueTransform = { it.second },
-                )
-                .mapValues { (_, years) ->
-                    years.filterNotNull().maxOrNull()
-                }
-
-            val albumModels = allAlbums.map { album ->
-                AlbumUiModel(
-                    id = album.id,
-                    title = album.name,
-                    artist = album.artist,
-                    sourceType = album.sourceType,
-                    releaseYear = albumIdToYear[album.id],
-                )
-            }
-            val artistModels = allArtistsWithCounts.map { artist ->
-                ArtistUiModel(
-                    id = artist.id,
-                    name = artist.name,
-                    songCount = artist.songCount,
-                    albumCount = artist.albumCount,
-                )
-            }
-
+            // The caller refreshes from the database itself; building UI models here meant
+            // reading the whole library a second time at the end of every scan.
             app.settingsManager.updateLastLocalLibraryScanMillis(System.currentTimeMillis())
 
             return LocalResyncResult(
-                songs = songModels,
-                albums = albumModels,
-                artists = artistModels,
                 errorMessage = error,
                 stats = stats,
             )
         } catch (e: Exception) {
             val message = e.message ?: "Failed to scan local music"
             return LocalResyncResult(
-                songs = emptyList(),
-                albums = emptyList(),
-                artists = emptyList(),
                 errorMessage = message,
                 stats = null,
             )

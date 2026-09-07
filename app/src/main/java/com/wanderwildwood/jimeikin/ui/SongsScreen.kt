@@ -83,7 +83,7 @@ fun SongsScreen(
                 ) {
                     LibraryOnboardingEmptyState(
                         title = "No songs yet",
-                        body = "Search YouTube Music or choose local folders in Settings to start building your library.",
+                        body = "Nothing has been added yet.",
                         onOpenStreamingSettingsClick = onOpenStreamingSettingsClick,
                         onOpenLocalSettingsClick = onOpenLocalSettingsClick,
                     )
