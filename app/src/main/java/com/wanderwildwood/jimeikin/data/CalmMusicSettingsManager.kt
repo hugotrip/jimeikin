@@ -27,6 +27,36 @@ class CalmMusicSettingsManager(context: Context) {
     private val _youtubeAccountCookie = MutableStateFlow(getYouTubeAccountCookieSync())
     val youtubeAccountCookie: StateFlow<String?> = _youtubeAccountCookie.asStateFlow()
 
+    private val _subsonicConfig = MutableStateFlow(getSubsonicConfigSync())
+    val subsonicConfig: StateFlow<SubsonicConfig?> = _subsonicConfig.asStateFlow()
+
+    /**
+     * The music server's address and login. The password has to be kept, not just a token:
+     * Subsonic signs each request with md5(password + a fresh salt), so the password itself
+     * is needed every time. The About says so.
+     */
+    fun setSubsonicConfig(config: SubsonicConfig?) {
+        prefs.edit {
+            if (config == null || !config.isComplete) {
+                remove(KEY_SUBSONIC_URL)
+                remove(KEY_SUBSONIC_USER)
+                remove(KEY_SUBSONIC_PASSWORD)
+            } else {
+                putString(KEY_SUBSONIC_URL, config.baseUrl)
+                putString(KEY_SUBSONIC_USER, config.user)
+                putString(KEY_SUBSONIC_PASSWORD, config.password)
+            }
+        }
+        _subsonicConfig.value = if (config?.isComplete == true) config else null
+    }
+
+    private fun getSubsonicConfigSync(): SubsonicConfig? {
+        val url = prefs.getString(KEY_SUBSONIC_URL, null) ?: return null
+        val user = prefs.getString(KEY_SUBSONIC_USER, null) ?: return null
+        val password = prefs.getString(KEY_SUBSONIC_PASSWORD, null) ?: return null
+        return SubsonicConfig(url, user, password).takeIf { it.isComplete }
+    }
+
     fun getLastLocalLibraryScanMillis(): Long {
         return prefs.getLong(KEY_LAST_LOCAL_LIBRARY_SCAN_MILLIS, 0L)
     }
@@ -99,6 +129,9 @@ class CalmMusicSettingsManager(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "calmmusic_settings"
+        private const val KEY_SUBSONIC_URL = "subsonic_url"
+        private const val KEY_SUBSONIC_USER = "subsonic_user"
+        private const val KEY_SUBSONIC_PASSWORD = "subsonic_password"
         private const val KEY_INCLUDE_LOCAL_MUSIC = "include_local_music"
         private const val KEY_LOCAL_MUSIC_FOLDERS = "local_music_folders"
         private const val KEY_LAST_LOCAL_LIBRARY_SCAN_MILLIS = "last_local_library_scan_millis"

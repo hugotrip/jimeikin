@@ -28,6 +28,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Radio : Screen("radio", "Radio", Icons.Outlined.Radio) // Add this line
     object Downloads : Screen("downloads", "Downloads", Icons.Outlined.Download)
     object Settings : Screen("settings", "Settings", Icons.Outlined.Settings)
+    object MusicServer : Screen("musicServer", "Music server", Icons.Outlined.Settings)
     object YouTubeLogin : Screen("youtubeLogin", "Connect a YouTube account", Icons.Outlined.PersonOutline)
 }
 

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A self-hosted music server on a home network is served over plain http, because that is
+    what Navidrome does out of the box and there is no certificate to be had for 192.168.1.70.
+    Android blocks cleartext by default from API 28, so a request to such a server fails before
+    it leaves the phone.
+
+    This permits it. The cost is real and worth stating: anything this app fetches over http is
+    readable by whoever else is on the network. In practice that is only the server the reader
+    typed in themselves - everything else the app talks to (YouTube, YouTube Music) is https and
+    stays https, because permitting cleartext does not prevent https, it only stops refusing
+    http. The server screen says the same thing in the reader's own terms.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

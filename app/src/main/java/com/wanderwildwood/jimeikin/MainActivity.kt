@@ -84,6 +84,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wanderwildwood.jimeikin.data.StreamingProvider
 import com.wanderwildwood.jimeikin.ui.AboutDialog
+import com.wanderwildwood.jimeikin.ui.MusicServerScreen
 import com.wanderwildwood.jimeikin.ui.AlbumDetailsScreen
 import com.wanderwildwood.jimeikin.ui.AlbumUiModel
 import com.wanderwildwood.jimeikin.ui.AlbumsScreen
@@ -315,6 +316,9 @@ fun CalmMusic(app: CalmMusic) {
     var localScanDeletedMissing by remember { mutableStateOf<Int?>(null) }
     var localScanUnreadableFolders by remember { mutableStateOf<Int?>(null) }
     var showAbout by remember { mutableStateOf(false) }
+    val subsonicConfig by settingsManager.subsonicConfig.collectAsState()
+    var isServerBusy by remember { mutableStateOf(false) }
+    var serverStatus by remember { mutableStateOf<String?>(null) }
 
     val isLibrarySyncInProgress by remember {
         derivedStateOf { isRescanningLocal || isIngestingLocal }
@@ -549,6 +553,64 @@ fun CalmMusic(app: CalmMusic) {
                 withDismissAction = false,
                 duration = SnackbarDurationMMD.Short,
             )
+        }
+    }
+
+    /**
+     * Reads the server's whole library in one go and files it beside the music on the card.
+     * Browsing then works away from the network; playing one of its songs does not, which the
+     * dotted rule under the row says.
+     */
+    fun connectToMusicServer(entered: com.wanderwildwood.jimeikin.data.SubsonicConfig) {
+        if (isServerBusy) return
+        isServerBusy = true
+        serverStatus = "Connecting"
+        libraryScope.launch {
+            val client = com.wanderwildwood.jimeikin.data.SubsonicClient(entered)
+            when (val ping = client.ping()) {
+                is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> {
+                    serverStatus = ping.message
+                    isServerBusy = false
+                    return@launch
+                }
+                is com.wanderwildwood.jimeikin.data.SubsonicResult.Success -> Unit
+            }
+
+            settingsManager.setSubsonicConfig(entered)
+            serverStatus = "Reading the library"
+
+            val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
+            val result = com.wanderwildwood.jimeikin.data.SubsonicSync.sync(
+                client = client,
+                songDao = database.songDao(),
+                albumDao = database.albumDao(),
+                artistDao = database.artistDao(),
+                onProgress = { done, total ->
+                    serverStatus = "Reading the library, album $done of $total"
+                },
+            )
+            serverStatus = when (result) {
+                is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> result.message
+                is com.wanderwildwood.jimeikin.data.SubsonicResult.Success ->
+                    "${result.value} songs from the server are in the library"
+            }
+            viewModel.refreshLibraryFromDatabase()
+            isServerBusy = false
+        }
+    }
+
+    /** The server keeps everything; this phone stops listing it. */
+    fun forgetMusicServer() {
+        libraryScope.launch {
+            val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
+            com.wanderwildwood.jimeikin.data.SubsonicSync.forget(
+                songDao = database.songDao(),
+                albumDao = database.albumDao(),
+                artistDao = database.artistDao(),
+            )
+            settingsManager.setSubsonicConfig(null)
+            serverStatus = "Forgotten"
+            viewModel.refreshLibraryFromDatabase()
         }
     }
 
@@ -1341,6 +1403,15 @@ fun CalmMusic(app: CalmMusic) {
                         onNavigateToDownloadsClick = {
                             navController.navigate(Screen.Downloads.route) { launchSingleTop = true }
                         },
+                        musicServerSummary = if (subsonicConfig == null) {
+                            "Not connected"
+                        } else {
+                            subsonicConfig!!.baseUrl
+                        },
+                        onNavigateToMusicServerClick = {
+                            serverStatus = null
+                            navController.navigate(Screen.MusicServer.route) { launchSingleTop = true }
+                        },
                         onRescanLocalMusicClick = {
                             libraryScope.launch {
                                 resyncLocalLibrary(localMusicFolders)
@@ -1357,6 +1428,16 @@ fun CalmMusic(app: CalmMusic) {
                         localScanUnreadableFolders = localScanUnreadableFolders,
                     )
                 }
+                composable(Screen.MusicServer.route) {
+                    MusicServerScreen(
+                        config = subsonicConfig,
+                        isBusy = isServerBusy,
+                        statusMessage = serverStatus,
+                        onConnectClick = { entered -> connectToMusicServer(entered) },
+                        onForgetClick = { forgetMusicServer() },
+                    )
+                }
+
                 composable(Screen.YouTubeLogin.route) {
                     YouTubeLoginScreen(
                         onLoginSuccess = { cookie ->
@@ -1961,6 +2042,7 @@ fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boole
         currentDestination?.route == Screen.Radio.route -> "Radio"
         currentDestination?.route == Screen.Downloads.route -> "Downloads"
         currentDestination?.route == Screen.Settings.route -> "Settings"
+        currentDestination?.route == Screen.MusicServer.route -> "Music server"
         currentDestination?.route == Screen.YouTubeLogin.route -> "Connect a YouTube account"
         currentDestination?.route == Screen.PlaylistEdit.route -> if (isEditingPlaylist) "Rename playlist" else "New playlist"
         currentDestination?.route == Screen.PlaylistAddSongs.route -> "Add songs"

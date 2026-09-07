@@ -561,7 +561,8 @@ class CalmMusicViewModel(
                 var segmentEndIndex = startIndex
                 while (segmentEndIndex < queue.size &&
                     (queue[segmentEndIndex].sourceType == "LOCAL_FILE" ||
-                            queue[segmentEndIndex].sourceType == "YOUTUBE_DOWNLOAD")
+                            queue[segmentEndIndex].sourceType == "YOUTUBE_DOWNLOAD" ||
+                            queue[segmentEndIndex].sourceType == "SUBSONIC")
                 ) {
                     segmentEndIndex++
                 }

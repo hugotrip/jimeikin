@@ -53,6 +53,8 @@ fun SettingsScreen(
     onRemoveFolderClick: (String) -> Unit,
     onRescanLocalMusicClick: () -> Unit,
     onNavigateToDownloadsClick: () -> Unit,
+    musicServerSummary: String,
+    onNavigateToMusicServerClick: () -> Unit,
     isRescanningLocal: Boolean,
     isIngestingLocal: Boolean,
     localScanProgress: Float,
@@ -195,6 +197,15 @@ fun SettingsScreen(
             // it used to cost a row on a screen that existed only to hold three doors. The
             // label carries itself, so it gets no second line.
             LinkRow(label = "Downloads", onClick = onNavigateToDownloadsClick)
+        }
+
+        item {
+            ValueRow(
+                label = "Music server",
+                value = musicServerSummary,
+                onClick = onNavigateToMusicServerClick,
+                enabled = true,
+            )
         }
 
         item {
