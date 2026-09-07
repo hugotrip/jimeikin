@@ -91,7 +91,14 @@ fun SongsScreen(
             }
 
             else -> {
-                LazyColumnMMD(contentPadding = PaddingValues(16.dp)) {
+                LazyColumnMMD(
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 16.dp,
+                        end = 16.dp,
+                        bottom = 88.dp,
+                    ),
+                ) {
                     items(
                         items = songs,
                         key = { it.id },

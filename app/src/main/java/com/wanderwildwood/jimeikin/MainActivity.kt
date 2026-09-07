@@ -1240,7 +1240,6 @@ fun CalmMusic(app: CalmMusic) {
 
                 composable(Screen.Radio.route) {
                     RadioScreen(
-                        onNavigateBack = { navController.popBackStack() },
                         onPausePlayback = { viewModel.togglePlayback(localMediaController) },
                         isAppPlaying = playbackState.isPlaybackPlaying
                     )
@@ -1252,7 +1251,6 @@ fun CalmMusic(app: CalmMusic) {
                     DownloadsScreen(
                         downloads = downloads,
                         onCancelDownload = { id -> app.youTubeDownloadManager.cancelDownload(id) },
-                        onClearFinished = { app.youTubeDownloadManager.clearFinishedDownloads() }
                     )
                 }
 

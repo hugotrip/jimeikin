@@ -42,7 +42,14 @@ data class ScannedLocalAudio(
 object LocalMusicScanner {
     private val PLAYLIST_EXTENSIONS = setOf("m3u", "m3u8")
 
-    private val AUDIO_EXTENSIONS = setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "mp4", "opus")
+    /**
+     * Formats where MediaMetadataRetriever will not give up an album artist, so the file has
+     * to be copied out and read properly. Doing it for everything meant copying a whole card
+     * through the cache on a first scan.
+     */
+    private val DEEP_READ_EXTENSIONS = setOf("flac", "ogg", "opus")
+
+    private val AUDIO_EXTENSIONS = setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "opus")
 
     /**
      * Scan the given folders for audio files.
@@ -101,6 +108,11 @@ object LocalMusicScanner {
                 } catch (_: Exception) {
                     emptyList()
                 }
+
+                // A folder carrying .nomedia is asking not to be indexed: ringtones, voice
+                // notes and podcast caches all use it, and someone who granted a whole card
+                // would otherwise get every one of them in the Songs list.
+                if (children.any { it.name == ".nomedia" }) continue
 
                 for (child in children) {
                     if (child.isDirectory) {

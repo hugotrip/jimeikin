@@ -29,7 +29,6 @@ import com.mudita.mmd.components.text.TextMMD
 fun DownloadsScreen(
     downloads: List<YouTubeDownloadStatus>,
     onCancelDownload: (String) -> Unit,
-    onClearFinished: () -> Unit,
 ) {
     Column(
         modifier = Modifier

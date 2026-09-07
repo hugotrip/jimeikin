@@ -77,7 +77,14 @@ fun PlaylistsScreen(
             }
         } else {
             val lastPlaylistId = playlists.lastOrNull()?.id
-            LazyColumnMMD(contentPadding = PaddingValues(16.dp)) {
+            LazyColumnMMD(
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 16.dp,
+                        end = 16.dp,
+                        bottom = 88.dp,
+                    ),
+                ) {
                 items(
                     items = playlists,
                     key = { it.id },

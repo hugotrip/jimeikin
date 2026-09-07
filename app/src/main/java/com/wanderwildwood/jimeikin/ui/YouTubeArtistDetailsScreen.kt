@@ -135,7 +135,7 @@ fun YouTubeArtistDetailsScreen(
                     when (selectedTab) {
                         0 -> {
                             LazyColumnMMD(
-                                contentPadding = PaddingValues(16.dp),
+                                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                                 verticalArrangement = Arrangement.Top,
                             ) {
                                 if (songs.isNotEmpty()) {
@@ -165,7 +165,7 @@ fun YouTubeArtistDetailsScreen(
 
                         1 -> {
                             LazyColumnMMD(
-                                contentPadding = PaddingValues(16.dp),
+                                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                                 verticalArrangement = Arrangement.Top,
                             ) {
                                 if (albums.isNotEmpty()) {
@@ -191,7 +191,7 @@ fun YouTubeArtistDetailsScreen(
 
                         else -> {
                             LazyColumnMMD(
-                                contentPadding = PaddingValues(16.dp),
+                                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                                 verticalArrangement = Arrangement.Top,
                             ) {
                                 if (singles.isNotEmpty()) {

@@ -43,7 +43,6 @@ enum class RadioCommand { NEXT, PREVIOUS, TOGGLE_POWER, STOP, FORCE_PLAY }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RadioScreen(
-    onNavigateBack: () -> Unit,
     onPausePlayback: () -> Unit,
     isAppPlaying: Boolean
 ) {
