@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 
 data class PlaylistUiModel(
@@ -77,7 +76,7 @@ fun PlaylistsScreen(
             }
         } else {
             val lastPlaylistId = playlists.lastOrNull()?.id
-            LazyColumnMMD(
+            PagedColumnMMD(
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

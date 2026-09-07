@@ -39,7 +39,6 @@ import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.checkbox.CheckboxMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 import kotlinx.coroutines.launch
 
@@ -159,7 +158,7 @@ fun PlaylistDetailsScreen(
             }
 
             else -> {
-                LazyColumnMMD(
+                PagedColumnMMD(
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

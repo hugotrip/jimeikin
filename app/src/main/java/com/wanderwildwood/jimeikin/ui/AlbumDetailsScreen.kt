@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
@@ -133,7 +132,7 @@ fun AlbumDetailsScreen(
                         songs
                     }
 
-                    LazyColumnMMD(
+                    PagedColumnMMD(
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

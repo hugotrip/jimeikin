@@ -16,7 +16,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
@@ -82,7 +81,7 @@ fun SearchScreen(
             )
         }
 
-        LazyColumnMMD(contentPadding = PaddingValues(16.dp)) {
+        PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
             if (isSearching) {
                 item {
                     TextMMD(text = "Searching...")

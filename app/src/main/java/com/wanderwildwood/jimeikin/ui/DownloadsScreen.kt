@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.YouTubeDownloadStatus
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 
 @Composable
@@ -47,7 +46,7 @@ fun DownloadsScreen(
                 )
             }
         } else {
-            LazyColumnMMD(
+            PagedColumnMMD(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {

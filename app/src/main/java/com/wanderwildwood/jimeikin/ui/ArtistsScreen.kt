@@ -18,7 +18,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 
 /** Simple UI model for distinct artists in the library. */
@@ -89,7 +88,7 @@ fun ArtistsScreen(
 
             else -> {
                 val lastArtistId = artists.lastOrNull()?.id
-                LazyColumnMMD(contentPadding = PaddingValues(16.dp)) {
+                PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
                     items(
                         items = artists,
                         key = { it.id },

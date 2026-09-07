@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
@@ -132,7 +131,7 @@ fun ArtistDetailsScreen(
 
                     if (selectedTab == 0) {
                         // Albums tab
-                        LazyColumnMMD(
+                        PagedColumnMMD(
                             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                             verticalArrangement = Arrangement.Top,
                         ) {
@@ -159,7 +158,7 @@ fun ArtistDetailsScreen(
                         }
                     } else {
                         // Songs tab
-                        LazyColumnMMD(
+                        PagedColumnMMD(
                             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                             verticalArrangement = Arrangement.Top,
                         ) {

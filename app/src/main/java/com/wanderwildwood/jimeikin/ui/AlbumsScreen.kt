@@ -19,7 +19,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 
 /** UI model for displaying albums in the library. */
@@ -94,7 +93,7 @@ fun AlbumsScreen(
 
             else -> {
                 val lastAlbumId = albums.lastOrNull()?.id
-                LazyColumnMMD(contentPadding = PaddingValues(16.dp)) {
+                PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
                     items(
                         items = albums,
                         key = { it.id },

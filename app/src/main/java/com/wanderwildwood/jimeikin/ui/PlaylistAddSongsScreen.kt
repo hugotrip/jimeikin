@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.checkbox.CheckboxMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 
 @Composable
@@ -51,7 +50,7 @@ fun PlaylistAddSongsScreen(
                 TextMMD(text = "No songs available to add")
             }
         } else {
-            LazyColumnMMD(
+            PagedColumnMMD(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
             ) {
