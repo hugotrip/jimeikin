@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.checkbox.CheckboxMMD
 import com.mudita.mmd.components.menus.DropdownMenuItemMMD
 import com.mudita.mmd.components.menus.DropdownMenuMMD
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -145,21 +146,24 @@ fun SongItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (isCurrentlyPlaying) {
+            if (song.trackNumber != null && showTrackNumber) {
+                // The playing row used to swap its number for a glyph, so the one track you
+                // most wanted to place in the album was the one with no number on it. Bold
+                // is the emphasis instead - the only one the house style allows.
+                TextMMD(
+                    text = song.trackNumber.toString(),
+                    fontSize = 14.sp,
+                    fontWeight = if (isCurrentlyPlaying) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.width(28.dp),
+                    textAlign = TextAlign.Center
+                )
+            } else if (isCurrentlyPlaying) {
                 Icon(
                     imageVector = Icons.Outlined.Headphones,
                     contentDescription = "Now playing",
                     modifier = Modifier
                         .size(24.dp)
                         .padding(start = 4.dp),
-                )
-            } else if (song.trackNumber != null && showTrackNumber) {
-                TextMMD(
-                    text = song.trackNumber.toString(),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.width(28.dp),
-                    textAlign = TextAlign.Center
                 )
             }
 
@@ -178,17 +182,6 @@ fun SongItem(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (!isLocal) {
-                        Icon(
-                            imageVector = Icons.Outlined.Cloud,
-                            contentDescription = "Streaming source",
-                            modifier = Modifier
-                                .size(16.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
                     if (!isLocal && isInLibrary) {
                         Icon(
                             imageVector = Icons.Outlined.LibraryAddCheck,
@@ -232,7 +225,7 @@ fun SongItem(
                         )
 
                         if (isDownloaded || isLocal) {
-                            DashedDivider(thickness = 1.dp)
+                            HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
                                 text = {
                                     TextMMD(
@@ -257,7 +250,7 @@ fun SongItem(
                         }
 
                         if (isInLibrary && !isLocal && !isDownloaded) {
-                            DashedDivider(thickness = 1.dp)
+                            HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
                                 text = {
                                     TextMMD(
@@ -286,7 +279,12 @@ fun SongItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            DashedDivider(thickness = 1.dp)
+            // Dotted means provisional: this one is not on the phone and needs the network.
+            if (isLocal) {
+                HorizontalDividerMMD(thickness = 1.dp)
+            } else {
+                DashedDivider(thickness = 1.dp)
+            }
         }
     }
 }
@@ -345,7 +343,7 @@ fun PlaylistItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            DashedDivider(thickness = 1.dp)
+            HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }
@@ -426,7 +424,7 @@ fun SelectablePlaylistItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            DashedDivider(thickness = 1.dp)
+            HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }

@@ -38,6 +38,7 @@ import com.wanderwildwood.jimeikin.PlaylistsViewModel
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.checkbox.CheckboxMMD
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 import kotlinx.coroutines.launch
@@ -145,7 +146,7 @@ fun PlaylistDetailsScreen(
                         TextMMD(
                             text = "No songs in this playlist",
                             fontSize = 22.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         ButtonMMD(
@@ -337,7 +338,7 @@ private fun EditablePlaylistSongItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            DashedDivider(thickness = 1.dp)
+            HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }

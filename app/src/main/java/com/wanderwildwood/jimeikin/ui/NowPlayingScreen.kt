@@ -25,7 +25,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -112,7 +111,7 @@ fun NowPlayingScreen(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Text(
+                TextMMD(
                     text = "Now playing",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
@@ -183,10 +182,10 @@ fun NowPlayingScreen(
                 .padding(horizontal = 4.dp),
             verticalArrangement = Arrangement.Bottom,
         ) {
-            Text(
+            TextMMD(
                 text = title,
                 fontSize = if (isVideo) 24.sp else 42.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = if (isVideo) 1 else 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -194,10 +193,10 @@ fun NowPlayingScreen(
             if (!isVideo) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
+                TextMMD(
                     text = artist,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -206,10 +205,10 @@ fun NowPlayingScreen(
                 if (hasAlbum) {
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Text(
+                    TextMMD(
                         text = album!!,
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -260,15 +259,15 @@ fun NowPlayingScreen(
                     .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
+                TextMMD(
                     text = formatDurationMillisNonNull(currentPosition),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
-                Text(
+                TextMMD(
                     text = formatDurationMillisNonNull(duration),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -371,45 +370,15 @@ fun NowPlayingScreen(
 
             val isLocal = sourceType == "LOCAL_FILE" || sourceType == "YOUTUBE_DOWNLOAD"
             if (!isLocal) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            shape = CircleShape
-                        )
-                        .padding(12.dp, 4.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                // This was a solid black lozenge with a white cloud in it: the only inverted
+                // thing on the page, and the heaviest mark on a screen whose subject is the
+                // title. A word at the size of the timestamps says the same thing.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextMMD(text = "Streaming", fontSize = 14.sp)
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.Cloud,
-                            contentDescription = "Streaming source",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.surface
-                        )
-
-//                        if (!streamResolverLabel.isNullOrBlank()) {
-//                            Spacer(modifier = Modifier.width(6.dp))
-//                            Text(
-//                                text = streamResolverLabel,
-//                                fontSize = 12.sp,
-//                                color = MaterialTheme.colorScheme.surface,
-//                                maxLines = 1,
-//                                overflow = TextOverflow.Ellipsis,
-//                            )
-//                        }
-
-                        if (isInLibrary) {
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Icon(
-                                imageVector = Icons.Outlined.LibraryAddCheck,
-                                contentDescription = "In the library",
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.surface
-                            )
-                        }
+                    if (isInLibrary) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        TextMMD(text = "In the library", fontSize = 14.sp)
                     }
                 }
             }

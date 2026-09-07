@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +32,6 @@ fun PlaylistEditScreen(
     onCancel: () -> Unit,
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
-    val titleText = if (isEditing) "Rename playlist" else "New playlist"
 
     Column(
         modifier = Modifier
@@ -44,7 +42,7 @@ fun PlaylistEditScreen(
             modifier = Modifier.fillMaxWidth(),
             value = name,
             onValueChange = { name = it },
-            label = { Text(text = "Playlist name") },
+            label = { TextMMD(text = "Playlist name") },
             singleLine = true,
         )
 
@@ -57,7 +55,7 @@ fun PlaylistEditScreen(
                 onClick = onCancel,
                 modifier = Modifier.weight(1f),
             ) {
-                Text(text = "Cancel")
+                TextMMD(text = "Cancel")
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -67,7 +65,7 @@ fun PlaylistEditScreen(
                 enabled = name.isNotBlank(),
                 modifier = Modifier.weight(1f),
             ) {
-                Text(text = if (isEditing) "Save" else "Create")
+                TextMMD(text = if (isEditing) "Save" else "Create")
             }
         }
     }

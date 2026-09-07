@@ -77,7 +77,7 @@ private fun DownloadItem(
                 TextMMD(
                     text = status.title,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
                 TextMMD(

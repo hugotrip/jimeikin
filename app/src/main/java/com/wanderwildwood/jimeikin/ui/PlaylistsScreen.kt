@@ -65,7 +65,7 @@ fun PlaylistsScreen(
                     TextMMD(
                         text = "No playlists in your library yet",
                         fontSize = 22.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     ButtonMMD(

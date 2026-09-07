@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
@@ -243,7 +244,7 @@ private fun SearchArtistItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            DashedDivider(thickness = 1.dp)
+            HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }

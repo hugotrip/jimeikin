@@ -25,7 +25,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         TextMMD(
             text = "Music Box ${BuildConfig.VERSION_NAME}",
             fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Bold,
         )
 
         Spacer(Modifier.height(14.dp))

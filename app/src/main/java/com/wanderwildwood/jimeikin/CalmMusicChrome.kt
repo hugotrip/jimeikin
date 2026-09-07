@@ -12,7 +12,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -33,6 +32,7 @@ import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.nav_bar.NavigationBarItemMMD
 import com.mudita.mmd.components.nav_bar.NavigationBarMMD
 import com.mudita.mmd.components.search_bar.SearchBarDefaultsMMD
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.top_app_bar.TopAppBarMMD
 import com.mudita.mmd.components.menus.DropdownMenuItemMMD
@@ -58,6 +58,7 @@ fun CalmMusicTopAppBar(
     playlistEditSelectionCount: Int,
     playlistDetailsSelectionCount: Int,
     isPlaylistDetailsMenuExpanded: Boolean,
+    hasLibraryPlaylists: Boolean,
     hasNowPlaying: Boolean,
     onBackClick: () -> Unit,
     onCancelPlaylistsEditClick: () -> Unit,
@@ -144,7 +145,7 @@ fun CalmMusicTopAppBar(
 
                 currentDestination?.route == Screen.AlbumDetails.route && selectedAlbum != null -> {
                     androidx.compose.foundation.layout.Column {
-                        Text(
+                        TextMMD(
                             text = selectedAlbum.title,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -153,10 +154,10 @@ fun CalmMusicTopAppBar(
                         )
                         val artist = selectedAlbum.artist
                         if (!artist.isNullOrBlank()) {
-                            Text(
+                            TextMMD(
                                 text = artist,
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -167,7 +168,7 @@ fun CalmMusicTopAppBar(
                 (currentDestination?.route == Screen.ArtistDetails.route ||
                     currentDestination?.route == Screen.YoutubeArtistDetails.route) &&
                     selectedArtistName != null -> {
-                    Text(
+                    TextMMD(
                         text = selectedArtistName,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
@@ -177,7 +178,7 @@ fun CalmMusicTopAppBar(
                 }
 
                 currentDestination.isPlaylistDetails() && selectedPlaylist != null -> {
-                    Text(
+                    TextMMD(
                         text = selectedPlaylist.name,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
@@ -187,8 +188,8 @@ fun CalmMusicTopAppBar(
                 }
 
                 else -> {
-                    Text(
-                        text = getAppBarTitle(currentDestination),
+                    TextMMD(
+                        text = getAppBarTitle(currentDestination, isEditingPlaylist = selectedPlaylist != null),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -204,7 +205,7 @@ fun CalmMusicTopAppBar(
                 playlistDetailsSelectionCount = playlistDetailsSelectionCount,
                 isPlaylistDetailsEditMode = isPlaylistDetailsEditMode,
                 isPlaylistDetailsMenuExpanded = isPlaylistDetailsMenuExpanded,
-                hasLibraryPlaylists = selectedPlaylist != null,
+                hasLibraryPlaylists = hasLibraryPlaylists,
                 hasNowPlaying = hasNowPlaying,
                 onEnterPlaylistsEditClick = onEnterPlaylistsEditClick,
                 onNavigateToSearchClick = onNavigateToSearchClick,
@@ -305,21 +306,21 @@ private fun CalmMusicTopAppBarActions(
                     onClick = onPlaylistDetailsEditClick,
                 )
 
-                DashedDivider(thickness = 1.dp)
+                HorizontalDividerMMD(thickness = 1.dp)
 
                 DropdownMenuItemMMD(
                     text = { TextMMD("Add songs") },
                     onClick = onPlaylistDetailsAddSongsClick,
                 )
 
-                DashedDivider(thickness = 1.dp)
+                HorizontalDividerMMD(thickness = 1.dp)
 
                 DropdownMenuItemMMD(
                     text = { TextMMD("Rename") },
                     onClick = onPlaylistDetailsRenameClick,
                 )
 
-                DashedDivider(thickness = 1.dp)
+                HorizontalDividerMMD(thickness = 1.dp)
 
                 DropdownMenuItemMMD(
                     text = { TextMMD("Delete") },
@@ -343,7 +344,7 @@ private fun CalmMusicTopAppBarActions(
                 text = "Delete $playlistEditSelectionCount",
                 textAlign = TextAlign.Center,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -358,7 +359,7 @@ private fun CalmMusicTopAppBarActions(
                 text = "Done",
                 textAlign = TextAlign.Center,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -379,7 +380,7 @@ private fun CalmMusicTopAppBarActions(
                 text = "Now playing",
                 textAlign = TextAlign.Center,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -409,7 +410,7 @@ fun CalmMusicBottomBar(
                     label = {
                         TextMMD(
                             text = screen.label,
-                            fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         )
                     },
                     selected = isSelected,

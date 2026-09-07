@@ -159,7 +159,7 @@ fun AlbumItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            DashedDivider(thickness = 1.dp)
+            HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }

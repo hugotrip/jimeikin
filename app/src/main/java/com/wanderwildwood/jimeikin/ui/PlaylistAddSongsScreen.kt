@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.checkbox.CheckboxMMD
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 
@@ -151,7 +152,7 @@ private fun SelectableSongItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            DashedDivider(thickness = 1.dp)
+            HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }

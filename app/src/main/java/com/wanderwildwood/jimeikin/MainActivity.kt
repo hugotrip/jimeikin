@@ -43,7 +43,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -918,6 +917,7 @@ fun CalmMusic(app: CalmMusic) {
                         playlistEditSelectionCount = playlistEditSelectionCount,
                         playlistDetailsSelectionCount = playlistDetailsSelectionCount,
                         isPlaylistDetailsMenuExpanded = isPlaylistDetailsMenuExpanded,
+                        hasLibraryPlaylists = libraryPlaylists.isNotEmpty(),
                         hasNowPlaying = nowPlayingSong != null,
                         onBackClick = { navController.navigateUp() },
                         onCancelPlaylistsEditClick = {
@@ -1540,7 +1540,7 @@ fun CalmMusic(app: CalmMusic) {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     if (libraryPlaylists.isEmpty()) {
-                        Text(
+                        TextMMD(
                             text = "You have not created any playlist yet...",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Normal
@@ -1643,7 +1643,7 @@ fun CalmMusic(app: CalmMusic) {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
+                        TextMMD(
                             text = if (playlistDetailsSelectionCount == 1) {
                                 "This will remove the selected song from this playlist. The song will remain in your library."
                             } else {
@@ -1717,7 +1717,7 @@ fun CalmMusic(app: CalmMusic) {
                             TextMMD(
                                 text = "Back",
                                 fontSize = 24.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                             )
                         }
                     }
@@ -1760,7 +1760,7 @@ fun CalmMusic(app: CalmMusic) {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
+                        TextMMD(
                             text = if (playlistEditSelectionCount == 1) {
                                 "This will permanently remove the selected playlist. Songs in your library will not be deleted."
                             } else {
@@ -1843,7 +1843,7 @@ fun CalmMusic(app: CalmMusic) {
                             TextMMD(
                                 text = "Back",
                                 fontSize = 24.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                             )
                         }
                     }
@@ -1891,21 +1891,21 @@ fun ExternalMediaWidget(state: ExternalMediaState) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
+                    TextMMD(
                         text = "Playing on ${state.packageName}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
+                TextMMD(
                     text = state.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
+                TextMMD(
                     text = state.artist,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
@@ -1939,7 +1939,7 @@ fun isNotificationServiceEnabled(context: android.content.Context): Boolean {
 }
 
 @Composable
-fun getAppBarTitle(currentDestination: NavDestination?): String {
+fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boolean = false): String {
     return when {
         currentDestination?.route == Screen.Playlists.route -> "Playlists"
         currentDestination?.route == Screen.Songs.route -> "Songs"
@@ -1954,7 +1954,7 @@ fun getAppBarTitle(currentDestination: NavDestination?): String {
         currentDestination?.route == Screen.Downloads.route -> "Downloads"
         currentDestination?.route == Screen.Settings.route -> "Settings"
         currentDestination?.route == Screen.YouTubeLogin.route -> "Connect a YouTube account"
-        currentDestination?.route == Screen.PlaylistEdit.route -> "Edit playlist"
+        currentDestination?.route == Screen.PlaylistEdit.route -> if (isEditingPlaylist) "Rename playlist" else "New playlist"
         currentDestination?.route == Screen.PlaylistAddSongs.route -> "Add songs"
         currentDestination.isPlaylistDetails() -> "Playlist"
         currentDestination?.route?.startsWith("playlistDetails/") == true -> "Playlist"

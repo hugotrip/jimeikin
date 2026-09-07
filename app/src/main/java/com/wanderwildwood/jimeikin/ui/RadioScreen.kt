@@ -178,7 +178,7 @@ fun PermissionSheetContent(
             contentPadding = PaddingValues(12.dp),
             onClick = onCancel
         ) {
-            TextMMD("Cancel", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            TextMMD("Cancel", fontSize = 18.sp, fontWeight = FontWeight.Normal)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -229,7 +229,7 @@ fun EmptyRadioState(onPowerOn: () -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
         TextMMD("Turn on FM Radio", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
-        TextMMD("Tap to launch tuner", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+        TextMMD("Tap to launch tuner", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -287,7 +287,7 @@ fun ActiveRadioState(
             } else if (!mediaState.title.contains("FM Radio", ignoreCase = true)) {
                 Spacer(modifier = Modifier.height(8.dp))
                 if (!mediaState.title.matches(Regex(".*\\d{2,3}.*"))) {
-                    TextMMD(mediaState.title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    TextMMD(mediaState.title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -304,7 +304,7 @@ fun ActiveRadioState(
                 TextMMD(
                     text = systemFrequency?.let { DecimalFormat("0.0").format(it) } ?: "Unknown",
                     fontSize = 44.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.Bold,
                     color = if(isScanning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.width(8.dp))

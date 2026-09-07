@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 
@@ -84,6 +85,6 @@ private fun MoreMenuItem(
             )
         }
 
-        DashedDivider(thickness = 1.dp)
+        HorizontalDividerMMD(thickness = 1.dp)
     }
 }
