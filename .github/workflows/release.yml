@@ -68,7 +68,7 @@ jobs:
       # key" test passes for every other wrong key too, and for an unsigned build.
       - name: Verify the APK is signed with this app's published key
         env:
-          EXPECTED_CERT: 702506b2fdc31432d48f315ed873f2f1a6116420cb3508ad14c91b9a2d9ef6d3
+          EXPECTED_CERT: 1c65d9181220aa301ee081d172afad194763712ae9e0da634f6596ae1e20764f
         run: |
           apk=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk')
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
