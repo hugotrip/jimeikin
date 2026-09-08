@@ -1304,7 +1304,7 @@ class CalmMusicViewModel(
                     )
                 }
 
-            val mergedArtists = mergeArtistsByName(allArtistsWithCounts, uniqueAlbumCounts)
+            val mergedArtists = mergeArtistsByName(allArtistsWithCounts, allSongs, allAlbums)
 
             updateLibrary(
                 songs = songModels,
@@ -1326,23 +1326,41 @@ class CalmMusicViewModel(
         _libraryRefreshTrigger.value += 1
     }
 
+    /**
+     * The counts a reader sees have to come from the songs a reader can see.
+     *
+     * These used to be summed from a query over the whole songs table, one row per source, so
+     * an artist held both on a card and on a server was reported at twice their real size —
+     * 110 songs and 10 albums for a Björk who has 55 and 5 — while the lists underneath,
+     * which drop the server's copy of a song already on the phone, showed the true number.
+     * Counting the same songs the lists are built from is the only way the two can agree.
+     */
     private fun mergeArtistsByName(
         allArtistsWithCounts: List<ArtistWithCounts>,
-        uniqueAlbumCounts: Map<String, Int>,
+        songs: List<SongEntity>,
+        albums: List<AlbumEntity>,
     ): List<ArtistUiModel> {
-        fun normalizeName(name: String): String =
-            name.trim().replace(Regex("\\s+"), " ").lowercase()
+        // A song reaches an artist two ways: by its own artistId, or through the album it is
+        // on. The query this replaced joined on both, and counting only the first put a zero
+        // beside every artist whose songs are filed under their album instead.
+        val artistIdByAlbumId = albums.mapNotNull { a -> a.artistId?.let { a.id to it } }.toMap()
+        val songsByArtistId = mutableMapOf<String, MutableList<SongEntity>>()
+        songs.forEach { song ->
+            val ids = setOfNotNull(song.artistId, song.albumId?.let { artistIdByAlbumId[it] })
+            ids.forEach { songsByArtistId.getOrPut(it) { mutableListOf() }.add(song) }
+        }
 
         return allArtistsWithCounts
-            .groupBy { normalizeName(it.name) }
+            .groupBy { ArtistNames.key(it.name) }
             .values
             .map { group ->
                 val primary = group.find { it.sourceType == "LOCAL_FILE" }
                     ?: group.find { it.sourceType == "YOUTUBE_DOWNLOAD" }
                     ?: group.first()
 
-                val totalSongCount = group.sumOf { it.songCount }
-                val totalAlbumCount = group.sumOf { artist -> uniqueAlbumCounts[artist.id] ?: 0 }
+                val theirSongs = group.flatMap { songsByArtistId[it.id].orEmpty() }.distinctBy { it.id }
+                val totalSongCount = theirSongs.size
+                val totalAlbumCount = theirSongs.mapNotNull { it.albumId }.distinct().size
 
                 ArtistUiModel(
                     id = primary.id,
@@ -1423,7 +1441,7 @@ class CalmMusicViewModel(
 
             _libraryAlbums.value = mergedAlbums
 
-            _libraryArtists.value = mergeArtistsByName(allArtistsWithCounts, uniqueAlbumCounts)
+            _libraryArtists.value = mergeArtistsByName(allArtistsWithCounts, allSongs, allAlbums)
             _libraryPlaylists.value = allPlaylistsWithCounts.map { playlist ->
                 PlaylistUiModel(
                     id = playlist.id,

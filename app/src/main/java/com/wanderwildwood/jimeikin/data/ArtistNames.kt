@@ -22,7 +22,12 @@ object ArtistNames {
 
     /** What two spellings of the same name have in common. */
     fun key(name: String): String {
-        val decomposed = Normalizer.normalize(name.trim(), Normalizer.Form.NFKD)
+        // "&" and the word it stands for are the same word. This is the one substitution
+        // worth making before the rest: a library will happily hold "Iron & Wine" and
+        // "Iron And Wine" as two artists, and no amount of stripping punctuation brings
+        // them together, because one of them spells the ampersand out.
+        val spelled = name.trim().replace("&", " and ")
+        val decomposed = Normalizer.normalize(spelled, Normalizer.Form.NFKD)
         val stripped = buildString {
             decomposed.forEach { c ->
                 when {
