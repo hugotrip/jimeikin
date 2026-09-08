@@ -64,6 +64,7 @@ fun CalmMusicTopAppBar(
     onBackClick: () -> Unit,
     onCancelPlaylistsEditClick: () -> Unit,
     onCancelPlaylistDetailsEditClick: () -> Unit,
+    onRemoveSelectedFromPlaylistClick: () -> Unit,
     onEnterPlaylistsEditClick: () -> Unit,
     onNavigateToSearchClick: () -> Unit,
     onPlaylistDetailsMenuToggle: () -> Unit,
@@ -205,6 +206,7 @@ fun CalmMusicTopAppBar(
                 playlistEditSelectionCount = playlistEditSelectionCount,
                 playlistDetailsSelectionCount = playlistDetailsSelectionCount,
                 isPlaylistDetailsEditMode = isPlaylistDetailsEditMode,
+                onRemoveSelectedFromPlaylistClick = onRemoveSelectedFromPlaylistClick,
                 isPlaylistDetailsMenuExpanded = isPlaylistDetailsMenuExpanded,
                 hasLibraryPlaylists = hasLibraryPlaylists,
                 hasNowPlaying = hasNowPlaying,
@@ -235,6 +237,7 @@ private fun CalmMusicTopAppBarActions(
     playlistEditSelectionCount: Int,
     playlistDetailsSelectionCount: Int,
     isPlaylistDetailsEditMode: Boolean,
+    onRemoveSelectedFromPlaylistClick: () -> Unit,
     isPlaylistDetailsMenuExpanded: Boolean,
     hasLibraryPlaylists: Boolean,
     hasNowPlaying: Boolean,
@@ -332,6 +335,29 @@ private fun CalmMusicTopAppBarActions(
                     onClick = onPlaylistDetailsDeleteClick,
                 )
             }
+        }
+    }
+
+    // A playlist's edit mode has always drawn a checkbox against every song and counted what
+    // was ticked; nothing ever acted on the count, so songs could be put into a playlist and
+    // never taken out again. The view model's removeSongsFromPlaylist was there the whole
+    // time - this is the button it was missing.
+    if (
+        currentDestination.isPlaylistDetails() &&
+        isPlaylistDetailsEditMode &&
+        playlistDetailsSelectionCount > 0
+    ) {
+        OutlinedButtonMMD(
+            contentPadding = PaddingValues(8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp),
+            onClick = onRemoveSelectedFromPlaylistClick,
+        ) {
+            TextMMD(
+                text = "Remove $playlistDetailsSelectionCount",
+                textAlign = TextAlign.Center,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 

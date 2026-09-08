@@ -183,9 +183,22 @@ object SubsonicSync {
         songDao: SongDao,
         albumDao: AlbumDao,
         artistDao: ArtistDao,
+        playlistDao: PlaylistDao? = null,
     ) = withContext(Dispatchers.IO) {
         songDao.deleteBySourceType(SOURCE_TYPE)
         albumDao.deleteBySourceType(SOURCE_TYPE)
         artistDao.deleteBySourceType(SOURCE_TYPE)
+        // The server's playlists go with its songs. Forgetting used to take the three tables
+        // it owned and leave these behind, so a forgotten server left a screenful of its
+        // playlists standing - empty, because every song they named had just been deleted,
+        // and still carrying the names somebody had given them on a machine this phone was
+        // told to forget. Only the ones this sync created are touched; a playlist made here,
+        // or read from an .m3u on the card, has nothing to do with the server.
+        playlistDao?.getAllPlaylistsWithSongCount()
+            ?.filter { it.id.startsWith("SUBSONIC:PLAYLIST:") }
+            ?.forEach { fromServer ->
+                playlistDao.deleteTracksForPlaylist(fromServer.id)
+                playlistDao.deletePlaylistById(fromServer.id)
+            }
     }
 }

@@ -610,10 +610,12 @@ fun CalmMusic(app: CalmMusic) {
                 songDao = database.songDao(),
                 albumDao = database.albumDao(),
                 artistDao = database.artistDao(),
+                playlistDao = database.playlistDao(),
             )
             settingsManager.setSubsonicConfig(null)
             serverStatus = "Forgotten"
             viewModel.refreshLibraryFromDatabase()
+            playlistsViewModel.refreshPlaylists()
         }
     }
 
@@ -1139,6 +1141,24 @@ fun CalmMusic(app: CalmMusic) {
                             isPlaylistDetailsEditMode = false
                             playlistDetailsSelectionIds.clear()
                             playlistDetailsSelectionCount = 0
+                        },
+                        onRemoveSelectedFromPlaylistClick = {
+                            val playlist = selectedPlaylist
+                            val chosen = playlistDetailsSelectionIds.toSet()
+                            if (playlist != null && chosen.isNotEmpty()) {
+                                playlistScope.launch {
+                                    try {
+                                        playlistsViewModel.removeSongsFromPlaylist(playlist.id, chosen)
+                                        playlistsViewModel.refreshPlaylists()
+                                    } catch (_: Exception) {
+                                    }
+                                    // Out of edit mode either way: leaving it on with the
+                                    // ticks cleared looks like nothing happened.
+                                    isPlaylistDetailsEditMode = false
+                                    playlistDetailsSelectionIds.clear()
+                                    playlistDetailsSelectionCount = 0
+                                }
+                            }
                         },
                         onEnterPlaylistsEditClick = { isPlaylistsEditMode = true },
                         onNavigateToSearchClick = {
