@@ -32,9 +32,11 @@ fun AboutDialog(onDismiss: () -> Unit) {
         TextMMD(
             text = "Your library and your settings stay on the phone. Searching, streaming " +
                 "and downloading talk to YouTube; connecting an account stores its cookie " +
-                "here until you disconnect it. The FM radio reads the tuner's notification " +
-                "and, if you allow it, presses play in the tuner for you. There are no ads, " +
-                "no analytics and nothing is counted.",
+                "here until you disconnect it. A music server you point this at is asked " +
+                "for its library and its songs; its password is kept on this phone, because " +
+                "each request is signed with it rather than carrying it. The FM radio reads " +
+                "the tuner's notification and, if you allow it, presses play in the tuner " +
+                "for you. There are no ads, no analytics and nothing is counted.",
             fontSize = 14.sp,
         )
 
@@ -49,6 +51,11 @@ fun AboutDialog(onDismiss: () -> Unit) {
             fontSize = 14.sp,
         )
         TextMMD(text = "MMD — Mudita, Apache 2.0", fontSize = 14.sp)
+        TextMMD(
+            text = "Music servers are reached over the Subsonic API, which Navidrome, " +
+                "Airsonic and Gonic all speak.",
+            fontSize = 14.sp,
+        )
 
         Spacer(Modifier.height(14.dp))
         TextMMD(text = "github.com/wanderwildwood/jimeikin", fontSize = 14.sp)

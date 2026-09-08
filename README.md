@@ -1,7 +1,8 @@
 # 自鳴琴 jimeikin — Music Box
 
 A music player for the [Mudita Kompakt](https://mudita.com/products/mudita-kompakt), for a
-local library and for YouTube Music search and streaming.
+local library, for a Navidrome or other Subsonic server, and for YouTube Music search and
+streaming.
 
 *Jimeikin* is 自鳴琴 — a koto that sounds itself. It is what a music box was called before
 オルゴール, the Dutch loanword, took the name over: 自 (self), 鳴 (to sound), 琴 (koto). It
@@ -42,6 +43,29 @@ scanning again rewrites that playlist rather than making a second one.
 
 A folder that cannot be read — a card that has not mounted yet, a folder that has gone away —
 is reported as unread, and nothing under it leaves the library.
+
+## A music server
+
+Settings → **Music server**. Address, username, password, and it reads the whole library in
+one go — artists, albums and songs appear beside the music on the card rather than in a room
+of their own. Anything Subsonic answers works: Navidrome, Airsonic, Gonic.
+
+A song held both on the server and on the card is shown once, and it is the copy on the card
+that survives, because that one plays with no network. The server goes on earning its place
+for everything the card does not have. A dotted rule under a row means it needs the network.
+
+Long press a song for **Keep on this phone**, or use the button on an album or an artist to
+keep the lot. A kept song stops being a pointer to the server and becomes a file: solid rule,
+plays offline, and a later sync leaves it alone. Formats the phone cannot decode are asked for
+as mp3 instead of raw, so a Windows Media or Musepack track arrives playable.
+
+The server's playlists come across too, pointing at the copy on the phone wherever there is
+one. A playlist already here under the same name is left alone — a server that keeps its
+library on disk has usually imported the very `.m3u` files this app reads off the card.
+
+**The password is kept on this phone**, because Subsonic signs each request with it rather
+than sending it. That signature keeps the password off the wire; it does not stop anyone on
+the wire replaying a request, so a server reachable from outside the house wants https.
 
 ## YouTube Music
 
