@@ -34,7 +34,10 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 "and downloading talk to YouTube; connecting an account stores its cookie " +
                 "here until you disconnect it. A music server you point this at is asked " +
                 "for its library and its songs; its password is kept on this phone, because " +
-                "each request is signed with it rather than carrying it. The FM radio reads " +
+                "each request is signed with it rather than carrying it. That password and " +
+                "the YouTube cookie are sealed with a key held in this phone's keystore and " +
+                "are left out of Android's backups, so neither leaves with one. " +
+                "The FM radio reads " +
                 "the tuner's notification and, if you allow it, presses play in the tuner " +
                 "for you. There are no ads, no analytics and nothing is counted.",
             fontSize = 14.sp,

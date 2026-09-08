@@ -7,6 +7,7 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.view.KeyEvent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,10 +61,20 @@ fun RadioScreen(
     val isRadioActive = mediaState.packageName.contains("radio", ignoreCase = true) ||
             mediaState.packageName.contains("fm", ignoreCase = true)
 
+    // Whether this phone has a tuner at all, asked once. Everything on this screen works by
+    // driving the phone's own FM app, so on a phone without one there is nothing to drive -
+    // and the screen used to find that out last, after asking for the accessibility
+    // permission, which is the most alarming thing this app could ask a stranger for and was
+    // being asked for a radio that did not exist.
+    val hasTuner = remember { findRadioPackage(context) != null }
+
     if (!isRadioActive) {
         EmptyRadioState(
+            hasTuner = hasTuner,
             onPowerOn = {
-                if (!isAccessibilityServiceEnabled(context, CalmMusicAccessibilityService::class.java)) {
+                if (!hasTuner) {
+                    // Nothing to ask for.
+                } else if (!isAccessibilityServiceEnabled(context, CalmMusicAccessibilityService::class.java)) {
                     showAccessibilitySheet = true
                 } else if (!isNotificationListenerEnabled(context)) {
                     showNotificationSheet = true
@@ -205,25 +217,41 @@ fun isAccessibilityServiceEnabled(context: Context, serviceClass: Class<*>): Boo
 }
 
 @Composable
-fun EmptyRadioState(onPowerOn: () -> Unit) {
+fun EmptyRadioState(hasTuner: Boolean, onPowerOn: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (!hasTuner) {
+            TextMMD("No FM radio on this phone", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            TextMMD(
+                "This screen works the phone's own FM tuner. Nothing here needs a network, " +
+                    "and nothing here can be installed - a phone either has the radio or it does not.",
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            return@Column
+        }
+
+        // Outlined rather than filled. A 120dp black disc was the largest solid area anywhere
+        // in the app, which on an e-ink panel is the slowest thing to paint and the most
+        // likely to ghost; the ring reads as the same button and costs a hundredth of the ink.
         Box(
             modifier = Modifier
                 .size(120.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer)
+                .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
                 .clickable { onPowerOn() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Default.PowerSettingsNew,
                 "Turn the radio on",
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
         Spacer(modifier = Modifier.height(24.dp))

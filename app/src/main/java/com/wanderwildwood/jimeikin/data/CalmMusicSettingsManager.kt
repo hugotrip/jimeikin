@@ -44,7 +44,9 @@ class CalmMusicSettingsManager(context: Context) {
             } else {
                 putString(KEY_SUBSONIC_URL, config.baseUrl)
                 putString(KEY_SUBSONIC_USER, config.user)
-                putString(KEY_SUBSONIC_PASSWORD, config.password)
+                // Sealed with a key held in the phone's keystore - see [Secrets]. If sealing
+                // fails the password is not written at all rather than written in the clear.
+                putString(KEY_SUBSONIC_PASSWORD, Secrets.seal(config.password))
             }
         }
         _subsonicConfig.value = if (config?.isComplete == true) config else null
@@ -53,7 +55,15 @@ class CalmMusicSettingsManager(context: Context) {
     private fun getSubsonicConfigSync(): SubsonicConfig? {
         val url = prefs.getString(KEY_SUBSONIC_URL, null) ?: return null
         val user = prefs.getString(KEY_SUBSONIC_USER, null) ?: return null
-        val password = prefs.getString(KEY_SUBSONIC_PASSWORD, null) ?: return null
+        val stored = prefs.getString(KEY_SUBSONIC_PASSWORD, null) ?: return null
+        val password = Secrets.open(stored) ?: return null
+        // A password written by an older version is in the clear. Seal it where it lies, the
+        // first time it is read, so upgrading is enough and nobody has to type it again.
+        if (!Secrets.isSealed(stored)) {
+            Secrets.seal(password)?.let { sealed ->
+                prefs.edit { putString(KEY_SUBSONIC_PASSWORD, sealed) }
+            }
+        }
         return SubsonicConfig(url, user, password).takeIf { it.isComplete }
     }
 
@@ -114,11 +124,19 @@ class CalmMusicSettingsManager(context: Context) {
     }
 
     private fun getYouTubeAccountCookieSync(): String? {
-        return prefs.getString(KEY_YOUTUBE_ACCOUNT_COOKIE, null)
+        // A signed-in cookie is a credential like any other, and is sealed the same way.
+        val stored = prefs.getString(KEY_YOUTUBE_ACCOUNT_COOKIE, null) ?: return null
+        val cookie = Secrets.open(stored) ?: return null
+        if (!Secrets.isSealed(stored)) {
+            Secrets.seal(cookie)?.let { sealed ->
+                prefs.edit { putString(KEY_YOUTUBE_ACCOUNT_COOKIE, sealed) }
+            }
+        }
+        return cookie
     }
 
     fun setYouTubeAccountCookie(cookie: String) {
-        prefs.edit { putString(KEY_YOUTUBE_ACCOUNT_COOKIE, cookie) }
+        prefs.edit { putString(KEY_YOUTUBE_ACCOUNT_COOKIE, Secrets.seal(cookie)) }
         _youtubeAccountCookie.value = cookie
     }
 

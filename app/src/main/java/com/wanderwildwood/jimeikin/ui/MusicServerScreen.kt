@@ -57,7 +57,7 @@ fun MusicServerScreen(
             value = address,
             onValueChange = { address = it },
             label = { TextMMD(text = "Address") },
-            placeholder = { TextMMD(text = "192.168.1.70:4533") },
+            placeholder = { TextMMD(text = "192.168.1.10:4533") },
             singleLine = true,
             enabled = !isBusy,
         )

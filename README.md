@@ -66,8 +66,8 @@ Artist pages list an artist's top songs, albums and singles. When you are lookin
 album, missing tracks can be found and filled in from YouTube. Tracks can be downloaded for
 offline playback; downloads have their own screen.
 
-Connecting a YouTube account under Settings → Streaming makes search reflect it. Nothing else
-in the app needs one.
+Connecting a YouTube account under Settings → **YouTube account** makes search reflect it.
+Nothing else in the app needs one.
 
 Respect artists' rights and your local laws when streaming or downloading from YouTube.
 
@@ -78,18 +78,22 @@ losing your place. The Now Playing screen is large type and little else.
 
 ## Installing
 
-Android 9 (API 28) or newer.
-
-Upgrading from an older copy needs an uninstall first: Android will not install this over one,
-and stops with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Uninstalling clears playlists, settings
-and anything cached; music files in your own storage are untouched. Updates after this one
-install normally.
+Android 9 (API 28) or newer. Download the APK from
+[Releases](https://github.com/wanderwildwood/jimeikin/releases/latest) and open it; every
+release is signed with the same key, so later ones install over it and keep your library,
+playlists and settings.
 
 ## What it sends
 
 Your settings and local library stay on the phone. The YouTube features talk to YouTube and
 YouTube Music, only to search and stream audio. There are no ads, no analytics and no tracking
 SDKs. The same is said in the app, behind the **i** in the top right.
+
+A music server's password and a connected YouTube account's cookie are sealed with a key held
+in the phone's keystore, which cannot be exported and is not itself backed up, and the file
+holding them is excluded from Android's backups. Restoring this app onto a different phone
+brings your playlists and settings and asks for the server login again, which is the intended
+outcome rather than a shortcoming.
 
 It asks for five permissions and uses all five: the network, a foreground service and its
 notification for playback, and an exemption from battery optimisation so the system is less
@@ -99,7 +103,8 @@ picker, which grants this app that folder and nothing else.
 Two permissions are optional and are asked for only on the Radio screen, at the moment they
 are needed: reading the FM tuner's now-playing notification to show the frequency, and an
 accessibility service whose whole job is to press play in the tuner and come back. Neither is
-required to use the rest of the app.
+required to use the rest of the app, and on a phone with no FM tuner the Radio screen says so
+and asks for nothing.
 
 ## For developers
 

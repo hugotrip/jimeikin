@@ -265,7 +265,7 @@ data class SubsonicConfig(
     val user: String,
     val password: String,
 ) {
-    /** People type "192.168.1.70:4533", and a trailing slash, and sometimes both. */
+    /** People type "192.168.1.10:4533", and a trailing slash, and sometimes both. */
     val normalisedBaseUrl: String
         get() {
             val trimmed = baseUrl.trim().trimEnd('/')

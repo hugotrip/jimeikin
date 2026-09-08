@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  What may leave the phone in a backup, on Android 11 and older.
+
+  Everything except the settings file, which holds the music server's password and the YouTube
+  account cookie. Those are sealed with a key that lives in this phone's keystore and is not
+  itself backed up, so a copy of them elsewhere would be undecryptable anyway - but a promise
+  that a password is kept on this phone is better kept by not copying it off at all.
+-->
 <full-backup-content>
     <include domain="sharedpref" path="."/>
     <include domain="database" path="."/>
     <include domain="file" path="."/>
+    <exclude domain="sharedpref" path="calmmusic_settings.xml"/>
 </full-backup-content>
