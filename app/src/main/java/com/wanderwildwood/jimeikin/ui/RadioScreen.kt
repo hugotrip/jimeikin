@@ -68,16 +68,23 @@ fun RadioScreen(
     // being asked for a radio that did not exist.
     val hasTuner = remember { findRadioPackage(context) != null }
 
+    // Reading the tuner's notification is how this screen knows the radio is on and what it is
+    // tuned to. That is worth having and it is not worth blocking on: it used to be demanded
+    // before the tuner would launch at all, so somebody who granted the accessibility
+    // permission - the one that actually works the tuner - and declined this one got a button
+    // that did nothing, for ever. The radio turns on without it; the screen just cannot say so.
+    val canReadStatus = isNotificationListenerEnabled(context)
+
     if (!isRadioActive) {
         EmptyRadioState(
             hasTuner = hasTuner,
+            canReadStatus = canReadStatus,
+            onGrantReadStatus = { showNotificationSheet = true },
             onPowerOn = {
                 if (!hasTuner) {
                     // Nothing to ask for.
                 } else if (!isAccessibilityServiceEnabled(context, CalmMusicAccessibilityService::class.java)) {
                     showAccessibilitySheet = true
-                } else if (!isNotificationListenerEnabled(context)) {
-                    showNotificationSheet = true
                 } else {
                     scope.launch {
                         val packageName = findRadioPackage(context)
@@ -86,11 +93,23 @@ fun RadioScreen(
 
                             launchSystemRadioApp(context, packageName)
 
-                            delay(5000)
-                            val myIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                            myIntent?.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                            myIntent?.putExtra("FROM_RADIO_TUNER", true)
-                            context.startActivity(myIntent)
+                            // Come back when the radio is actually on, rather than after a
+                            // fixed five seconds. A tuner being opened for the first time puts
+                            // up a permission request of its own, and the old blind delay
+                            // pulled the screen away mid-dialog - so the tuner never started,
+                            // and trying again did exactly the same thing. If it never comes
+                            // on, stay out of the way and leave the person in the tuner.
+                            var waited = 0L
+                            while (waited < 15000L && !ExternalMediaRepository.value.packageName.contains(packageName)) {
+                                delay(500)
+                                waited += 500
+                            }
+                            if (ExternalMediaRepository.value.packageName.contains(packageName)) {
+                                val myIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                                myIntent?.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                                myIntent?.putExtra("FROM_RADIO_TUNER", true)
+                                context.startActivity(myIntent)
+                            }
                         }
                     }
                 }
@@ -217,7 +236,12 @@ fun isAccessibilityServiceEnabled(context: Context, serviceClass: Class<*>): Boo
 }
 
 @Composable
-fun EmptyRadioState(hasTuner: Boolean, onPowerOn: () -> Unit) {
+fun EmptyRadioState(
+    hasTuner: Boolean,
+    canReadStatus: Boolean = true,
+    onGrantReadStatus: () -> Unit = {},
+    onPowerOn: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -258,6 +282,17 @@ fun EmptyRadioState(hasTuner: Boolean, onPowerOn: () -> Unit) {
         TextMMD("Turn on FM Radio", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         TextMMD("Tap to launch tuner", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+
+        if (!canReadStatus) {
+            Spacer(modifier = Modifier.height(24.dp))
+            TextMMD(
+                text = "This screen cannot tell whether the radio is on. Tap to allow that.",
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.clickable { onGrantReadStatus() },
+            )
+        }
     }
 }
 
