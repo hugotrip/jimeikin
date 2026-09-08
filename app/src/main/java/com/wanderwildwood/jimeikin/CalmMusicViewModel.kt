@@ -1410,7 +1410,11 @@ class CalmMusicViewModel(
                 libraryRepository.ingestAppDownloadsIfMissing()
             }
 
-            val allSongs = withContext(Dispatchers.IO) { songDao.getAllSongs() }
+            // The same fold the refresh does. Without it the first list drawn after launch
+            // held both copies of every record that is on the card and on the server too,
+            // for as long as the first refresh took - about fifteen seconds over three
+            // thousand songs, which is long enough to look like the library itself is wrong.
+            val allSongs = withContext(Dispatchers.IO) { withoutServerDuplicates(songDao.getAllSongs()) }
             val allAlbums = withContext(Dispatchers.IO) { albumDao.getAllAlbums() }
             val allArtistsWithCounts = withContext(Dispatchers.IO) { artistDao.getAllArtistsWithCounts() }
             val allPlaylistsWithCounts = withContext(Dispatchers.IO) { playlistDao.getAllPlaylistsWithSongCount() }
