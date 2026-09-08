@@ -29,6 +29,8 @@ import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
 import com.wanderwildwood.jimeikin.ui.RepeatMode
 import com.wanderwildwood.jimeikin.ui.SongUiModel
+import com.wanderwildwood.jimeikin.data.ArtistNames
+import com.wanderwildwood.jimeikin.data.SubsonicSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -1203,6 +1205,32 @@ class CalmMusicViewModel(
         }
     }
 
+
+    /**
+     * A song held both on this phone and on a music server is one song.
+     *
+     * Someone who keeps their collection on a Navidrome server and also carries some of it on
+     * the phone would otherwise see most of their library twice — once as a file and once as a
+     * pointer to the server. The copy that survives is the one on the phone, because it plays
+     * without a network; the server's copy of that same record is simply not listed, and the
+     * server keeps earning its place for everything the phone does not have.
+     *
+     * Matched on artist, album and title with the same folding used for artist names, so a
+     * record tagged a little differently on each side still meets itself.
+     */
+    private fun withoutServerDuplicates(songs: List<SongEntity>): List<SongEntity> {
+        val onThisPhone = songs
+            .asSequence()
+            .filter { it.sourceType == "LOCAL_FILE" || it.sourceType == "YOUTUBE_DOWNLOAD" }
+            .map { ArtistNames.songKey(it.artist, it.album, it.title) }
+            .toHashSet()
+        if (onThisPhone.isEmpty()) return songs
+        return songs.filterNot { song ->
+            song.sourceType == SubsonicSync.SOURCE_TYPE &&
+                ArtistNames.songKey(song.artist, song.album, song.title) in onThisPhone
+        }
+    }
+
     suspend fun refreshLibraryFromDatabase() {
         try {
             val (allSongs, allAlbums) = withContext(Dispatchers.IO) {
@@ -1210,6 +1238,7 @@ class CalmMusicViewModel(
                 val albumsFromDb = albumDao.getAllAlbums()
                 songsFromDb to albumsFromDb
             }
+                .let { (songs, albums) -> withoutServerDuplicates(songs) to albums }
             val allArtistsWithCounts = withContext(Dispatchers.IO) {
                 artistDao.getAllArtistsWithCounts()
             }

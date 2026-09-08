@@ -48,7 +48,7 @@ object SubsonicSync {
                 trackNumber = song.trackNumber,
                 durationMillis = song.durationMillis,
                 sourceType = SOURCE_TYPE,
-                audioUri = client.streamUrl(song.id),
+                audioUri = client.streamUrl(song.id, song.suffix),
                 // Filed under the album artist, the same rule the card library follows, so a
                 // compilation stays one artist rather than one per track.
                 artistId = library.albums.firstOrNull { it.id == song.albumId }

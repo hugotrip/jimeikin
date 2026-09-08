@@ -63,4 +63,16 @@ object ArtistNames {
     private fun hasDiacritics(name: String): Boolean =
         Normalizer.normalize(name, Normalizer.Form.NFKD)
             .any { Character.getType(it) == Character.NON_SPACING_MARK.toInt() }
+
+    /**
+     * What makes two recordings the same recording, across sources.
+     *
+     * A server and a phone can hold the same record with the tags typed slightly differently
+     * on each — which is exactly what this library did until its artist names were settled —
+     * so the same folding is applied to all three parts. Where a copy is on the phone and the
+     * same song is also on a server, the library shows one of them, and it shows the one that
+     * plays without a network.
+     */
+    fun songKey(artist: String, album: String?, title: String): String =
+        listOf(key(artist), key(album.orEmpty()), key(title)).joinToString("\u0000")
 }

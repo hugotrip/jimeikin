@@ -65,8 +65,21 @@ class SubsonicClient(private val config: SubsonicConfig) {
      * Where the audio actually is. Built fresh from the stored password rather than kept in
      * the database, so changing the password on the server and re-entering it here is enough
      * to make every song playable again without a resync.
+     *
+     * Anything the phone can decode is asked for untouched, so a FLAC arrives as a FLAC and
+     * nothing is spent re-encoding it. For the formats it cannot decode — Windows Media,
+     * Musepack, Monkey's Audio and the like — the server is asked to transcode instead, which
+     * is the whole reason the Subsonic API takes a format at all. Without that those records
+     * would be listed and then refuse to play.
      */
-    fun streamUrl(songId: String): String = url("stream", mapOf("id" to songId, "format" to "raw"))
+    fun streamUrl(songId: String, suffix: String?): String {
+        val playable = suffix != null && suffix.lowercase() in PLAYABLE_SUFFIXES
+        return url(
+            "stream",
+            if (playable) mapOf("id" to songId, "format" to "raw")
+            else mapOf("id" to songId, "format" to "mp3"),
+        )
+    }
 
     /** The same file, for keeping. Subsonic's download never transcodes. */
     fun downloadUrl(songId: String): String = url("download", mapOf("id" to songId))
@@ -201,6 +214,11 @@ class SubsonicClient(private val config: SubsonicConfig) {
         const val API_VERSION = "1.16.1"
         const val CLIENT_NAME = "jimeikin"
         const val PAGE_SIZE = 500
+
+        /** What media3 can decode on this phone without help from the server. */
+        val PLAYABLE_SUFFIXES = setOf(
+            "mp3", "m4a", "m4b", "aac", "mp4", "flac", "ogg", "oga", "opus", "wav", "mka",
+        )
     }
 }
 
