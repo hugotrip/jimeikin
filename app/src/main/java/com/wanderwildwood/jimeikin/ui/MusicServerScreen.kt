@@ -47,6 +47,19 @@ fun MusicServerScreen(
     var user by rememberSaveable { mutableStateOf(config?.user ?: "") }
     var password by rememberSaveable { mutableStateOf(config?.password ?: "") }
 
+    // The fields are seeded from the stored login once and then belong to whoever is typing,
+    // which is right everywhere except here: forgetting a server used to leave the address and
+    // a boxful of password dots sitting under the word "Forgotten", which says the opposite of
+    // what has just happened. They were only on screen - nothing was kept - but a screen that
+    // looks like it kept your password is not much better than one that did.
+    LaunchedEffect(config) {
+        if (config == null) {
+            address = ""
+            user = ""
+            password = ""
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
