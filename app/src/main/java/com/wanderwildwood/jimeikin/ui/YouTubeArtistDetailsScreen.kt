@@ -48,6 +48,7 @@ fun YouTubeArtistDetailsScreen(
     onAddToPlaylistClick: (SongUiModel) -> Unit = {},
     onRemoveFromLibraryClick: (SongUiModel) -> Unit = {},
     onDeleteClick: (SongUiModel) -> Unit = {},
+    onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
 ) {
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
     var albums by remember { mutableStateOf<List<AlbumUiModel>>(emptyList()) }
@@ -146,6 +147,7 @@ fun YouTubeArtistDetailsScreen(
                                             onAddToPlaylist = { onAddToPlaylistClick(song) },
                                             onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
                                             onDelete = { onDeleteClick(song) },
+                                        onKeepOnPhone = { onKeepOnPhoneClick(song) },
                                             showDivider = song != songs.lastOrNull(),
                                         )
                                     }

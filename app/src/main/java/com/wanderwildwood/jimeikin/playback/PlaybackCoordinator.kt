@@ -45,7 +45,7 @@ class PlaybackCoordinator {
             when (song.sourceType) {
                 // A server song is a url the player can open, so it queues beside a file
                 // rather than needing the resolve step a YouTube track does.
-                "LOCAL_FILE", "YOUTUBE_DOWNLOAD", "SUBSONIC" -> {
+                "LOCAL_FILE", "YOUTUBE_DOWNLOAD", "SUBSONIC", "SUBSONIC_DOWNLOAD" -> {
                     val uri = song.audioUri
                     if (!uri.isNullOrBlank()) {
                         localMap[globalIndex] = localCounter

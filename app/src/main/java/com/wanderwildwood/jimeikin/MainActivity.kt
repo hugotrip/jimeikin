@@ -119,6 +119,8 @@ import com.mudita.mmd.components.snackbar.SnackbarHostMMD
 import com.mudita.mmd.components.snackbar.SnackbarHostStateMMD
 import com.mudita.mmd.components.text.TextMMD
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -611,6 +613,56 @@ fun CalmMusic(app: CalmMusic) {
             settingsManager.setSubsonicConfig(null)
             serverStatus = "Forgotten"
             viewModel.refreshLibraryFromDatabase()
+        }
+    }
+
+    /**
+     * Keeps a server song on the phone. The row is not duplicated: when the file is whole its
+     * source changes from a pointer to the server into a file, which is what makes its rule
+     * solid and lets it play with the network off. Deleting it later puts the pointer back.
+     */
+    val onKeepOnPhone: (SongUiModel) -> Unit = { song ->
+        libraryScope.launch {
+            val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
+            val row = withContext(Dispatchers.IO) {
+                database.songDao().getAllSongs().firstOrNull { it.id == song.id }
+            }
+            if (row == null || row.sourceType != com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE) {
+                snackbarHostState.showSnackbar(
+                    message = "That one is not on a server",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            } else {
+                snackbarHostState.showSnackbar(
+                    message = "Keeping \"${'$'}{song.title}\"",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+                val result = com.wanderwildwood.jimeikin.data.SubsonicDownloader.download(app, row)
+                val message = when (result) {
+                    is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> result.message
+                    is com.wanderwildwood.jimeikin.data.SubsonicResult.Success -> {
+                        withContext(Dispatchers.IO) {
+                            database.songDao().upsertAll(
+                                listOf(
+                                    row.copy(
+                                        sourceType = com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE,
+                                        audioUri = android.net.Uri.fromFile(result.value).toString(),
+                                    ),
+                                ),
+                            )
+                        }
+                        viewModel.refreshLibraryFromDatabase()
+                        "\"${'$'}{song.title}\" is on this phone now"
+                    }
+                }
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
         }
     }
 
@@ -1187,6 +1239,7 @@ fun CalmMusic(app: CalmMusic) {
                         onAddToPlaylistClick = onAddToPlaylist,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
+                        onKeepOnPhoneClick = onKeepOnPhone,
                         onOpenStreamingSettingsClick = openStreamingSettings,
                         onOpenLocalSettingsClick = openLocalSettings,
                     )
@@ -1245,6 +1298,7 @@ fun CalmMusic(app: CalmMusic) {
                         onAddToPlaylistClick = onAddToPlaylist,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
+                        onKeepOnPhoneClick = onKeepOnPhone,
                     )
                 }
                 composable(Screen.AlbumDetails.route) {
@@ -1263,6 +1317,7 @@ fun CalmMusic(app: CalmMusic) {
                         onAddToPlaylistClick = onAddToPlaylist,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
+                        onKeepOnPhoneClick = onKeepOnPhone,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                     )
                 }
@@ -1285,6 +1340,7 @@ fun CalmMusic(app: CalmMusic) {
                         onAddToPlaylistClick = onAddToPlaylist,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
+                        onKeepOnPhoneClick = onKeepOnPhone,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                     )
                 }
@@ -1307,6 +1363,7 @@ fun CalmMusic(app: CalmMusic) {
                         onAddToPlaylistClick = onAddToPlaylist,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
+                        onKeepOnPhoneClick = onKeepOnPhone,
                     )
                 }
 

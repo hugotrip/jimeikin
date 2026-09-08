@@ -78,6 +78,11 @@ object SubsonicSync {
             }
 
         withContext(Dispatchers.IO) {
+            // A song already kept on the phone stays kept: its row points at a file now, and
+            // rewriting it as a server pointer would strand the download.
+            val keptIds = songDao.getSongsBySourceType(SubsonicDownloader.SOURCE_TYPE)
+                .map { it.id }
+                .toHashSet()
             // Replaced whole rather than merged: the server is the authority on what it has,
             // and anything it no longer lists is gone rather than merely unseen. Nothing on
             // the phone is touched by this - these rows are only ever pointers to the server.
@@ -85,8 +90,9 @@ object SubsonicSync {
             albumDao.deleteBySourceType(SOURCE_TYPE)
             artistDao.deleteBySourceType(SOURCE_TYPE)
 
-            if (songs.isNotEmpty()) {
-                songs.chunked(100).forEach { songDao.upsertAll(it) }
+            val songsToWrite = songs.filterNot { it.id in keptIds }
+            if (songsToWrite.isNotEmpty()) {
+                songsToWrite.chunked(100).forEach { songDao.upsertAll(it) }
             }
             if (albums.isNotEmpty()) albumDao.upsertAll(albums)
             if (artists.isNotEmpty()) artistDao.upsertAll(artists)

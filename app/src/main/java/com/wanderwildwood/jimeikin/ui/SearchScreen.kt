@@ -43,6 +43,7 @@ fun SearchScreen(
     onAddToPlaylistClick: (SongUiModel) -> Unit = {},
     onRemoveFromLibraryClick: (SongUiModel) -> Unit = {},
     onDeleteClick: (SongUiModel) -> Unit = {},
+    onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         PrimaryTabRowMMD(selectedTabIndex = selectedTab) {
@@ -108,6 +109,7 @@ fun SearchScreen(
                                 onAddToPlaylist = { onAddToPlaylistClick(song) },
                                 onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
                                 onDelete = { onDeleteClick(song) },
+                                        onKeepOnPhone = { onKeepOnPhoneClick(song) },
                                 showDivider = song != songs.lastOrNull(),
                                 isInLibrary = librarySongIds.contains(song.id),
                             )

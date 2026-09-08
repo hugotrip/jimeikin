@@ -51,6 +51,7 @@ fun SongItem(
     onAddToPlaylist: () -> Unit = {},
     onDelete: () -> Unit = {},
     onRemoveFromLibrary: () -> Unit = {},
+    onKeepOnPhone: () -> Unit = {},
     isDownloaded: Boolean = false,
     showDivider: Boolean = true,
     isInLibrary: Boolean = false,
@@ -63,7 +64,9 @@ fun SongItem(
         song.durationText,
         song.sourceType,
     ) {
-        val local = song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE_DOWNLOAD"
+        val local = song.sourceType == "LOCAL_FILE" ||
+            song.sourceType == "YOUTUBE_DOWNLOAD" ||
+            song.sourceType == "SUBSONIC_DOWNLOAD"
         val fileExtension = if (local) {
             val uriString = song.audioUri ?: song.id
             try {
@@ -223,6 +226,19 @@ fun SongItem(
                                 onAddToPlaylist()
                             }
                         )
+
+                        // Only a server song can be kept: a file is already here, and a
+                        // YouTube result has its own download elsewhere.
+                        if (song.sourceType == "SUBSONIC") {
+                            HorizontalDividerMMD(thickness = 1.dp)
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = "Keep on this phone") },
+                                onClick = {
+                                    showMenu = false
+                                    onKeepOnPhone()
+                                }
+                            )
+                        }
 
                         if (isDownloaded || isLocal) {
                             HorizontalDividerMMD(thickness = 1.dp)

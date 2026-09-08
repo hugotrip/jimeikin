@@ -56,6 +56,7 @@ fun PlaylistDetailsScreen(
     onAddToPlaylistClick: (SongUiModel) -> Unit,
     onRemoveFromLibraryClick: (SongUiModel) -> Unit,
     onDeleteClick: (SongUiModel) -> Unit,
+    onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
 ) {
     // Local State
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
@@ -198,6 +199,7 @@ fun PlaylistDetailsScreen(
                                 onAddToPlaylist = { onAddToPlaylistClick(song) },
                                 onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
                                 onDelete = { onDeleteClick(song) },
+                                        onKeepOnPhone = { onKeepOnPhoneClick(song) },
                                 isInLibrary = true,
                                 showDivider = !isLast,
                             )

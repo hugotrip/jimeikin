@@ -30,6 +30,7 @@ import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
 import com.wanderwildwood.jimeikin.ui.RepeatMode
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import com.wanderwildwood.jimeikin.data.ArtistNames
+import com.wanderwildwood.jimeikin.data.SubsonicDownloader
 import com.wanderwildwood.jimeikin.data.SubsonicSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -564,7 +565,8 @@ class CalmMusicViewModel(
                 while (segmentEndIndex < queue.size &&
                     (queue[segmentEndIndex].sourceType == "LOCAL_FILE" ||
                             queue[segmentEndIndex].sourceType == "YOUTUBE_DOWNLOAD" ||
-                            queue[segmentEndIndex].sourceType == "SUBSONIC")
+                            queue[segmentEndIndex].sourceType == "SUBSONIC" ||
+                            queue[segmentEndIndex].sourceType == "SUBSONIC_DOWNLOAD")
                 ) {
                     segmentEndIndex++
                 }
@@ -1221,7 +1223,11 @@ class CalmMusicViewModel(
     private fun withoutServerDuplicates(songs: List<SongEntity>): List<SongEntity> {
         val onThisPhone = songs
             .asSequence()
-            .filter { it.sourceType == "LOCAL_FILE" || it.sourceType == "YOUTUBE_DOWNLOAD" }
+            .filter {
+                it.sourceType == "LOCAL_FILE" ||
+                    it.sourceType == "YOUTUBE_DOWNLOAD" ||
+                    it.sourceType == SubsonicDownloader.SOURCE_TYPE
+            }
             .map { ArtistNames.songKey(it.artist, it.album, it.title) }
             .toHashSet()
         if (onThisPhone.isEmpty()) return songs
