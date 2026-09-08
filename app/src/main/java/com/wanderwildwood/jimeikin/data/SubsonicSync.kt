@@ -25,11 +25,14 @@ object SubsonicSync {
     private fun albumId(id: String) = "SUBSONIC:ALBUM:$id"
     private fun artistId(name: String) = "SUBSONIC:ARTIST:" + ArtistNames.key(name)
 
+    private fun playlistId(id: String) = "SUBSONIC:PLAYLIST:$id"
+
     suspend fun sync(
         client: SubsonicClient,
         songDao: SongDao,
         albumDao: AlbumDao,
         artistDao: ArtistDao,
+        playlistDao: PlaylistDao? = null,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): SubsonicResult<Int> {
         val library = when (val r = client.fetchLibrary(onProgress)) {
@@ -98,7 +101,81 @@ object SubsonicSync {
             if (artists.isNotEmpty()) artistDao.upsertAll(artists)
         }
 
+        if (playlistDao != null) syncPlaylists(client, songDao, playlistDao)
+
         return SubsonicResult.Success(songs.size)
+    }
+
+    /**
+     * The playlists the server keeps, brought over as playlists here.
+     *
+     * Two things make this less simple than copying a list across.
+     *
+     * A playlist naming a song that is also on the phone points at the copy on the phone, so
+     * it plays without a network like everything else does — the same rule the library
+     * follows when the same record is in both places.
+     *
+     * And a playlist already here under the same name is left alone. A server that keeps its
+     * library on disk has usually imported the very .m3u files this app reads off the card
+     * itself, so without this every one of them would arrive twice.
+     */
+    private suspend fun syncPlaylists(
+        client: SubsonicClient,
+        songDao: SongDao,
+        playlistDao: PlaylistDao,
+    ) {
+        val playlists = when (val r = client.fetchPlaylists()) {
+            is SubsonicResult.Failure -> return
+            is SubsonicResult.Success -> r.value
+        }
+
+        withContext(Dispatchers.IO) {
+            // A playlist the server no longer keeps stops being kept here. Only the ones
+            // this sync put here are considered: a playlist made on the phone, or read from
+            // an .m3u on the card, is nothing to do with the server and is left alone.
+            val stillOnServer = playlists.map { playlistId(it.id) }.toHashSet()
+            playlistDao.getAllPlaylistsWithSongCount()
+                .filter { it.id.startsWith("SUBSONIC:PLAYLIST:") && it.id !in stillOnServer }
+                .forEach { gone ->
+                    playlistDao.deleteTracksForPlaylist(gone.id)
+                    playlistDao.deletePlaylistById(gone.id)
+                }
+        }
+
+        if (playlists.isEmpty()) return
+
+        withContext(Dispatchers.IO) {
+            val allSongs = songDao.getAllSongs()
+            val onPhoneByKey = allSongs
+                .filter { it.sourceType != SOURCE_TYPE }
+                .associateBy { ArtistNames.songKey(it.artist, it.album, it.title) }
+            val serverRows = allSongs.filter { it.sourceType == SOURCE_TYPE }.associateBy { it.id }
+
+            val takenNames = playlistDao.getAllPlaylistsWithSongCount()
+                .filterNot { it.id.startsWith("SUBSONIC:PLAYLIST:") }
+                .map { ArtistNames.key(it.name) }
+                .toHashSet()
+
+            playlists.forEach { playlist ->
+                if (!takenNames.add(ArtistNames.key(playlist.name))) return@forEach
+
+                val rowIds = playlist.songIds.mapNotNull { serverId ->
+                    val serverRow = serverRows[songId(serverId)] ?: return@mapNotNull null
+                    val key = ArtistNames.songKey(serverRow.artist, serverRow.album, serverRow.title)
+                    (onPhoneByKey[key] ?: serverRow).id
+                }.distinct()
+                if (rowIds.isEmpty()) return@forEach
+
+                val id = playlistId(playlist.id)
+                playlistDao.upsertPlaylist(PlaylistEntity(id = id, name = playlist.name))
+                playlistDao.deleteTracksForPlaylist(id)
+                playlistDao.upsertTracks(
+                    rowIds.mapIndexed { index, rowId ->
+                        PlaylistTrackEntity(playlistId = id, songId = rowId, position = index)
+                    },
+                )
+            }
+        }
     }
 
     /** Everything the server put here, taken back out. The server itself is untouched. */

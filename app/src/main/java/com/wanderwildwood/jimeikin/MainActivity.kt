@@ -587,6 +587,7 @@ fun CalmMusic(app: CalmMusic) {
                 songDao = database.songDao(),
                 albumDao = database.albumDao(),
                 artistDao = database.artistDao(),
+                playlistDao = database.playlistDao(),
                 onProgress = { done, total ->
                     serverStatus = "Reading the library, album $done of $total"
                 },

@@ -81,6 +81,44 @@ class SubsonicClient(private val config: SubsonicConfig) {
         )
     }
 
+    /**
+     * The playlists the server keeps, with the songs on each.
+     *
+     * Two calls per playlist is the API's shape: one for the list, one for the contents.
+     */
+    suspend fun fetchPlaylists(): SubsonicResult<List<SubsonicPlaylist>> {
+        val body = when (val r = request("getPlaylists")) {
+            is SubsonicResult.Failure -> return r
+            is SubsonicResult.Success -> r.value
+        }
+        val array = body.optJSONObject("playlists")?.optJSONArray("playlist")
+        val result = mutableListOf<SubsonicPlaylist>()
+        for (i in 0 until (array?.length() ?: 0)) {
+            val o = array!!.getJSONObject(i)
+            val id = o.optString("id").takeIf { it.isNotBlank() } ?: continue
+            val name = o.optString("name").ifBlank { "Playlist" }
+            val songs = when (val songsResult = fetchPlaylistSongIds(id)) {
+                is SubsonicResult.Failure -> return songsResult
+                is SubsonicResult.Success -> songsResult.value
+            }
+            if (songs.isNotEmpty()) result += SubsonicPlaylist(id, name, songs)
+        }
+        return SubsonicResult.Success(result)
+    }
+
+    private suspend fun fetchPlaylistSongIds(playlistId: String): SubsonicResult<List<String>> {
+        val body = when (val r = request("getPlaylist", mapOf("id" to playlistId))) {
+            is SubsonicResult.Failure -> return r
+            is SubsonicResult.Success -> r.value
+        }
+        val array = body.optJSONObject("playlist")?.optJSONArray("entry")
+        val ids = mutableListOf<String>()
+        for (i in 0 until (array?.length() ?: 0)) {
+            array!!.getJSONObject(i).optString("id").takeIf { it.isNotBlank() }?.let { ids += it }
+        }
+        return SubsonicResult.Success(ids)
+    }
+
     /** The same file, for keeping. Subsonic's download never transcodes. */
     fun downloadUrl(songId: String): String = url("download", mapOf("id" to songId))
 
@@ -258,6 +296,12 @@ private inline fun <T, R> SubsonicResult<T>.map(transform: (T) -> R): SubsonicRe
 data class SubsonicLibrary(
     val albums: List<SubsonicAlbum>,
     val songs: List<SubsonicSong>,
+)
+
+data class SubsonicPlaylist(
+    val id: String,
+    val name: String,
+    val songIds: List<String>,
 )
 
 data class SubsonicAlbum(

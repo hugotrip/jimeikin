@@ -244,6 +244,11 @@ class CalmMusicViewModel(
     ): List<SongUiModel> {
         val mergedList = mutableListOf<SongUiModel>()
         val availableLocal = localSongs.toMutableList()
+        // What the album already shows, by title. A YouTube listing will happily offer the
+        // same song twice - a remaster beside the original, the same take under two
+        // spellings - and the pairing below only ever consumes one copy from the album,
+        // so the second arrived as a second row for a track already on the page.
+        val titlesShown = mutableSetOf<String>()
 
         for (ytSong in youtubeSongs) {
             val matchIndex = availableLocal.indexOfFirst { local ->
@@ -257,12 +262,14 @@ class CalmMusicViewModel(
                     discNumber = ytSong.discNumber
                 )
 
+                titlesShown.add(ArtistNames.key(displaySong.title))
                 mergedList.add(displaySong)
-            } else {
+            } else if (titlesShown.add(ArtistNames.key(ytSong.title))) {
                 mergedList.add(ytSong)
             }
         }
 
+        // Whatever the listing did not account for is still on the album and still belongs.
         if (availableLocal.isNotEmpty()) {
             mergedList.addAll(availableLocal.sortedBy { it.trackNumber })
         }
