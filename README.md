@@ -14,19 +14,10 @@ Fork of [CalmMusic](https://github.com/davidraywilson/CalmMusic) by
 and Mudita's MMD design system. CalmMusic is no longer maintained upstream; its author moved
 on to a different project.
 
-## Screenshots
-
-<table>
-<tr>
-  <td><img src="screenshots/search_artists.png" alt="Search results filtered to artists" width="200"></td>
-  <td><img src="screenshots/artist_songs.png" alt="Artist page, Songs tab" width="200"></td>
-  <td><img src="screenshots/artist_albums.png" alt="Artist page, Albums tab" width="200"></td>
-</tr>
-<tr>
-  <td><img src="screenshots/now_playing.png" alt="Now Playing screen" width="200"></td>
-  <td><img src="screenshots/streaming_settings.png" alt="Streaming settings" width="200"></td>
-</tr>
-</table>
+| | |
+|---|---|
+| ![Everything on the phone, in one list](screenshots/1-songs.png) | ![Artists, with each name gathered under one spelling](screenshots/2-artists.png) |
+| ![Playing](screenshots/3-player.png) | ![Pointing it at a music server](screenshots/4-server.png) |
 
 ## Local music
 
