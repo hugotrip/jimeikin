@@ -29,14 +29,17 @@ object ArtistNames {
                     // A combining mark is the accent itself, now separated from its letter.
                     Character.getType(c) == Character.NON_SPACING_MARK.toInt() -> Unit
                     c.isLetterOrDigit() -> append(c.lowercaseChar())
-                    c.isWhitespace() -> append(' ')
-                    // Punctuation is dropped rather than turned into a space, so that
-                    // "Godspeed You! Black Emperor" and "Godspeed You Black Emperor!" meet.
+                    // Spaces and punctuation both go, rather than punctuation becoming a
+                    // space. Dropping punctuation alone was not enough: it let
+                    // "Godspeed You! Black Emperor" meet "Godspeed You Black Emperor!" but
+                    // still kept "Akron/Family" apart from "Akron Family", because one had a
+                    // space where the other had a slash. Removing both settles every such
+                    // pair, and takes "R.E.M." to the same place as "REM" while it is there.
                     else -> Unit
                 }
             }
         }
-        return stripped.split(" ").filter { it.isNotBlank() }.joinToString(" ")
+        return stripped
     }
 
     /**
