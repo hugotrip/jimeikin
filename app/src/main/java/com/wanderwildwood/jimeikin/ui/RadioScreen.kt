@@ -58,8 +58,17 @@ fun RadioScreen(
     val accessibilitySheetState = rememberModalBottomSheetMMDState()
     val notificationSheetState = rememberModalBottomSheetMMDState()
 
+    val seenOnTuner by ExternalMediaRepository.tunedFrequency.collectAsState()
+    val weTurnedItOn by ExternalMediaRepository.radioLaunched.collectAsState()
+
+    // Told by the notification where there is one to read, and otherwise inferred: this app
+    // launched the tuner and the accessibility service has read a frequency off its display,
+    // which between them mean the radio is on. Without the second half, somebody who never
+    // granted notification access would watch this screen go on offering to turn on a radio
+    // that was already playing.
     val isRadioActive = mediaState.packageName.contains("radio", ignoreCase = true) ||
-            mediaState.packageName.contains("fm", ignoreCase = true)
+            mediaState.packageName.contains("fm", ignoreCase = true) ||
+            (weTurnedItOn && seenOnTuner != null)
 
     // Whether this phone has a tuner at all, asked once. Everything on this screen works by
     // driving the phone's own FM app, so on a phone without one there is nothing to drive -
@@ -91,6 +100,7 @@ fun RadioScreen(
                         if (packageName != null) {
                             if (isAppPlaying) onPausePlayback()
 
+                            ExternalMediaRepository.setRadioLaunched(true)
                             launchSystemRadioApp(context, packageName)
 
                             // Come back when the radio is actually on, rather than after a
@@ -306,6 +316,10 @@ fun ActiveRadioState(
     var isScanning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    // What the accessibility service read off the tuner's own display, preferred only where
+    // the notification carries no number of its own.
+    val seenOnTuner by ExternalMediaRepository.tunedFrequency.collectAsState()
+
     LaunchedEffect(isScanning) {
         if (isScanning) {
             delay(10000)
@@ -343,10 +357,16 @@ fun ActiveRadioState(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // We removed the PermissionWarning here because we enforce it before entering this state now,
-            // but keeping a small check doesn't hurt if the user revokes it while playing.
+            // Not having notification access is a supported way to use this screen, not a
+            // fault: the radio turns on and tunes without it. This used to shout
+            // "Notification access revoked" in red at anybody who had simply never granted it.
             if (!isNotificationListenerEnabled(context)) {
-                TextMMD("Notification access revoked", color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(8.dp))
+                TextMMD(
+                    text = "Showing what the tuner last displayed.",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             } else if (!mediaState.title.contains("FM Radio", ignoreCase = true)) {
                 Spacer(modifier = Modifier.height(8.dp))
                 if (!mediaState.title.matches(Regex(".*\\d{2,3}.*"))) {
@@ -365,7 +385,9 @@ fun ActiveRadioState(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 TextMMD(
-                    text = systemFrequency?.let { DecimalFormat("0.0").format(it) } ?: "Unknown",
+                    text = (systemFrequency ?: seenOnTuner)
+                        ?.let { DecimalFormat("0.0").format(it) }
+                        ?: "FM",
                     fontSize = 44.sp,
                     fontWeight = FontWeight.Bold,
                     color = if(isScanning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -388,6 +410,7 @@ fun ActiveRadioState(
                     .background(MaterialTheme.colorScheme.errorContainer)
                     .clickable {
                         performCommand(context, RadioCommand.TOGGLE_POWER, targetPackage)
+                        ExternalMediaRepository.setRadioLaunched(false)
                     },
                 contentAlignment = Alignment.Center
             ) {
