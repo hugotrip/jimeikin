@@ -45,6 +45,24 @@ import kotlin.math.abs
 /**
  * ViewModel responsible for owning long-lived CalmMusic library state and
  */
+
+/**
+ * Whether a song is played by the player on this phone.
+ *
+ * Files on the card, downloads, songs streamed from a music server and songs kept from one
+ * all go through media3 the same way — a uri is a uri, whether it names a file or a server.
+ * Only YouTube is different, because its stream has to be resolved first.
+ *
+ * This used to be spelled out at six separate call sites, and adding a source meant finding
+ * all six. Two were missed, which is why a server song reached the queue and then sat on
+ * "Loading" for ever: nothing routed it to a player.
+ */
+private fun playsOnThisPhone(sourceType: String?): Boolean =
+    sourceType == "LOCAL_FILE" ||
+        sourceType == "YOUTUBE_DOWNLOAD" ||
+        sourceType == "SUBSONIC" ||
+        sourceType == "SUBSONIC_DOWNLOAD"
+
 class CalmMusicViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
@@ -552,7 +570,7 @@ class CalmMusicViewModel(
         _playbackState.value = newState
         persistPlaybackSnapshot(newState)
 
-        if (song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE_DOWNLOAD") {
+        if (playsOnThisPhone(song.sourceType)) {
             val controller = localController
             if (controller != null && playbackCoordinator.localMediaItemsForQueue.isNotEmpty()) {
 
@@ -563,10 +581,7 @@ class CalmMusicViewModel(
                 // YouTube song should be.
                 var segmentEndIndex = startIndex
                 while (segmentEndIndex < queue.size &&
-                    (queue[segmentEndIndex].sourceType == "LOCAL_FILE" ||
-                            queue[segmentEndIndex].sourceType == "YOUTUBE_DOWNLOAD" ||
-                            queue[segmentEndIndex].sourceType == "SUBSONIC" ||
-                            queue[segmentEndIndex].sourceType == "SUBSONIC_DOWNLOAD")
+                    playsOnThisPhone(queue[segmentEndIndex].sourceType)
                 ) {
                     segmentEndIndex++
                 }
@@ -725,7 +740,7 @@ class CalmMusicViewModel(
             _playbackState.value = newState
             persistPlaybackSnapshot(newState)
 
-            if (current.sourceType == "LOCAL_FILE" || current.sourceType == "YOUTUBE_DOWNLOAD") {
+            if (playsOnThisPhone(current.sourceType)) {
                 startPlaybackFromQueue(
                     queue = newQueue,
                     startIndex = 0,
@@ -762,7 +777,7 @@ class CalmMusicViewModel(
             _playbackState.value = newState
             persistPlaybackSnapshot(newState)
 
-            if (restoredCurrent.sourceType == "LOCAL_FILE" || restoredCurrent.sourceType == "YOUTUBE_DOWNLOAD") {
+            if (playsOnThisPhone(restoredCurrent.sourceType)) {
                 startPlaybackFromQueue(
                     queue = restoreQueue,
                     startIndex = originalIndex,
@@ -786,7 +801,7 @@ class CalmMusicViewModel(
         persistPlaybackSnapshot()
 
         val song = state.nowPlayingSong
-        if (song?.sourceType == "LOCAL_FILE" || song?.sourceType == "YOUTUBE_DOWNLOAD") {
+        if (playsOnThisPhone(song?.sourceType)) {
             localController?.let { controller ->
                 controller.repeatMode = when (newRepeat) {
                     RepeatMode.ONE -> Player.REPEAT_MODE_ONE
@@ -876,7 +891,7 @@ class CalmMusicViewModel(
                 val state = _playbackState.value
                 val queue = state.playbackQueue
                 val currentSong = state.nowPlayingSong
-                val isLocalFile = currentSong?.sourceType == "LOCAL_FILE" || currentSong?.sourceType == "YOUTUBE_DOWNLOAD"
+                val isLocalFile = playsOnThisPhone(currentSong?.sourceType)
                 val isYouTube = currentSong?.sourceType == "YOUTUBE"
                 var didAutoAdvance = false
 

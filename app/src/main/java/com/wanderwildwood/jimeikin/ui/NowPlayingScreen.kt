@@ -375,7 +375,9 @@ fun NowPlayingScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            val isLocal = sourceType == "LOCAL_FILE" || sourceType == "YOUTUBE_DOWNLOAD"
+            val isLocal = sourceType == "LOCAL_FILE" ||
+                sourceType == "YOUTUBE_DOWNLOAD" ||
+                sourceType == "SUBSONIC_DOWNLOAD"
             if (!isLocal) {
                 // This was a solid black lozenge with a white cloud in it: the only inverted
                 // thing on the page, and the heaviest mark on a screen whose subject is the

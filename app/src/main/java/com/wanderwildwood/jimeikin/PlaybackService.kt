@@ -176,6 +176,22 @@ class PlaybackService : MediaSessionService() {
                 return@Factory dataSpec
             }
 
+            // Everything below resolves a YouTube video id into a playable stream. Only a
+            // YouTube song should go through it: its uri is a bare video id with no scheme
+            // at all. Anything that arrives already addressed — a music server on the local
+            // network, most obviously — is played as given.
+            //
+            // This used to pass through only file and content, so a Subsonic stream url was
+            // handed to the extractor as though the whole url were a video id, and playback
+            // failed with "No service can handle the url".
+            val host = uri.host.orEmpty()
+            val isYouTube = host.endsWith("youtube.com") ||
+                host.endsWith("youtu.be") ||
+                host.endsWith("googlevideo.com")
+            if (scheme != null && !isYouTube) {
+                return@Factory dataSpec
+            }
+
             val videoId = dataSpec.key
                 ?: uri.getQueryParameter("v")
                 ?: uri.lastPathSegment
