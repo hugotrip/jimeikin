@@ -621,6 +621,70 @@ fun CalmMusic(app: CalmMusic) {
      * source changes from a pointer to the server into a file, which is what makes its rule
      * solid and lets it play with the network off. Deleting it later puts the pointer back.
      */
+    /**
+     * Keeps a whole album, or everything by an artist, on the phone.
+     *
+     * One at a time and in order, rather than all at once: a phone on a home network gains
+     * nothing from six downloads competing, and doing them in sequence means the list fills
+     * from the top, which is legible while it happens. Songs already here are skipped, so
+     * pressing it twice costs nothing and finishes what a first press did not.
+     */
+    val onKeepAllOnPhone: (List<SongUiModel>) -> Unit = { songs ->
+        libraryScope.launch {
+            val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
+            val wanted = songs.filter { it.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE }
+            if (wanted.isEmpty()) {
+                snackbarHostState.showSnackbar(
+                    message = "These are all on this phone already",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            } else {
+                snackbarHostState.showSnackbar(
+                    message = if (wanted.size == 1) "Keeping one song" else "Keeping ${'$'}{wanted.size} songs",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+                var kept = 0
+                var failed = 0
+                val rows = withContext(Dispatchers.IO) { database.songDao().getAllSongs() }
+                    .associateBy { it.id }
+                for (song in wanted) {
+                    val row = rows[song.id] ?: continue
+                    when (val result = com.wanderwildwood.jimeikin.data.SubsonicDownloader.download(app, row)) {
+                        is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> failed++
+                        is com.wanderwildwood.jimeikin.data.SubsonicResult.Success -> {
+                            withContext(Dispatchers.IO) {
+                                database.songDao().upsertAll(
+                                    listOf(
+                                        row.copy(
+                                            sourceType = com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE,
+                                            audioUri = android.net.Uri.fromFile(result.value).toString(),
+                                        ),
+                                    ),
+                                )
+                            }
+                            kept++
+                            // Refreshed as they land, so the rules turn solid one by one
+                            // rather than the whole list changing at the end.
+                            viewModel.refreshLibraryFromDatabase()
+                        }
+                    }
+                }
+                snackbarHostState.showSnackbar(
+                    message = when {
+                        failed == 0 && kept == 1 -> "One song is on this phone now"
+                        failed == 0 -> "${'$'}kept songs are on this phone now"
+                        kept == 0 -> "None of them would download"
+                        else -> "${'$'}kept kept, ${'$'}failed did not download"
+                    },
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
+        }
+    }
+
     val onKeepOnPhone: (SongUiModel) -> Unit = { song ->
         libraryScope.launch {
             val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
@@ -1318,6 +1382,7 @@ fun CalmMusic(app: CalmMusic) {
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
+                        onKeepAllClick = onKeepAllOnPhone,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                     )
                 }
@@ -1341,6 +1406,7 @@ fun CalmMusic(app: CalmMusic) {
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
+                        onKeepAllClick = onKeepAllOnPhone,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                     )
                 }

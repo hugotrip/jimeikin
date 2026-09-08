@@ -217,7 +217,12 @@ class CalmMusicViewModel(
         val shouldComplete = settings.getCompleteAlbumsWithYouTubeSync()
 
         if (localSongs.isNotEmpty()) {
-            if (shouldComplete) {
+            // An album on a music server is already whole: the server holds the record, not a
+            // few tracks off it. Filling its gaps from YouTube found no gaps to fill and added
+            // near-misses instead - the same title twice, once from the server and once from a
+            // YouTube listing that spelled it differently enough to slip past the matcher.
+            val fromServer = localSongs.any { it.sourceType == SubsonicSync.SOURCE_TYPE }
+            if (shouldComplete && !fromServer) {
                 val youtubeSongs = getYouTubeAlbumSongs(album)
                 if (youtubeSongs.isNotEmpty()) {
                     return mergeLocalAndYouTubeAlbums(localSongs, youtubeSongs)

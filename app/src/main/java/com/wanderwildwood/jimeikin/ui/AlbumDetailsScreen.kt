@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ fun AlbumDetailsScreen(
     onRemoveFromLibraryClick: (SongUiModel) -> Unit = {},
     onDeleteClick: (SongUiModel) -> Unit = {},
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
+    onKeepAllClick: (List<SongUiModel>) -> Unit = {},
     onAddAllToPlaylistClick: (List<SongUiModel>) -> Unit = {},
 ) {
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
@@ -185,6 +187,17 @@ fun AlbumDetailsScreen(
                         imageVector = Icons.Filled.PlaylistAdd,
                         contentDescription = "Add the album to a playlist",
                     )
+                }
+
+                // Only where there is something to keep: a record already on the phone
+                // needs nothing, and this button would then be a button that does nothing.
+                if (songs.any { it.sourceType == "SUBSONIC" }) {
+                    FloatingActionButtonMMD(onClick = { onKeepAllClick(songs) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = "Keep the album on this phone",
+                        )
+                    }
                 }
             }
         }
