@@ -158,6 +158,10 @@ fun AlbumDetailsScreen(
                                 showDivider = song != displaySongs.lastOrNull(),
                                 showTrackNumber = true,
                                 isInLibrary = librarySongIds.contains(song.id),
+                                // The heading above already says both. A compilation, where
+                                // the tracks are by different people, still names each one.
+                                knownArtist = album?.artist,
+                                knownAlbum = album?.title,
                             )
                         }
                     }

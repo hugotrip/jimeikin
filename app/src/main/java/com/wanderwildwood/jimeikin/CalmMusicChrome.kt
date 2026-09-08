@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Search
@@ -375,16 +376,15 @@ private fun CalmMusicTopAppBarActions(
         !(currentDestination?.route == Screen.Playlists.route && isPlaylistsEditMode) &&
         !(currentDestination.isPlaylistDetails() && isPlaylistDetailsEditMode)
     ) {
-        ButtonMMD(
-            onClick = onNowPlayingClick,
-            contentPadding = PaddingValues(8.dp),
-            modifier = Modifier.padding(horizontal = 8.dp),
-        ) {
-            TextMMD(
-                text = "Now playing",
-                textAlign = TextAlign.Center,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
+        // Headphones, because that is already what marks the playing row in a list, and an
+        // icon because the filled button this used to be was the heaviest thing on every
+        // screen it appeared on - a solid black slab beside two hairline glyphs, and a
+        // large black fill is the slowest, ghostiest thing you can ask an e-ink panel to
+        // draw and undraw as you move between screens.
+        IconButton(onClick = onNowPlayingClick) {
+            Icon(
+                imageVector = Icons.Outlined.Headphones,
+                contentDescription = "Now playing",
             )
         }
     }

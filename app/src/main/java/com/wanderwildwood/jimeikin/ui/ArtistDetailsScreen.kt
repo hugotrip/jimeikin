@@ -1,5 +1,7 @@
 package com.wanderwildwood.jimeikin.ui
 
+import com.wanderwildwood.jimeikin.data.ArtistNames
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,6 +58,13 @@ fun ArtistDetailsScreen(
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabOptions = listOf("Albums", "Songs")
+
+    // Whose page this is, taken from the records rather than from the row being drawn, so a
+    // track credited to somebody else and filed here under its album artist still says so.
+    val pageArtist = remember(songs, albums) {
+        ArtistNames.preferred(albums.mapNotNull { it.artist } + songs.map { it.artist })
+            .takeIf { it.isNotBlank() }
+    }
 
     val playbackState by viewModel.playbackState.collectAsState()
     val currentSongId = playbackState.currentSongId
@@ -176,6 +185,9 @@ fun ArtistDetailsScreen(
                                         onDelete = { onDeleteClick(song) },
                                         onKeepOnPhone = { onKeepOnPhoneClick(song) },
                                         showDivider = song != songs.lastOrNull(),
+                                        // The heading already says it; the rows get on with
+                                        // saying which record each song is off.
+                                        knownArtist = pageArtist,
                                     )
                                 }
                             } else {

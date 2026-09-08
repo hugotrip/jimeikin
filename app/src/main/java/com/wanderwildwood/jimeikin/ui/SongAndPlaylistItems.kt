@@ -1,5 +1,7 @@
 package com.wanderwildwood.jimeikin.ui
 
+import com.wanderwildwood.jimeikin.data.ArtistNames
+
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -55,7 +57,14 @@ fun SongItem(
     isDownloaded: Boolean = false,
     showDivider: Boolean = true,
     isInLibrary: Boolean = false,
+    knownArtist: String? = null,
+    knownAlbum: String? = null,
 ) {
+    // A row on an album page said "Ichiko Aoba - Windswept Adan - 4:55" under every track,
+    // on a page whose heading already read "Windswept Adan / Ichiko Aoba" - the two facts
+    // the reader could not need repeated eight times, pushing the one they might, the
+    // length, off the end of a 480px line. A screen that already names the artist or the
+    // album says so, and the row leaves that part out.
     val (isLocal, subtitle) = remember(
         song.id,
         song.audioUri,
@@ -63,6 +72,8 @@ fun SongItem(
         song.album,
         song.durationText,
         song.sourceType,
+        knownArtist,
+        knownAlbum,
     ) {
         val local = song.sourceType == "LOCAL_FILE" ||
             song.sourceType == "YOUTUBE_DOWNLOAD" ||
@@ -80,8 +91,18 @@ fun SongItem(
         }
 
         val mp4 = local && fileExtension == "mp4"
-        val baseArtist = song.artist.ifBlank { if (local) "Local file" else "" }
-        val album = song.album?.takeIf { it.isNotBlank() }
+        // Compared the same way the library groups artists, so a page headed Björk does not
+        // start repeating the artist again the moment one track is tagged Bjork.
+        fun sameName(a: String?, b: String?) =
+            !a.isNullOrBlank() && !b.isNullOrBlank() && ArtistNames.key(a) == ArtistNames.key(b)
+
+        val baseArtist = song.artist
+            .ifBlank { if (local) "Local file" else "" }
+            .takeUnless { sameName(it, knownArtist) }
+            .orEmpty()
+        val album = song.album
+            ?.takeIf { it.isNotBlank() }
+            ?.takeUnless { sameName(it, knownAlbum) }
         val durationText = song.durationText?.takeIf { it.isNotBlank() }
         val prefix = if (mp4) "MP4 • " else ""
 
