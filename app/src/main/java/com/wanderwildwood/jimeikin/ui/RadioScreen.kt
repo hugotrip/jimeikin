@@ -38,7 +38,6 @@ import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.DecimalFormat
 
 enum class RadioCommand { NEXT, PREVIOUS, TOGGLE_POWER, STOP, FORCE_PLAY }
 
@@ -58,17 +57,15 @@ fun RadioScreen(
     val accessibilitySheetState = rememberModalBottomSheetMMDState()
     val notificationSheetState = rememberModalBottomSheetMMDState()
 
-    val seenOnTuner by ExternalMediaRepository.tunedFrequency.collectAsState()
     val weTurnedItOn by ExternalMediaRepository.radioLaunched.collectAsState()
 
-    // Told by the notification where there is one to read, and otherwise inferred: this app
-    // launched the tuner and the accessibility service has read a frequency off its display,
-    // which between them mean the radio is on. Without the second half, somebody who never
-    // granted notification access would watch this screen go on offering to turn on a radio
-    // that was already playing.
+    // Told by the notification where there is one to read, and otherwise remembered: this app
+    // launched the tuner, so the radio is on until it is turned off from here. Without the
+    // second half, somebody who never granted notification access would watch this screen go
+    // on offering to turn on a radio that was already playing.
     val isRadioActive = mediaState.packageName.contains("radio", ignoreCase = true) ||
             mediaState.packageName.contains("fm", ignoreCase = true) ||
-            (weTurnedItOn && seenOnTuner != null)
+            weTurnedItOn
 
     // Whether this phone has a tuner at all, asked once. Everything on this screen works by
     // driving the phone's own FM app, so on a phone without one there is nothing to drive -
@@ -312,44 +309,20 @@ fun ActiveRadioState(
     mediaState: ExternalMediaState,
     targetPackage: String
 ) {
-    var systemFrequency by remember { mutableStateOf<Float?>(null) }
-    var isScanning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // What the accessibility service read off the tuner's own display, preferred only where
-    // the notification carries no number of its own.
-    val seenOnTuner by ExternalMediaRepository.tunedFrequency.collectAsState()
-
-    LaunchedEffect(isScanning) {
-        if (isScanning) {
-            delay(10000)
-            isScanning = false
-        }
-    }
-
-    LaunchedEffect(mediaState.title, mediaState.artist) {
-        val rawText = "${mediaState.title} ${mediaState.artist}"
-        val regex = Regex("(\\d{2,3}(?:\\.\\d)?)")
-        val allMatches = regex.findAll(rawText)
-
-        var foundMatch = false
-        for (match in allMatches) {
-            val parsed = match.value.toFloatOrNull()
-            if (parsed != null && parsed >= 87.0f && parsed <= 108.0f) {
-                foundMatch = true
-                if (isScanning) {
-                    if (systemFrequency == null || systemFrequency != parsed) {
-                        systemFrequency = parsed
-                        isScanning = false
-                    }
-                } else {
-                    systemFrequency = parsed
-                }
-                break
-            }
-        }
-        if (!foundMatch) systemFrequency = null
-    }
+    // There is no frequency here on purpose.
+    //
+    // It was parsed out of the tuner's notification, and this phone's tuner posts the words
+    // "FM Radio" with an empty body and publishes no media session, so the screen said
+    // "Unknown" from the day it was written. Reading the number off the tuner's own display
+    // with the accessibility service does work - but only while that app is on screen, and
+    // tuning from here goes out as a media-button broadcast that never brings it forward, so
+    // the number would be right when the radio came on and quietly wrong from the first press
+    // of next. A number that goes stale is worse than no number: you would believe it.
+    //
+    // So this screen does what it can actually do - on, off, up, down - and does not claim to
+    // know what the radio is tuned to. The tuner knows; it is one tap away.
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -362,39 +335,28 @@ fun ActiveRadioState(
             // "Notification access revoked" in red at anybody who had simply never granted it.
             if (!isNotificationListenerEnabled(context)) {
                 Spacer(modifier = Modifier.height(8.dp))
-                TextMMD(
-                    text = "Showing what the tuner last displayed.",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
             } else if (!mediaState.title.contains("FM Radio", ignoreCase = true)) {
                 Spacer(modifier = Modifier.height(8.dp))
-                if (!mediaState.title.matches(Regex(".*\\d{2,3}.*"))) {
-                    TextMMD(mediaState.title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
-                }
+                TextMMD(mediaState.title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
             }
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
                 IconButton(onClick = {
-                    isScanning = true
                     performCommand(context, RadioCommand.PREVIOUS, targetPackage)
                 }, modifier = Modifier.size(64.dp)) {
                     Icon(Icons.Outlined.SkipPrevious, "Scan down", modifier = Modifier.size(48.dp))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 TextMMD(
-                    text = (systemFrequency ?: seenOnTuner)
-                        ?.let { DecimalFormat("0.0").format(it) }
-                        ?: "FM",
+                    text = "FM",
                     fontSize = 44.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if(isScanning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(onClick = {
-                    isScanning = true
                     performCommand(context, RadioCommand.NEXT, targetPackage)
                 }, modifier = Modifier.size(64.dp)) {
                     Icon(Icons.Outlined.SkipNext, "Scan up", modifier = Modifier.size(48.dp))

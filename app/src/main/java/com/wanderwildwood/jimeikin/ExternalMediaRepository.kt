@@ -27,30 +27,6 @@ object ExternalMediaRepository {
         get() = _mediaState.value
 
     /**
-     * What the tuner is tuned to, read off the tuner's own screen.
-     *
-     * The obvious place to get this is the notification the radio app posts, and that is where
-     * it used to come from - but the tuner on this phone posts the words "FM Radio" and
-     * nothing else, and publishes no media session at all, so there has never been a frequency
-     * in it to find. The screen said "Unknown" for ever.
-     *
-     * The accessibility service is already inside that app's screen, because pressing play is
-     * the only way to work a tuner from outside it. While it is there it reads the number off
-     * the display. That is a strange place to get a frequency from, and it is the only place
-     * this phone puts one.
-     */
-    private val _tunedFrequency = MutableStateFlow<Float?>(null)
-    val tunedFrequency = _tunedFrequency.asStateFlow()
-
-    fun reportTunedFrequency(frequency: Float) {
-        if (frequency in 87.0f..108.0f) _tunedFrequency.value = frequency
-    }
-
-    fun forgetTunedFrequency() {
-        _tunedFrequency.value = null
-    }
-
-    /**
      * Whether this app was the one that turned the radio on.
      *
      * Without notification access there is no way to be told the radio is playing, so a screen
@@ -63,7 +39,6 @@ object ExternalMediaRepository {
 
     fun setRadioLaunched(launched: Boolean) {
         _radioLaunched.value = launched
-        if (!launched) _tunedFrequency.value = null
     }
 
     private var activeController: MediaController? = null

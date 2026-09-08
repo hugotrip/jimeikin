@@ -11,7 +11,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 class CalmMusicAccessibilityService : AccessibilityService() {
 
     private val TAG = "CalmMusicAccess"
-    private val FREQUENCY = Regex("\\b\\d{2,3}(?:\\.\\d)?\\b")
     private var lastClickTime: Long = 0
     private val CLICK_COOLDOWN_MS = 3000L
 
@@ -32,41 +31,8 @@ class CalmMusicAccessibilityService : AccessibilityService() {
             event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
 
             val rootNode = rootInActiveWindow ?: return
-            readFrequency(rootNode)
             checkForPlayButton(rootNode)
         }
-    }
-
-    /**
-     * The number on the tuner's display.
-     *
-     * A tuner shows its frequency and very little else, so anything on that screen reading
-     * between 87.0 and 108.0 is the station. Both "91.0" on its own and "FM 91.0" occur, hence
-     * the search rather than a straight parse. Whole numbers are accepted because a tuner
-     * showing 90 means 90.0; anything with more than one decimal is not a frequency.
-     *
-     * This is the only place the frequency exists on this phone: the tuner's notification says
-     * "FM Radio" and nothing more, and it publishes no media session.
-     */
-    private fun readFrequency(root: AccessibilityNodeInfo) {
-        val found = scanForFrequency(root, 0)
-        if (found != null) ExternalMediaRepository.reportTunedFrequency(found)
-    }
-
-    private fun scanForFrequency(node: AccessibilityNodeInfo?, depth: Int): Float? {
-        if (node == null || depth > 12) return null
-        val text = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
-        for (candidate in text) {
-            val match = FREQUENCY.find(candidate) ?: continue
-            val value = match.value.toFloatOrNull() ?: continue
-            if (value in 87.0f..108.0f) return value
-        }
-        for (i in 0 until node.childCount) {
-            val child = try { node.getChild(i) } catch (_: Exception) { null }
-            val found = scanForFrequency(child, depth + 1)
-            if (found != null) return found
-        }
-        return null
     }
 
     private fun checkForPlayButton(root: AccessibilityNodeInfo) {
