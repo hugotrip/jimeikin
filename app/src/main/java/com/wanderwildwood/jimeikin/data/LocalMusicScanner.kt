@@ -171,6 +171,13 @@ object LocalMusicScanner {
                 if (children.any { it.name == ".nomedia" }) continue
 
                 for (child in children) {
+                    // A name beginning with a dot is not for reading. macOS leaves a "._"
+                    // sidecar beside every file it touches on a non-Mac disk, carrying the
+                    // same extension as the real thing - a library copied through a Mac has
+                    // one per song, and matching on extension alone would index every one of
+                    // them as a phantom track.
+                    if (child.name.startsWith(".")) continue
+
                     val isDirectory = child.mimeType == DocumentsContract.Document.MIME_TYPE_DIR
                     if (isDirectory) {
                         stack.add(
