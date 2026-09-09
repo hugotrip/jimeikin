@@ -318,7 +318,9 @@ fun NowPlayingScreen(
             if (isLoading) {
                 // A word, not a spinner: this panel cannot animate without smearing.
                 TextMMD(
-                    text = if (isLive) "Reconnecting" else "Loading",
+                    // Both have to fit the 72dp the play button occupies, or the word wraps
+                    // mid-syllable: "Reconnecting" broke as "Reconnecti / ng".
+                    text = if (isLive) "Waiting" else "Loading",
                     fontSize = 14.sp,
                     modifier = Modifier.size(72.dp).wrapContentSize(Alignment.Center),
                 )
