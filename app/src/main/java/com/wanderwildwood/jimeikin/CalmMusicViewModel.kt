@@ -927,7 +927,15 @@ class CalmMusicViewModel(
                 val position = controller.currentPosition
                 val duration = controller.duration
                 val playbackState = controller.playbackState
-                val isBufferingNow = !isLocalFile && playbackState == Player.STATE_BUFFERING
+                // What can stall is what comes over a network. This used to ask
+                // playsOnThisPhone, which answers a different question - whether the player
+                // can be handed the uri - and had just been taught to say yes to radio. The
+                // result was a stream that went silent when the network dropped while the
+                // screen went on showing a pause button, and a server song that did the same.
+                val cannotStall = currentSong?.sourceType == "LOCAL_FILE" ||
+                    currentSong?.sourceType == "YOUTUBE_DOWNLOAD" ||
+                    currentSong?.sourceType == "SUBSONIC_DOWNLOAD"
+                val isBufferingNow = !cannotStall && playbackState == Player.STATE_BUFFERING
 
                 var newState = state.copy(
                     isPlaybackPlaying = isPlaying,

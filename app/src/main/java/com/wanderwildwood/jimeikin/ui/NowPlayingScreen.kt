@@ -318,7 +318,7 @@ fun NowPlayingScreen(
             if (isLoading) {
                 // A word, not a spinner: this panel cannot animate without smearing.
                 TextMMD(
-                    text = "Loading",
+                    text = if (isLive) "Reconnecting" else "Loading",
                     fontSize = 14.sp,
                     modifier = Modifier.size(72.dp).wrapContentSize(Alignment.Center),
                 )

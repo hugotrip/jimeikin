@@ -16,7 +16,7 @@ on to a different project.
 
 | | |
 |---|---|
-| ![Everything on the phone, in one list](screenshots/1-songs.png) | ![Artists, with each name gathered under one spelling](screenshots/2-artists.png) |
+| ![Everything on the phone, in one list](screenshots/1-songs.png) | ![The Radio tab: stations kept from anywhere](screenshots/2-radio.png) |
 | ![Playing](screenshots/3-player.png) | ![Pointing it at a music server](screenshots/4-server.png) |
 
 ## Local music
