@@ -607,6 +607,10 @@ fun CalmMusic(app: CalmMusic) {
     // list of records that is not a record.
     var keptRadioStations by remember { mutableStateOf<List<com.wanderwildwood.jimeikin.data.RadioStationEntity>>(emptyList()) }
 
+    // The magnifying glass in the top bar means something different on the Radio tab: stations
+    // and places, not songs. The chrome flips this rather than navigating away.
+    var radioSearchOpen by remember { mutableStateOf(false) }
+
     suspend fun reloadRadioStations() {
         val dao = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app).radioStationDao()
         keptRadioStations = withContext(Dispatchers.IO) { dao.getAll() }
@@ -1217,7 +1221,11 @@ fun CalmMusic(app: CalmMusic) {
                         },
                         onEnterPlaylistsEditClick = { isPlaylistsEditMode = true },
                         onNavigateToSearchClick = {
-                            navController.navigate(Screen.Search.route) { launchSingleTop = true }
+                            if (currentDestination?.route == Screen.Radio.route) {
+                                radioSearchOpen = true
+                            } else {
+                                navController.navigate(Screen.Search.route) { launchSingleTop = true }
+                            }
                         },
                         onPlaylistDetailsMenuToggle = {
                             isPlaylistDetailsMenuExpanded = !isPlaylistDetailsMenuExpanded
@@ -1511,6 +1519,8 @@ fun CalmMusic(app: CalmMusic) {
 
                 composable(Screen.Radio.route) {
                     RadioScreen(
+                        searchOpen = radioSearchOpen,
+                        onSearchOpenChange = { radioSearchOpen = it },
                         keptStations = keptRadioStations,
                         onPlayStation = { station ->
                             // A stream is queued on its own: it has no end, so it cannot sit in

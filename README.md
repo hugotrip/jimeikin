@@ -76,7 +76,10 @@ Respect artists' rights and your local laws when streaming or downloading from Y
 Two radios, which are not the same thing.
 
 **Stations** are on the internet, browsed by place — country, then town, then what is on the
-air there. The list is [radio.garden](https://radio.garden)'s, which is worth browsing the way
+air there — or found with the magnifying glass, which on this screen looks for station names,
+towns, and postcodes. A postcode is answered with the towns nearest it, which is what somebody
+typing one is actually asking. Both lists take a filter as well, because France alone has more
+than eighteen hundred stations. The list is [radio.garden](https://radio.garden)'s, which is worth browsing the way
 that site is worth browsing: not by searching for a station you already know, but by going
 somewhere. Keep one and it sits at the top of the screen. A kept station stores the address of
 the stream itself, so it goes on playing whatever becomes of radio.garden.

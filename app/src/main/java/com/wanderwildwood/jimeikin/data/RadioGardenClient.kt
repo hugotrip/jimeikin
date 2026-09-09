@@ -13,6 +13,14 @@ data class RadioPlace(
     val title: String,
     val country: String,
     val stationCount: Int,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+)
+
+/** What a search turned up: some towns, some stations. */
+data class RadioSearchResults(
+    val places: List<RadioPlace>,
+    val channels: List<RadioChannel>,
 )
 
 /** One station, as radio.garden lists it. */
@@ -80,6 +88,9 @@ object RadioGarden {
                     title = item.optString("title").ifBlank { return@mapNotNull null },
                     country = item.optString("country").ifBlank { "Elsewhere" },
                     stationCount = item.optInt("size", 0),
+                    // radio.garden gives longitude first.
+                    longitude = item.optJSONArray("geo")?.optDouble(0, 0.0) ?: 0.0,
+                    latitude = item.optJSONArray("geo")?.optDouble(1, 0.0) ?: 0.0,
                 )
             }
         } catch (e: Exception) {
@@ -125,6 +136,94 @@ object RadioGarden {
         } catch (e: Exception) {
             android.util.Log.w("RadioGarden", "could not read ${place.title}'s stations", e)
             emptyList()
+        }
+    }
+
+    /**
+     * Their own search, which covers the two things a local filter cannot: station names, and
+     * towns whose country you would have to think of first.
+     */
+    suspend fun search(query: String): RadioSearchResults = withContext(Dispatchers.IO) {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) return@withContext RadioSearchResults(emptyList(), emptyList())
+        val encoded = java.net.URLEncoder.encode(trimmed, "UTF-8")
+        val body = get("https://radio.garden/api/search?q=$encoded")
+            ?: return@withContext RadioSearchResults(emptyList(), emptyList())
+        val places = mutableListOf<RadioPlace>()
+        val channels = mutableListOf<RadioChannel>()
+        try {
+            val hits = JSONObject(body).getJSONObject("hits").getJSONArray("hits")
+            for (i in 0 until hits.length()) {
+                val source = hits.optJSONObject(i)?.optJSONObject("_source") ?: continue
+                val page = source.optJSONObject("page") ?: continue
+                val id = page.optString("url").substringAfterLast('/').takeIf { it.isNotBlank() }
+                    ?: continue
+                when (source.optString("type")) {
+                    "place" -> places += RadioPlace(
+                        id = id,
+                        title = page.optString("title"),
+                        country = page.optString("subtitle").ifBlank { "Elsewhere" },
+                        stationCount = page.optInt("count", 0),
+                    )
+                    "channel" -> channels += RadioChannel(
+                        id = id,
+                        title = page.optString("title"),
+                        place = page.optJSONObject("place")?.optString("title").orEmpty(),
+                        country = page.optJSONObject("country")?.optString("title").orEmpty(),
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("RadioGarden", "search failed", e)
+        }
+        RadioSearchResults(places, channels)
+    }
+
+    /**
+     * The towns nearest a point, for a postcode.
+     *
+     * radio.garden knows where each town is, so a postcode only has to become a latitude and a
+     * longitude for this to answer "what is on the air near here" - which is the question
+     * somebody typing a postcode is actually asking, and one no amount of name matching
+     * answers.
+     */
+    suspend fun nearest(latitude: Double, longitude: Double, limit: Int = 20): List<RadioPlace> =
+        withContext(Dispatchers.IO) {
+            places()
+                .filter { it.stationCount > 0 && (it.latitude != 0.0 || it.longitude != 0.0) }
+                .sortedBy { distanceKm(latitude, longitude, it.latitude, it.longitude) }
+                .take(limit)
+        }
+
+    /** Great-circle distance, near enough for ordering a list of towns. */
+    fun distanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    }
+
+    /**
+     * A postcode turned into a point, by zippopotam.us - a free lookup with no key and no
+     * account. It is asked for nothing but the postcode typed, and only when what was typed
+     * looks like one.
+     */
+    suspend fun locatePostcode(code: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
+        val trimmed = code.trim()
+        val country = when {
+            trimmed.matches(Regex("\\d{5}")) -> "us"
+            trimmed.matches(Regex("[A-Za-z]\\d[A-Za-z] ?\\d[A-Za-z]\\d")) -> "ca"
+            else -> return@withContext null
+        }
+        val body = get("https://api.zippopotam.us/$country/$trimmed") ?: return@withContext null
+        try {
+            val place = JSONObject(body).getJSONArray("places").getJSONObject(0)
+            place.getString("latitude").toDouble() to place.getString("longitude").toDouble()
+        } catch (e: Exception) {
+            null
         }
     }
 
