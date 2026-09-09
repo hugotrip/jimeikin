@@ -602,6 +602,61 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
+    // The stations kept from radio.garden. They are not in the library and never join a queue
+    // of songs: a live stream has no length, cannot be shuffled, and would be the one row in a
+    // list of records that is not a record.
+    var keptRadioStations by remember { mutableStateOf<List<com.wanderwildwood.jimeikin.data.RadioStationEntity>>(emptyList()) }
+
+    suspend fun reloadRadioStations() {
+        val dao = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app).radioStationDao()
+        keptRadioStations = withContext(Dispatchers.IO) { dao.getAll() }
+    }
+
+    LaunchedEffect(Unit) { reloadRadioStations() }
+
+    fun keepRadioStation(channel: com.wanderwildwood.jimeikin.data.RadioChannel) {
+        libraryScope.launch {
+            // The stream url is resolved now and stored, rather than resolved at play time.
+            // That is what lets a kept station outlive radio.garden's undocumented api.
+            val stream = com.wanderwildwood.jimeikin.data.RadioGarden.resolveStream(channel.id)
+            if (stream.isNullOrBlank()) {
+                snackbarHostState.showSnackbar(
+                    message = "That station would not give a stream",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+                return@launch
+            }
+            val dao = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app).radioStationDao()
+            withContext(Dispatchers.IO) {
+                dao.keep(
+                    com.wanderwildwood.jimeikin.data.RadioStationEntity(
+                        id = channel.id,
+                        title = channel.title,
+                        place = channel.place,
+                        country = channel.country,
+                        streamUrl = stream,
+                        keptAtMillis = System.currentTimeMillis(),
+                    ),
+                )
+            }
+            reloadRadioStations()
+            snackbarHostState.showSnackbar(
+                message = "Kept \"" + channel.title + "\"",
+                withDismissAction = false,
+                duration = SnackbarDurationMMD.Short,
+            )
+        }
+    }
+
+    fun forgetRadioStation(station: com.wanderwildwood.jimeikin.data.RadioStationEntity) {
+        libraryScope.launch {
+            val dao = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app).radioStationDao()
+            withContext(Dispatchers.IO) { dao.forget(station.id) }
+            reloadRadioStations()
+        }
+    }
+
     /** The server keeps everything; this phone stops listing it. */
     fun forgetMusicServer() {
         libraryScope.launch {
@@ -1456,6 +1511,25 @@ fun CalmMusic(app: CalmMusic) {
 
                 composable(Screen.Radio.route) {
                     RadioScreen(
+                        keptStations = keptRadioStations,
+                        onPlayStation = { station ->
+                            // A stream is queued on its own: it has no end, so it cannot sit in
+                            // a queue of songs and be followed by one.
+                            startPlaybackFromQueue(
+                                queue = listOf(
+                                    SongUiModel(
+                                        id = "RADIO:" + station.id,
+                                        title = station.title,
+                                        artist = station.place + " • " + station.country,
+                                        sourceType = "RADIO",
+                                        audioUri = station.streamUrl,
+                                    ),
+                                ),
+                                startIndex = 0,
+                            )
+                        },
+                        onKeepStation = { channel -> keepRadioStation(channel) },
+                        onForgetStation = { station -> forgetRadioStation(station) },
                         onPausePlayback = { viewModel.togglePlayback(localMediaController) },
                         isAppPlaying = playbackState.isPlaybackPlaying
                     )
@@ -1672,6 +1746,7 @@ fun CalmMusic(app: CalmMusic) {
                 },
                 onBackClick = { showNowPlaying = false },
                 isVideo = isLocalVideo,
+                isLive = song.sourceType == "RADIO",
                 player = if (isLocalVideo) localMediaController else null,
                 canDownload = (streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE"),
                 isDownloadInProgress = downloadStatuses.any { it.songId == song.id && (it.state == YouTubeDownloadStatus.State.PENDING || it.state == YouTubeDownloadStatus.State.IN_PROGRESS) },

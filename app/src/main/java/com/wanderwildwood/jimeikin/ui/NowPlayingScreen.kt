@@ -67,6 +67,7 @@ fun NowPlayingScreen(
     onAddToPlaylistClick: () -> Unit,
     onBackClick: () -> Unit = {},
     isVideo: Boolean = false,
+    isLive: Boolean = false,
     player: Player? = null,
     canDownload: Boolean = false,
     isDownloadInProgress: Boolean = false,
@@ -244,7 +245,17 @@ fun NowPlayingScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Column(
+        // A radio stream has no length and no position to seek to, so it gets neither a bar
+        // nor a pair of clocks. Both would have sat at 0:00 for as long as you listened, which
+        // reads as something broken rather than as something live.
+        if (isLive) {
+            TextMMD(
+                text = "Live",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+        } else Column(
             modifier = Modifier.fillMaxWidth(),
         ) {
             SliderMMD(

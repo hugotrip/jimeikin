@@ -13,6 +13,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -189,7 +190,13 @@ class PlaybackService : MediaSessionService() {
                 host.endsWith("youtu.be") ||
                 host.endsWith("googlevideo.com")
             if (scheme != null && !isYouTube) {
-                return@Factory dataSpec
+                // A live radio stream has no end and no length, and handing one to the cache
+                // stalls it before a note is heard - it sat on "Loading" for ever. This flag
+                // is exactly for that case: cache what has a length, stream what does not. A
+                // song from a music server still has a length and is still cached.
+                return@Factory dataSpec.buildUpon()
+                    .setFlags(dataSpec.flags or DataSpec.FLAG_DONT_CACHE_IF_LENGTH_UNKNOWN)
+                    .build()
             }
 
             val videoId = dataSpec.key

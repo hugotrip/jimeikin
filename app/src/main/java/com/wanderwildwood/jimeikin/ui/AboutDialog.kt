@@ -38,8 +38,10 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 "the YouTube cookie are sealed with a key held in this phone's keystore and " +
                 "are left out of Android's backups, so neither leaves with one. " +
                 "The FM radio reads " +
-                "the tuner's notification and, if you allow it, presses play in the tuner " +
-                "for you. There are no ads, no analytics and nothing is counted.",
+                "Radio stations come from radio.garden, which is asked what is on the air " +
+                "in a place; a station you keep is stored as its own address and plays " +
+                "without asking anything further. The FM row opens the phone's own tuner and " +
+                "does nothing else. There are no ads, no analytics and nothing is counted.",
             fontSize = 14.sp,
         )
 

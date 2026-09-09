@@ -71,6 +71,20 @@ Nothing else in the app needs one.
 
 Respect artists' rights and your local laws when streaming or downloading from YouTube.
 
+## Radio
+
+Two radios, which are not the same thing.
+
+**Stations** are on the internet, browsed by place — country, then town, then what is on the
+air there. The list is [radio.garden](https://radio.garden)'s, which is worth browsing the way
+that site is worth browsing: not by searching for a station you already know, but by going
+somewhere. Keep one and it sits at the top of the screen. A kept station stores the address of
+the stream itself, so it goes on playing whatever becomes of radio.garden.
+
+**FM** is the phone's own tuner, if it has one, and the row opens it. The tuner shows the
+frequency, holds the presets and scans; there is nothing to gain from a worse copy of it here.
+Needs headphones — they are the aerial.
+
 ## The queue
 
 One now-playing queue, mixing local files and YouTube tracks. Shuffle and repeat without
@@ -100,11 +114,13 @@ notification for playback, and an exemption from battery optimisation so the sys
 likely to stop it. It does not ask for storage — folders are reached through the system
 picker, which grants this app that folder and nothing else.
 
-Two permissions are optional and are asked for only on the Radio screen, at the moment they
-are needed: reading the FM tuner's now-playing notification to show the frequency, and an
-accessibility service whose whole job is to press play in the tuner and come back. Neither is
-required to use the rest of the app, and on a phone with no FM tuner the Radio screen says so
-and asks for nothing.
+**It asks for no accessibility service.** It used to, to press play inside the phone's FM
+tuner, which is a great deal of trust for a small convenience; the Radio screen opens the tuner
+instead and the service is gone.
+
+One permission is optional and never asked for on its own: reading other apps' media
+notifications, which is what lets this show controls for something else that is playing. Say no
+and everything else works.
 
 ## For developers
 
@@ -124,6 +140,7 @@ Releases.
 ## Credits
 
 - Built on [CalmMusic](https://github.com/davidraywilson/CalmMusic) by David Ray Wilson (GPL-3.0).
+- Station listings from [radio.garden](https://radio.garden), used as a directory only.
 - YouTube stream resolution via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) by TeamNewPipe (GPL-3.0).
 - UI built with Mudita's MMD component library for Kompakt.
 

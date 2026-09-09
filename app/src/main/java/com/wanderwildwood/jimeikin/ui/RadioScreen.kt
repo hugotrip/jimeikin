@@ -1,454 +1,321 @@
 package com.wanderwildwood.jimeikin.ui
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.provider.Settings
-import android.text.TextUtils
-import android.view.KeyEvent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wanderwildwood.jimeikin.ExternalMediaRepository
-import com.wanderwildwood.jimeikin.ExternalMediaState
-import com.wanderwildwood.jimeikin.CalmMusicAccessibilityService
-import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
-import com.mudita.mmd.components.bottom_sheet.rememberModalBottomSheetMMDState
-import com.mudita.mmd.components.buttons.ButtonMMD
-import com.mudita.mmd.components.buttons.OutlinedButtonMMD
+import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
-import kotlinx.coroutines.delay
+import com.wanderwildwood.jimeikin.data.RadioChannel
+import com.wanderwildwood.jimeikin.data.RadioGarden
+import com.wanderwildwood.jimeikin.data.RadioPlace
+import com.wanderwildwood.jimeikin.data.RadioStationEntity
 import kotlinx.coroutines.launch
 
-enum class RadioCommand { NEXT, PREVIOUS, TOGGLE_POWER, STOP, FORCE_PLAY }
-
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Two radios, which are not the same thing.
+ *
+ * **FM** is the phone's own tuner, and this screen does one thing with it: opens it. It used to
+ * drive it from here - press play through an accessibility service, read the frequency out of a
+ * notification, offer up and down - and every part of that was a worse version of the tuner the
+ * phone already has. The tuner shows the frequency, holds the presets, and scans; a remote
+ * control for it that could not show what it was tuned to was not worth the two permissions it
+ * cost. So the row opens the tuner and gets out of the way.
+ *
+ * **Stations** are on the internet, and they are what a phone with a network can do that a
+ * tuner cannot: hear somewhere else. They come from radio.garden, browsed the way that site is
+ * worth browsing - by place - and kept by name once found.
+ */
 @Composable
 fun RadioScreen(
+    keptStations: List<RadioStationEntity>,
+    onPlayStation: (RadioStationEntity) -> Unit,
+    onKeepStation: (RadioChannel) -> Unit,
+    onForgetStation: (RadioStationEntity) -> Unit,
     onPausePlayback: () -> Unit,
-    isAppPlaying: Boolean
+    isAppPlaying: Boolean,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val mediaState by ExternalMediaRepository.mediaState.collectAsState()
 
-    var showAccessibilitySheet by remember { mutableStateOf(false) }
-    var showNotificationSheet by remember { mutableStateOf(false) }
+    // Asked once. On a phone with no tuner the row is simply not there, rather than being there
+    // and doing nothing.
+    val tunerPackage = remember { findRadioPackage(context) }
 
-    val accessibilitySheetState = rememberModalBottomSheetMMDState()
-    val notificationSheetState = rememberModalBottomSheetMMDState()
+    var browsingCountry by remember { mutableStateOf<String?>(null) }
+    var browsingPlace by remember { mutableStateOf<RadioPlace?>(null) }
+    var countries by remember { mutableStateOf<List<Pair<String, Int>>>(emptyList()) }
+    var placesHere by remember { mutableStateOf<List<RadioPlace>>(emptyList()) }
+    var channelsHere by remember { mutableStateOf<List<RadioChannel>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    var browsing by remember { mutableStateOf(false) }
 
-    val weTurnedItOn by ExternalMediaRepository.radioLaunched.collectAsState()
+    BackHandler(enabled = browsing) {
+        when {
+            browsingPlace != null -> browsingPlace = null
+            browsingCountry != null -> browsingCountry = null
+            else -> browsing = false
+        }
+    }
 
-    // Told by the notification where there is one to read, and otherwise remembered: this app
-    // launched the tuner, so the radio is on until it is turned off from here. Without the
-    // second half, somebody who never granted notification access would watch this screen go
-    // on offering to turn on a radio that was already playing.
-    val isRadioActive = mediaState.packageName.contains("radio", ignoreCase = true) ||
-            mediaState.packageName.contains("fm", ignoreCase = true) ||
-            weTurnedItOn
+    LaunchedEffect(browsing) {
+        if (browsing && countries.isEmpty()) {
+            loading = true
+            countries = RadioGarden.countries()
+            loading = false
+        }
+    }
 
-    // Whether this phone has a tuner at all, asked once. Everything on this screen works by
-    // driving the phone's own FM app, so on a phone without one there is nothing to drive -
-    // and the screen used to find that out last, after asking for the accessibility
-    // permission, which is the most alarming thing this app could ask a stranger for and was
-    // being asked for a radio that did not exist.
-    val hasTuner = remember { findRadioPackage(context) != null }
+    LaunchedEffect(browsingCountry) {
+        val country = browsingCountry
+        if (country != null) {
+            loading = true
+            placesHere = RadioGarden.placesIn(country)
+            loading = false
+        }
+    }
 
-    // Reading the tuner's notification is how this screen knows the radio is on and what it is
-    // tuned to. That is worth having and it is not worth blocking on: it used to be demanded
-    // before the tuner would launch at all, so somebody who granted the accessibility
-    // permission - the one that actually works the tuner - and declined this one got a button
-    // that did nothing, for ever. The radio turns on without it; the screen just cannot say so.
-    val canReadStatus = isNotificationListenerEnabled(context)
+    LaunchedEffect(browsingPlace) {
+        val place = browsingPlace
+        if (place != null) {
+            loading = true
+            channelsHere = RadioGarden.channelsIn(place)
+            loading = false
+        }
+    }
 
-    if (!isRadioActive) {
-        EmptyRadioState(
-            hasTuner = hasTuner,
-            canReadStatus = canReadStatus,
-            onGrantReadStatus = { showNotificationSheet = true },
-            onPowerOn = {
-                if (!hasTuner) {
-                    // Nothing to ask for.
-                } else if (!isAccessibilityServiceEnabled(context, CalmMusicAccessibilityService::class.java)) {
-                    showAccessibilitySheet = true
-                } else {
+    if (loading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            TextMMD("Reading the list…", fontSize = 16.sp)
+        }
+        return
+    }
+
+    when {
+        browsingPlace != null -> ChannelList(
+            place = browsingPlace!!,
+            channels = channelsHere,
+            keptIds = keptStations.map { it.id }.toSet(),
+            onKeep = onKeepStation,
+        )
+
+        browsingCountry != null -> RowList(
+            heading = browsingCountry!!,
+            rows = placesHere.map { place ->
+                Row3(place.title, plural(place.stationCount)) { browsingPlace = place }
+            },
+        )
+
+        browsing -> RowList(
+            heading = "Everywhere",
+            rows = countries.map { (country, stations) ->
+                Row3(country, plural(stations)) { browsingCountry = country }
+            },
+        )
+
+        else -> RadioHome(
+            keptStations = keptStations,
+            hasTuner = tunerPackage != null,
+            onPlayStation = { station ->
+                if (isAppPlaying) onPausePlayback()
+                onPlayStation(station)
+            },
+            onForgetStation = onForgetStation,
+            onBrowse = { browsing = true },
+            onOpenTuner = {
+                tunerPackage?.let { pkg ->
                     scope.launch {
-                        val packageName = findRadioPackage(context)
-                        if (packageName != null) {
-                            if (isAppPlaying) onPausePlayback()
-
-                            ExternalMediaRepository.setRadioLaunched(true)
-                            launchSystemRadioApp(context, packageName)
-
-                            // Come back when the radio is actually on, rather than after a
-                            // fixed five seconds. A tuner being opened for the first time puts
-                            // up a permission request of its own, and the old blind delay
-                            // pulled the screen away mid-dialog - so the tuner never started,
-                            // and trying again did exactly the same thing. If it never comes
-                            // on, stay out of the way and leave the person in the tuner.
-                            var waited = 0L
-                            while (waited < 15000L && !ExternalMediaRepository.value.packageName.contains(packageName)) {
-                                delay(500)
-                                waited += 500
-                            }
-                            if (ExternalMediaRepository.value.packageName.contains(packageName)) {
-                                val myIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                                myIntent?.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                                myIntent?.putExtra("FROM_RADIO_TUNER", true)
-                                context.startActivity(myIntent)
-                            }
-                        }
+                        if (isAppPlaying) onPausePlayback()
+                        launchSystemRadioApp(context, pkg)
                     }
                 }
-            }
+            },
         )
-    } else {
-        ActiveRadioState(
-            context = context,
-            mediaState = mediaState,
-            targetPackage = mediaState.packageName
-        )
-    }
-
-    // 1. Accessibility Permission Sheet
-    if (showAccessibilitySheet) {
-        ModalBottomSheetMMD(
-            onDismissRequest = { showAccessibilitySheet = false },
-            sheetState = accessibilitySheetState
-        ) {
-            PermissionSheetContent(
-                title = "Control permission required",
-                description = "Music Box needs the accessibility permission to work the FM tuner. Enable 'Music Box radio helper' in the phone's settings.",
-                buttonText = "Open accessibility settings",
-                onConfirm = {
-                    showAccessibilitySheet = false
-                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                },
-                onCancel = { showAccessibilitySheet = false }
-            )
-        }
-    }
-
-    if (showNotificationSheet) {
-        ModalBottomSheetMMD(
-            onDismissRequest = { showNotificationSheet = false },
-            sheetState = notificationSheetState
-        ) {
-            PermissionSheetContent(
-                title = "Read status permission",
-                description = "Music Box reads the radio app's now-playing notification to show the frequency and whether it is on. Allow notification access for Music Box.",
-                buttonText = "Open notification settings",
-                onConfirm = {
-                    showNotificationSheet = false
-                    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                },
-                onCancel = { showNotificationSheet = false }
-            )
-        }
     }
 }
+
+private fun plural(count: Int) = if (count == 1) "1 station" else "$count stations"
+
+private data class Row3(val title: String, val subtitle: String?, val onClick: () -> Unit)
 
 @Composable
-fun PermissionSheetContent(
-    title: String,
-    description: String,
-    buttonText: String,
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-    ) {
-        TextMMD(
-            text = title,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextMMD(
-            text = description,
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        ButtonMMD(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(12.dp),
-            onClick = onConfirm
-        ) {
-            TextMMD(buttonText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+private fun RowList(heading: String, rows: List<Row3>) {
+    if (rows.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            TextMMD("Nothing here", fontSize = 16.sp)
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedButtonMMD(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(12.dp),
-            onClick = onCancel
-        ) {
-            TextMMD("Cancel", fontSize = 18.sp, fontWeight = FontWeight.Normal)
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
+        return
     }
-}
-
-fun isAccessibilityServiceEnabled(context: Context, serviceClass: Class<*>): Boolean {
-    val expectedComponentName = ComponentName(context, serviceClass)
-    val enabledServicesSetting = Settings.Secure.getString(
-        context.contentResolver,
-        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-    ) ?: return false
-
-    val splitter = TextUtils.SimpleStringSplitter(':')
-    splitter.setString(enabledServicesSetting)
-    while (splitter.hasNext()) {
-        val componentNameString = splitter.next()
-        val enabledComponent = ComponentName.unflattenFromString(componentNameString)
-        if (enabledComponent != null && enabledComponent == expectedComponentName) {
-            return true
-        }
-    }
-    return false
-}
-
-@Composable
-fun EmptyRadioState(
-    hasTuner: Boolean,
-    canReadStatus: Boolean = true,
-    onGrantReadStatus: () -> Unit = {},
-    onPowerOn: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    PagedColumnMMD(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        if (!hasTuner) {
-            TextMMD("No FM radio on this phone", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            TextMMD(
-                "This screen works the phone's own FM tuner. Nothing here needs a network, " +
-                    "and nothing here can be installed - a phone either has the radio or it does not.",
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            return@Column
+        item {
+            TextMMD(heading, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
         }
-
-        // Outlined rather than filled. A 120dp black disc was the largest solid area anywhere
-        // in the app, which on an e-ink panel is the slowest thing to paint and the most
-        // likely to ghost; the ring reads as the same button and costs a hundredth of the ink.
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .clip(CircleShape)
-                .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                .clickable { onPowerOn() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.PowerSettingsNew,
-                "Turn the radio on",
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        TextMMD("Turn on FM Radio", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
-        TextMMD("Tap to launch tuner", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-
-        if (!canReadStatus) {
-            Spacer(modifier = Modifier.height(24.dp))
-            TextMMD(
-                text = "This screen cannot tell whether the radio is on. Tap to allow that.",
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.clickable { onGrantReadStatus() },
-            )
-        }
-    }
-}
-
-@Composable
-fun ActiveRadioState(
-    context: Context,
-    mediaState: ExternalMediaState,
-    targetPackage: String
-) {
-    val scope = rememberCoroutineScope()
-
-    // There is no frequency here on purpose.
-    //
-    // It was parsed out of the tuner's notification, and this phone's tuner posts the words
-    // "FM Radio" with an empty body and publishes no media session, so the screen said
-    // "Unknown" from the day it was written. Reading the number off the tuner's own display
-    // with the accessibility service does work - but only while that app is on screen, and
-    // tuning from here goes out as a media-button broadcast that never brings it forward, so
-    // the number would be right when the radio came on and quietly wrong from the first press
-    // of next. A number that goes stale is worse than no number: you would believe it.
-    //
-    // So this screen does what it can actually do - on, off, up, down - and does not claim to
-    // know what the radio is tuned to. The tuner knows; it is one tap away.
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Not having notification access is a supported way to use this screen, not a
-            // fault: the radio turns on and tunes without it. This used to shout
-            // "Notification access revoked" in red at anybody who had simply never granted it.
-            if (!isNotificationListenerEnabled(context)) {
-                Spacer(modifier = Modifier.height(8.dp))
-            } else if (!mediaState.title.contains("FM Radio", ignoreCase = true)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextMMD(mediaState.title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
-            }
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = {
-                    performCommand(context, RadioCommand.PREVIOUS, targetPackage)
-                }, modifier = Modifier.size(64.dp)) {
-                    Icon(Icons.Outlined.SkipPrevious, "Scan down", modifier = Modifier.size(48.dp))
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                TextMMD(
-                    text = "FM",
-                    fontSize = 44.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = {
-                    performCommand(context, RadioCommand.NEXT, targetPackage)
-                }, modifier = Modifier.size(64.dp)) {
-                    Icon(Icons.Outlined.SkipNext, "Scan up", modifier = Modifier.size(48.dp))
-                }
-            }
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            Box(
+        items(rows.size) { index ->
+            val row = rows[index]
+            Column(
                 modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.errorContainer)
-                    .clickable {
-                        performCommand(context, RadioCommand.TOGGLE_POWER, targetPackage)
-                        ExternalMediaRepository.setRadioLaunched(false)
-                    },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .clickable { row.onClick() }
+                    .padding(vertical = 10.dp),
             ) {
-                Icon(
-                    Icons.Default.PowerSettingsNew,
-                    "Turn the radio off",
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onErrorContainer
+                TextMMD(row.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                if (row.subtitle != null) {
+                    TextMMD(row.subtitle, fontSize = 14.sp, maxLines = 1)
+                }
+            }
+            if (index != rows.lastIndex) HorizontalDividerMMD(thickness = 1.dp)
+        }
+    }
+}
+
+@Composable
+private fun ChannelList(
+    place: RadioPlace,
+    channels: List<RadioChannel>,
+    keptIds: Set<String>,
+    onKeep: (RadioChannel) -> Unit,
+) {
+    if (channels.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            TextMMD("No stations here", fontSize = 16.sp)
+        }
+        return
+    }
+    PagedColumnMMD(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        item {
+            TextMMD(place.title, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+        }
+        items(channels.size) { index ->
+            val channel = channels[index]
+            val alreadyKept = channel.id in keptIds
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !alreadyKept) { onKeep(channel) }
+                    .padding(vertical = 10.dp),
+            ) {
+                TextMMD(channel.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                TextMMD(
+                    text = if (alreadyKept) "Kept" else "Tap to keep",
+                    fontSize = 14.sp,
                 )
             }
-            TextMMD("Turn off the radio", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            if (index != channels.lastIndex) HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }
 
-private fun isNotificationListenerEnabled(context: Context): Boolean {
-    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-    return flat != null && flat.contains(context.packageName)
-}
-
-private fun performCommand(context: Context, command: RadioCommand, packageName: String) {
-    if (ExternalMediaRepository.value.packageName == packageName &&
-        command != RadioCommand.STOP && command != RadioCommand.FORCE_PLAY) {
-        when (command) {
-            RadioCommand.NEXT -> ExternalMediaRepository.skipToNext()
-            RadioCommand.PREVIOUS -> ExternalMediaRepository.skipToPrevious()
-            RadioCommand.TOGGLE_POWER -> ExternalMediaRepository.togglePlayPause()
-            else -> {}
+@Composable
+private fun RadioHome(
+    keptStations: List<RadioStationEntity>,
+    hasTuner: Boolean,
+    onPlayStation: (RadioStationEntity) -> Unit,
+    onForgetStation: (RadioStationEntity) -> Unit,
+    onBrowse: () -> Unit,
+    onOpenTuner: () -> Unit,
+) {
+    PagedColumnMMD(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        if (keptStations.isNotEmpty()) {
+            items(keptStations.size) { index ->
+                val station = keptStations[index]
+                var armedForget by remember(station.id) { mutableStateOf(false) }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (armedForget) armedForget = false else onPlayStation(station)
+                        }
+                        .padding(vertical = 10.dp),
+                ) {
+                    TextMMD(station.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                    TextMMD("${station.place} • ${station.country}", fontSize = 14.sp, maxLines = 1)
+                    Spacer(Modifier.height(4.dp))
+                    TextMMD(
+                        text = if (armedForget) "Tap again to forget it" else "Forget",
+                        fontSize = 14.sp,
+                        fontWeight = if (armedForget) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.clickable {
+                            if (armedForget) onForgetStation(station) else armedForget = true
+                        },
+                    )
+                }
+                HorizontalDividerMMD(thickness = 1.dp)
+            }
         }
-        return
-    }
 
-    if (command == RadioCommand.STOP) {
-        val offIntents = listOf(
-            "fmradio.turnoff",
-            "com.android.fmradio.turnoff",
-            "fmradio.stop",
-            "com.caf.fmradio.FMOFF"
-        )
-        offIntents.forEach { action ->
-            val intent = Intent(action)
-            intent.setPackage(packageName)
-            context.sendBroadcast(intent)
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onBrowse() }
+                    .padding(vertical = 10.dp),
+            ) {
+                TextMMD("Stations by place", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                TextMMD("Somewhere else, on the air now", fontSize = 14.sp)
+            }
         }
-        return
+
+        if (hasTuner) {
+            item { HorizontalDividerMMD(thickness = 1.dp) }
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenTuner() }
+                        .padding(vertical = 10.dp),
+                ) {
+                    TextMMD("FM radio", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    TextMMD("Opens the phone's tuner. Needs headphones.", fontSize = 14.sp)
+                }
+            }
+        }
+
+        if (keptStations.isEmpty()) {
+            item {
+                Spacer(Modifier.height(32.dp))
+                TextMMD(
+                    text = "Stations you keep appear at the top of this screen.",
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
     }
-
-    val keyEventCode = when (command) {
-        RadioCommand.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-        RadioCommand.PREVIOUS -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-        RadioCommand.TOGGLE_POWER -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-        RadioCommand.FORCE_PLAY -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-        else -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-    }
-
-    sendTargetedMediaKey(context, keyEventCode, packageName)
-}
-
-private fun sendTargetedMediaKey(context: Context, keyCode: Int, packageName: String) {
-    val pm = context.packageManager
-    val queryIntent = Intent(Intent.ACTION_MEDIA_BUTTON).setPackage(packageName)
-    val receivers = pm.queryBroadcastReceivers(queryIntent, 0)
-
-    val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
-    intent.setPackage(packageName)
-
-    if (receivers.isNotEmpty()) {
-        val receiver = receivers[0]
-        intent.component = ComponentName(receiver.activityInfo.packageName, receiver.activityInfo.name)
-    }
-
-    intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-    context.sendBroadcast(intent)
-
-    intent.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_UP, keyCode))
-    context.sendBroadcast(intent)
 }
 
 private fun findRadioPackage(context: Context): String? {
@@ -461,6 +328,9 @@ private fun findRadioPackage(context: Context): String? {
 private fun launchSystemRadioApp(context: Context, packageName: String) {
     try {
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+        intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (intent != null) context.startActivity(intent)
-    } catch (_: Exception) { }
+    } catch (e: Exception) {
+        android.util.Log.w("RadioScreen", "could not open the tuner", e)
+    }
 }

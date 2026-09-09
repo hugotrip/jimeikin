@@ -57,11 +57,21 @@ import kotlin.math.abs
  * all six. Two were missed, which is why a server song reached the queue and then sat on
  * "Loading" for ever: nothing routed it to a player.
  */
+/**
+ * Whether the player can be handed this song's uri and left to get on with it.
+ *
+ * The name is about where playback happens, not about whether a network is needed: a song on a
+ * music server needs one, and a radio stream needs one and never ends. What they have in common
+ * is that the address is already known, so none of them wants the resolve step a YouTube track
+ * does. A radio stream was missing from this list and so was never handed to the player at all
+ * - the screen said Loading and nothing ever came.
+ */
 private fun playsOnThisPhone(sourceType: String?): Boolean =
     sourceType == "LOCAL_FILE" ||
         sourceType == "YOUTUBE_DOWNLOAD" ||
         sourceType == "SUBSONIC" ||
-        sourceType == "SUBSONIC_DOWNLOAD"
+        sourceType == "SUBSONIC_DOWNLOAD" ||
+        sourceType == "RADIO"
 
 class CalmMusicViewModel(
     application: Application,

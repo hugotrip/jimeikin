@@ -2,6 +2,4 @@
     <string name="app_name">Music Box</string>
     <string name="playlists">Playlists</string>
     <string name="songs">Songs</string>
-    <string name="accessibility_service_label">Music Box radio helper</string>
-    <string name="accessibility_service_description">Presses play in the phone\'s FM radio app and comes back here. It reads nothing else.</string>
 </resources>
