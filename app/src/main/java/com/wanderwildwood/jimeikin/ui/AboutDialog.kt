@@ -37,11 +37,12 @@ fun AboutDialog(onDismiss: () -> Unit) {
                 "each request is signed with it rather than carrying it. That password and " +
                 "the YouTube cookie are sealed with a key held in this phone's keystore and " +
                 "are left out of Android's backups, so neither leaves with one. " +
-                "The FM radio reads " +
                 "Radio stations come from radio.garden, which is asked what is on the air " +
                 "in a place; a station you keep is stored as its own address and plays " +
                 "without asking anything further. The FM row opens the phone's own tuner and " +
-                "does nothing else. There are no ads, no analytics and nothing is counted.",
+                "does nothing else. This app does not read your notifications and does not " +
+                "ask for an accessibility service. There are no ads, no analytics and " +
+                "nothing is counted.",
             fontSize = 14.sp,
         )
 

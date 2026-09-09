@@ -171,8 +171,6 @@ fun CalmMusic(app: CalmMusic) {
     var localMediaController by remember { mutableStateOf<MediaController?>(null) }
     var lastCompletedDownloadUUIDs by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    val externalMediaState by ExternalMediaRepository.mediaState.collectAsState()
-    val showExternalControls = externalMediaState.hasActiveSession && playbackState.nowPlayingSong == null
 
     LaunchedEffect(downloadStatuses) {
         val currentCompletedDownloads = downloadStatuses
@@ -1717,17 +1715,6 @@ fun CalmMusic(app: CalmMusic) {
             AboutDialog(onDismiss = { showAbout = false })
         }
 
-        if (showExternalControls) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 80.dp)
-                    .padding(horizontal = 16.dp)
-            ) {
-                ExternalMediaWidget(externalMediaState)
-            }
-        }
-
         if (showNowPlaying && playbackState.nowPlayingSong != null) {
             val song = playbackState.nowPlayingSong!!
 
@@ -2216,80 +2203,6 @@ fun CalmMusic(app: CalmMusic) {
             )
         }
     }
-}
-
-@Composable
-fun ExternalMediaWidget(state: ExternalMediaState) {
-    val context = LocalContext.current
-    if (!isNotificationServiceEnabled(context)) {
-        Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-            ButtonMMD(
-                onClick = {
-                    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                TextMMD("Tap to let this control the music", fontSize = 14.sp)
-            }
-        }
-    } else {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextMMD(
-                        text = "Playing on ${state.packageName}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                TextMMD(
-                    text = state.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                TextMMD(
-                    text = state.artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { ExternalMediaRepository.skipToPrevious() }) {
-                        Icon(Icons.Default.SkipPrevious, "Prev")
-                    }
-
-                    androidx.compose.material3.FilledIconButton(onClick = { ExternalMediaRepository.togglePlayPause() }) {
-                        Icon(if(state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play")
-                    }
-
-                    IconButton(onClick = { ExternalMediaRepository.skipToNext() }) {
-                        Icon(Icons.Default.SkipNext, "Next")
-                    }
-                }
-            }
-        }
-    }
-}
-
-fun isNotificationServiceEnabled(context: android.content.Context): Boolean {
-    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-    return flat != null && flat.contains(context.packageName)
 }
 
 @Composable

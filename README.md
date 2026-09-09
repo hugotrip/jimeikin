@@ -121,13 +121,11 @@ notification for playback, and an exemption from battery optimisation so the sys
 likely to stop it. It does not ask for storage — folders are reached through the system
 picker, which grants this app that folder and nothing else.
 
-**It asks for no accessibility service.** It used to, to press play inside the phone's FM
-tuner, which is a great deal of trust for a small convenience; the Radio screen opens the tuner
-instead and the service is gone.
-
-One permission is optional and never asked for on its own: reading other apps' media
-notifications, which is what lets this show controls for something else that is playing. Say no
-and everything else works.
+**That is all of them.** It asks for no accessibility service — it used to, to press play
+inside the phone's FM tuner, which is a great deal of trust for a small convenience. And it no
+longer reads other apps' notifications: that existed to show controls for whatever else was
+playing, which meant this app putting a panel over its own screen about somebody else's
+audiobook. Both services are gone from the app, not merely unused.
 
 ## For developers
 
