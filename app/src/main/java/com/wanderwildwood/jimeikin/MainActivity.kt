@@ -653,6 +653,40 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
+    /**
+     * Hearing a station that has not been kept.
+     *
+     * Its stream is resolved now and thrown away afterwards, which is the difference between
+     * listening and keeping: nothing is written down until you hold the row.
+     */
+    fun playRadioChannel(channel: com.wanderwildwood.jimeikin.data.RadioChannel) {
+        libraryScope.launch {
+            val stream = com.wanderwildwood.jimeikin.data.RadioGarden.resolveStream(channel.id)
+            if (stream.isNullOrBlank()) {
+                snackbarHostState.showSnackbar(
+                    message = "That station would not give a stream",
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+                return@launch
+            }
+            startPlaybackFromQueue(
+                queue = listOf(
+                    SongUiModel(
+                        id = "RADIO:" + channel.id,
+                        title = channel.title,
+                        artist = listOf(channel.place, channel.country)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" • "),
+                        sourceType = "RADIO",
+                        audioUri = stream,
+                    ),
+                ),
+                startIndex = 0,
+            )
+        }
+    }
+
     fun forgetRadioStation(station: com.wanderwildwood.jimeikin.data.RadioStationEntity) {
         libraryScope.launch {
             val dao = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app).radioStationDao()
@@ -1538,6 +1572,7 @@ fun CalmMusic(app: CalmMusic) {
                                 startIndex = 0,
                             )
                         },
+                        onPlayChannel = { channel -> playRadioChannel(channel) },
                         onKeepStation = { channel -> keepRadioStation(channel) },
                         onForgetStation = { station -> forgetRadioStation(station) },
                         onPausePlayback = { viewModel.togglePlayback(localMediaController) },

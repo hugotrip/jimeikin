@@ -79,7 +79,11 @@ Two radios, which are not the same thing.
 air there — or found with the magnifying glass, which on this screen looks for station names,
 towns, and postcodes. A postcode is answered with the towns nearest it, which is what somebody
 typing one is actually asking. Both lists take a filter as well, because France alone has more
-than eighteen hundred stations. The list is [radio.garden](https://radio.garden)'s, which is worth browsing the way
+than eighteen hundred stations.
+
+Tap a station to hear it. Hold one to put it in **Favorite stations**, at the top of the Radio
+tab under the two ways in; hold it again, there or anywhere else, to take it back out. Nothing
+is written down until you hold a row, so a station can be listened to without joining a list. The list is [radio.garden](https://radio.garden)'s, which is worth browsing the way
 that site is worth browsing: not by searching for a station you already know, but by going
 somewhere. Keep one and it sits at the top of the screen. A kept station stores the address of
 the stream itself, so it goes on playing whatever becomes of radio.garden.

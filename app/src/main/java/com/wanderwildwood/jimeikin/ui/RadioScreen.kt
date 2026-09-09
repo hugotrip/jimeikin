@@ -3,6 +3,8 @@ package com.wanderwildwood.jimeikin.ui
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +64,7 @@ fun RadioScreen(
     onSearchOpenChange: (Boolean) -> Unit,
     keptStations: List<RadioStationEntity>,
     onPlayStation: (RadioStationEntity) -> Unit,
+    onPlayChannel: (RadioChannel) -> Unit,
     onKeepStation: (RadioChannel) -> Unit,
     onForgetStation: (RadioStationEntity) -> Unit,
     onPausePlayback: () -> Unit,
@@ -180,7 +183,14 @@ fun RadioScreen(
             results = searchResults,
             nearby = nearbyPlaces,
             keptIds = keptStations.map { it.id }.toSet(),
-            onKeep = onKeepStation,
+            onPlay = { channel ->
+                if (isAppPlaying) onPausePlayback()
+                onPlayChannel(channel)
+            },
+            onToggleFavourite = { channel ->
+                val already = keptStations.firstOrNull { it.id == channel.id }
+                if (already != null) onForgetStation(already) else onKeepStation(channel)
+            },
             onOpenPlace = { place -> browsingPlace = place },
         )
         return
@@ -191,7 +201,14 @@ fun RadioScreen(
             place = browsingPlace!!,
             channels = channelsHere,
             keptIds = keptStations.map { it.id }.toSet(),
-            onKeep = onKeepStation,
+            onPlay = { channel ->
+                if (isAppPlaying) onPausePlayback()
+                onPlayChannel(channel)
+            },
+            onToggleFavourite = { channel ->
+                val already = keptStations.firstOrNull { it.id == channel.id }
+                if (already != null) onForgetStation(already) else onKeepStation(channel)
+            },
         )
 
         browsingCountry != null -> RowList(
@@ -248,6 +265,39 @@ fun RadioScreen(
                     }
                 }
             },
+        )
+    }
+}
+
+/**
+ * A station: tap to hear it, hold to keep or drop it.
+ *
+ * Tapping used to mean "keep", which put a list of stations one tap away from a list you had
+ * committed to and no taps away from hearing any of them - the wrong way round for a thing
+ * whose whole point is that you do not know yet whether you like it. Holding is the deliberate
+ * gesture, so holding is what changes the list. The same hold takes one back off it, here and
+ * on the favourites at the top of the screen, so there is one rule to remember rather than two.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun StationRow(
+    title: String,
+    subtitle: String?,
+    isFavourite: Boolean,
+    onPlay: () -> Unit,
+    onToggleFavourite: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onPlay, onLongClick = onToggleFavourite)
+            .padding(vertical = 10.dp),
+    ) {
+        TextMMD(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+        if (subtitle != null) TextMMD(subtitle, fontSize = 14.sp, maxLines = 1)
+        TextMMD(
+            text = if (isFavourite) "A favorite — hold to remove" else "Hold to add to favorites",
+            fontSize = 14.sp,
         )
     }
 }
@@ -320,7 +370,8 @@ private fun ChannelList(
     place: RadioPlace,
     channels: List<RadioChannel>,
     keptIds: Set<String>,
-    onKeep: (RadioChannel) -> Unit,
+    onPlay: (RadioChannel) -> Unit,
+    onToggleFavourite: (RadioChannel) -> Unit,
 ) {
     if (channels.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -337,24 +388,19 @@ private fun ChannelList(
         }
         items(channels.size) { index ->
             val channel = channels[index]
-            val alreadyKept = channel.id in keptIds
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = !alreadyKept) { onKeep(channel) }
-                    .padding(vertical = 10.dp),
-            ) {
-                TextMMD(channel.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                TextMMD(
-                    text = if (alreadyKept) "Kept" else "Tap to keep",
-                    fontSize = 14.sp,
-                )
-            }
+            StationRow(
+                title = channel.title,
+                subtitle = null,
+                isFavourite = channel.id in keptIds,
+                onPlay = { onPlay(channel) },
+                onToggleFavourite = { onToggleFavourite(channel) },
+            )
             if (index != channels.lastIndex) HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RadioHome(
     keptStations: List<RadioStationEntity>,
@@ -368,34 +414,9 @@ private fun RadioHome(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        if (keptStations.isNotEmpty()) {
-            items(keptStations.size) { index ->
-                val station = keptStations[index]
-                var armedForget by remember(station.id) { mutableStateOf(false) }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (armedForget) armedForget = false else onPlayStation(station)
-                        }
-                        .padding(vertical = 10.dp),
-                ) {
-                    TextMMD(station.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                    TextMMD("${station.place} • ${station.country}", fontSize = 14.sp, maxLines = 1)
-                    Spacer(Modifier.height(4.dp))
-                    TextMMD(
-                        text = if (armedForget) "Tap again to forget it" else "Forget",
-                        fontSize = 14.sp,
-                        fontWeight = if (armedForget) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier.clickable {
-                            if (armedForget) onForgetStation(station) else armedForget = true
-                        },
-                    )
-                }
-                HorizontalDividerMMD(thickness = 1.dp)
-            }
-        }
-
+        // The two ways in stay at the top. They were under the favourites, which was fine with
+        // three of them and would not have been with thirty: the doors would have walked off
+        // the bottom of the screen as the list grew, and the list is meant to grow.
         item {
             Column(
                 modifier = Modifier
@@ -406,11 +427,8 @@ private fun RadioHome(
                 TextMMD("Stations by place", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 TextMMD("Somewhere else, on the air now", fontSize = 14.sp)
             }
-        }
-
-        if (hasTuner) {
-            item { HorizontalDividerMMD(thickness = 1.dp) }
-            item {
+            if (hasTuner) {
+                HorizontalDividerMMD(thickness = 1.dp)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -421,19 +439,34 @@ private fun RadioHome(
                     TextMMD("Opens the phone's tuner. Needs headphones.", fontSize = 14.sp)
                 }
             }
-        }
-
-        if (keptStations.isEmpty()) {
-            item {
-                Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(16.dp))
+            HorizontalDividerMMD(thickness = 2.dp)
+            Spacer(Modifier.height(12.dp))
+            TextMMD(
+                text = if (keptStations.isEmpty()) "No favorite stations yet" else "Favorite stations",
+                fontSize = 14.sp,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            if (keptStations.isEmpty()) {
+                Spacer(Modifier.height(8.dp))
                 TextMMD(
-                    text = "Stations you keep appear at the top of this screen.",
+                    text = "Hold a station anywhere in this app to put it here.",
                     fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
+        }
+
+        items(keptStations.size) { index ->
+            val station = keptStations[index]
+            StationRow(
+                title = station.title,
+                subtitle = station.place + " • " + station.country,
+                isFavourite = true,
+                onPlay = { onPlayStation(station) },
+                onToggleFavourite = { onForgetStation(station) },
+            )
+            if (index != keptStations.lastIndex) HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }
@@ -473,7 +506,8 @@ private fun RadioSearch(
     results: RadioSearchResults,
     nearby: List<RadioPlace>,
     keptIds: Set<String>,
-    onKeep: (RadioChannel) -> Unit,
+    onPlay: (RadioChannel) -> Unit,
+    onToggleFavourite: (RadioChannel) -> Unit,
     onOpenPlace: (RadioPlace) -> Unit,
 ) {
     PagedColumnMMD(
@@ -534,24 +568,16 @@ private fun RadioSearch(
             }
             items(results.channels.size) { index ->
                 val channel = results.channels[index]
-                val alreadyKept = channel.id in keptIds
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = !alreadyKept) { onKeep(channel) }
-                        .padding(vertical = 10.dp),
-                ) {
-                    TextMMD(channel.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                    TextMMD(
-                        text = listOf(channel.place, channel.country)
-                            .filter { it.isNotBlank() }
-                            .joinToString(" • ")
-                            .ifBlank { "Somewhere" },
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                    )
-                    TextMMD(if (alreadyKept) "Kept" else "Tap to keep", fontSize = 14.sp)
-                }
+                StationRow(
+                    title = channel.title,
+                    subtitle = listOf(channel.place, channel.country)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" • ")
+                        .ifBlank { "Somewhere" },
+                    isFavourite = channel.id in keptIds,
+                    onPlay = { onPlay(channel) },
+                    onToggleFavourite = { onToggleFavourite(channel) },
+                )
                 HorizontalDividerMMD(thickness = 1.dp)
             }
         }

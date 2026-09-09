@@ -398,7 +398,10 @@ private fun CalmMusicTopAppBarActions(
     if (
         hasNowPlaying &&
         currentDestination?.route != Screen.PlaylistAddSongs.route &&
-        currentDestination?.route != Screen.Radio.route &&
+        // The Radio tab used to be excluded, from when nothing on it could play. It plays
+        // stations now, so hiding the way back to what is playing hid it exactly where it was
+        // most likely to be wanted.
+
         !(currentDestination?.route == Screen.Playlists.route && isPlaylistsEditMode) &&
         !(currentDestination.isPlaylistDetails() && isPlaylistDetailsEditMode)
     ) {
