@@ -1027,6 +1027,12 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
+    // Read once, before the graph is built: a NavHost keeps the start destination it was
+    // given, so this is a question with one chance to be asked.
+    val startTabRoute = remember {
+        settingsManager.getLastLibraryTab(navItems.map { it.route }, Screen.Songs.route)
+    }
+
     val openStreamingSettings: () -> Unit = {
         navController.navigate(Screen.Settings.route) {
             popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -1365,6 +1371,10 @@ fun CalmMusic(app: CalmMusic) {
                 CalmMusicBottomBar(
                     currentDestination = currentDestination,
                     onNavigate = { route ->
+                        // Written on the tap rather than watched for on the destination, so
+                        // that the places reached from the cog or from a row - Settings, an
+                        // album, an artist - never become the place the app opens on.
+                        settingsManager.setLastLibraryTab(route)
                         navController.navigate(route) {
                             popUpTo(navController.graph.startDestinationId) { saveState = true }
                             launchSingleTop = true
@@ -1377,7 +1387,7 @@ fun CalmMusic(app: CalmMusic) {
         ) { paddingValues ->
             NavHost(
                 navController = navController,
-                startDestination = Screen.Songs.route,
+                startDestination = startTabRoute,
                 modifier = Modifier.padding(paddingValues),
             ) {
                 playlistsNavGraph()

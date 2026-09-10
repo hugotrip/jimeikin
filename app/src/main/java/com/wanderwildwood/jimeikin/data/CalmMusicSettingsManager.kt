@@ -140,6 +140,25 @@ class CalmMusicSettingsManager(context: Context) {
         _youtubeAccountCookie.value = cookie
     }
 
+    /**
+     * Which of the five places along the bottom was last open. The app always started on
+     * Songs, so somebody who lives in Albums or Playlists paid a tap for it every time they
+     * came back - and on a phone that is picked up and put down all day, that is most of
+     * the taps the app ever gets.
+     *
+     * Only the routes on the bottom bar are kept, and only those are given back: a stored
+     * route that a later version no longer has is a screen nobody can navigate away from,
+     * so anything unrecognised falls back to Songs.
+     */
+    fun getLastLibraryTab(known: List<String>, fallback: String): String {
+        val stored = prefs.getString(KEY_LAST_LIBRARY_TAB, null) ?: return fallback
+        return if (stored in known) stored else fallback
+    }
+
+    fun setLastLibraryTab(route: String) {
+        prefs.edit { putString(KEY_LAST_LIBRARY_TAB, route) }
+    }
+
     fun clearYouTubeAccountCookie() {
         prefs.edit { remove(KEY_YOUTUBE_ACCOUNT_COOKIE) }
         _youtubeAccountCookie.value = null
@@ -156,5 +175,6 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_STREAMING_PROVIDER = "streaming_provider"
         private const val KEY_COMPLETE_ALBUMS_WITH_YOUTUBE = "complete_albums_with_youtube"
         private const val KEY_YOUTUBE_ACCOUNT_COOKIE = "youtube_account_cookie"
+        private const val KEY_LAST_LIBRARY_TAB = "last_library_tab"
     }
 }
