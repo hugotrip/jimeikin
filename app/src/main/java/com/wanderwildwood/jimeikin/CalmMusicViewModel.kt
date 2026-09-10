@@ -671,6 +671,90 @@ class CalmMusicViewModel(
         startPlaybackFromQueue(shuffledQueue, 0, isNewQueue = false, localController = localController)
     }
 
+    /**
+     * Puts songs into the queue that is already playing, either straight after the current
+     * song or at the end, without interrupting it.
+     *
+     * The queue this app plays is its own list, and the player is only ever handed the run
+     * of songs around the current one that it can open by itself - so changing the list is
+     * not enough. Left at that, the player would go on to whatever it was already holding
+     * and the new song would be stepped over, because what keeps the two in step is matching
+     * the player's media id back to a row in the list. So a song going in next is spliced
+     * into the player's own running order as well.
+     *
+     * A song going on the end needs none of that: the player reaches the end of what it
+     * holds, says so, and the queue is read again from the list at that point.
+     */
+    fun enqueue(
+        songs: List<SongUiModel>,
+        playNext: Boolean,
+        localController: MediaController?,
+    ) {
+        if (songs.isEmpty()) return
+
+        val state = _playbackState.value
+        val queue = state.playbackQueue
+        val index = state.playbackQueueIndex
+
+        // With nothing playing there is nothing to queue behind, and the honest reading of
+        // "play next" on a silent phone is simply to play it.
+        if (queue.isEmpty() || index == null || index !in queue.indices) {
+            startPlaybackFromQueue(
+                queue = songs,
+                startIndex = 0,
+                isNewQueue = true,
+                localController = localController,
+            )
+            return
+        }
+
+        val insertAt = if (playNext) index + 1 else queue.size
+        val newQueue = queue.toMutableList().apply { addAll(insertAt, songs) }
+
+        // The unshuffled order is what shuffle is turned off back into. With shuffle off the
+        // two lists are the same and the song goes in the same place; with it on, the songs
+        // join the end of the order they would otherwise have been in.
+        val newOriginal = if (state.isShuffleOn) state.originalPlaybackQueue + songs else newQueue
+
+        // Rebuilding the subqueues clears this, and it is what tells a resume from pause
+        // whether the player still holds a queue. Clearing it here would make the next
+        // press of play start the current song again from the beginning.
+        val wasInitialized = playbackCoordinator.localQueueInitialized
+        rebuildPlaybackSubqueues(newQueue)
+
+        val newState = state.copy(
+            playbackQueue = newQueue,
+            playbackQueueEntities = newQueue.map { it.toQueueEntity() },
+            originalPlaybackQueue = newOriginal,
+            // The index is left alone: everything went in after the song that is playing.
+        )
+        _playbackState.value = newState
+        persistPlaybackSnapshot(newState)
+
+        val controller = localController
+        val canSplice = playNext &&
+            controller != null &&
+            wasInitialized &&
+            controller.mediaItemCount > 0 &&
+            playsOnThisPhone(queue[index].sourceType) &&
+            songs.all { playsOnThisPhone(it.sourceType) }
+
+        if (canSplice && controller != null) {
+            // Taken from the rebuilt list rather than built again here, so a queued song is
+            // handed to the player exactly as a played one is.
+            val items = songs.indices.mapNotNull { offset ->
+                val global = insertAt + offset
+                val local = playbackCoordinator.localIndexByGlobal?.getOrNull(global) ?: -1
+                if (local >= 0) playbackCoordinator.localMediaItemsForQueue.getOrNull(local) else null
+            }
+            if (items.isNotEmpty()) {
+                controller.addMediaItems(controller.currentMediaItemIndex + 1, items)
+            }
+        }
+
+        if (wasInitialized) playbackCoordinator.localQueueInitialized = true
+    }
+
     fun playNextInQueue(localController: MediaController?) {
         val state = _playbackState.value
         val queue = state.playbackQueue
@@ -1590,7 +1674,7 @@ class CalmMusicViewModel(
                     if (modelClass.isAssignableFrom(CalmMusicViewModel::class.java)) {
                         return CalmMusicViewModel(application) as T
                     }
-                    throw IllegalArgumentException("Unknown ViewModel class ${'$'}modelClass")
+                    throw IllegalArgumentException("Unknown ViewModel class $modelClass")
                 }
             }
     }

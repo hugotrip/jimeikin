@@ -40,6 +40,8 @@ fun AlbumDetailsScreen(
     onShuffleClick: (List<SongUiModel>) -> Unit,
     librarySongIds: Set<String> = emptySet(),
     onAddToPlaylistClick: (SongUiModel) -> Unit = {},
+    onPlayNextClick: (SongUiModel) -> Unit = {},
+    onAddToQueueClick: (SongUiModel) -> Unit = {},
     onRemoveFromLibraryClick: (SongUiModel) -> Unit = {},
     onDeleteClick: (SongUiModel) -> Unit = {},
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
@@ -152,6 +154,8 @@ fun AlbumDetailsScreen(
                                     onPlaySongClick(song, songs)
                                 },
                                 onAddToPlaylist = { onAddToPlaylistClick(song) },
+                                onPlayNext = { onPlayNextClick(song) },
+                                onAddToQueue = { onAddToQueueClick(song) },
                                 onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
                                 onDelete = { onDeleteClick(song) },
                                         onKeepOnPhone = { onKeepOnPhoneClick(song) },

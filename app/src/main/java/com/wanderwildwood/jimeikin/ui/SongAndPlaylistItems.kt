@@ -51,6 +51,8 @@ fun SongItem(
     isCurrentlyPlaying: Boolean,
     onClick: () -> Unit,
     onAddToPlaylist: () -> Unit = {},
+    onPlayNext: () -> Unit = {},
+    onAddToQueue: () -> Unit = {},
     onDelete: () -> Unit = {},
     onRemoveFromLibrary: () -> Unit = {},
     onKeepOnPhone: () -> Unit = {},
@@ -240,6 +242,27 @@ fun SongItem(
                         expanded = true,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        // A live stream has no end to queue behind, and is the one thing
+                        // here that cannot wait its turn.
+                        if (song.sourceType != "RADIO") {
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = "Play next") },
+                                onClick = {
+                                    showMenu = false
+                                    onPlayNext()
+                                }
+                            )
+                            HorizontalDividerMMD(thickness = 1.dp)
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = "Add to queue") },
+                                onClick = {
+                                    showMenu = false
+                                    onAddToQueue()
+                                }
+                            )
+                            HorizontalDividerMMD(thickness = 1.dp)
+                        }
+
                         DropdownMenuItemMMD(
                             text = { TextMMD(text = "Add to playlist") },
                             onClick = {

@@ -735,7 +735,7 @@ fun CalmMusic(app: CalmMusic) {
                 )
             } else {
                 snackbarHostState.showSnackbar(
-                    message = if (wanted.size == 1) "Keeping one song" else "Keeping ${'$'}{wanted.size} songs",
+                    message = if (wanted.size == 1) "Keeping one song" else "Keeping ${wanted.size} songs",
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -768,9 +768,9 @@ fun CalmMusic(app: CalmMusic) {
                 snackbarHostState.showSnackbar(
                     message = when {
                         failed == 0 && kept == 1 -> "One song is on this phone now"
-                        failed == 0 -> "${'$'}kept songs are on this phone now"
+                        failed == 0 -> "$kept songs are on this phone now"
                         kept == 0 -> "None of them would download"
-                        else -> "${'$'}kept kept, ${'$'}failed did not download"
+                        else -> "$kept kept, $failed did not download"
                     },
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
@@ -793,7 +793,7 @@ fun CalmMusic(app: CalmMusic) {
                 )
             } else {
                 snackbarHostState.showSnackbar(
-                    message = "Keeping \"${'$'}{song.title}\"",
+                    message = "Keeping \"${song.title}\"",
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -812,7 +812,7 @@ fun CalmMusic(app: CalmMusic) {
                             )
                         }
                         viewModel.refreshLibraryFromDatabase()
-                        "\"${'$'}{song.title}\" is on this phone now"
+                        "\"${song.title}\" is on this phone now"
                     }
                 }
                 snackbarHostState.showSnackbar(
@@ -827,6 +827,31 @@ fun CalmMusic(app: CalmMusic) {
     val onAddToPlaylist: (SongUiModel) -> Unit = { song ->
         songsToAddToPlaylist = listOf(song)
         showAddToPlaylistDialog = true
+    }
+
+    // Queueing changes nothing the reader can see - the same song goes on playing - so each
+    // of these says what it did. Naming the song rather than the position, because "next"
+    // and "last" are the two things the reader already knows from which one they pressed.
+    val onPlayNext: (SongUiModel) -> Unit = { song ->
+        viewModel.enqueue(listOf(song), playNext = true, localController = localMediaController)
+        libraryScope.launch {
+            snackbarHostState.showSnackbar(
+                message = "\"${song.title}\" plays next",
+                withDismissAction = false,
+                duration = SnackbarDurationMMD.Short,
+            )
+        }
+    }
+
+    val onAddToQueue: (SongUiModel) -> Unit = { song ->
+        viewModel.enqueue(listOf(song), playNext = false, localController = localMediaController)
+        libraryScope.launch {
+            snackbarHostState.showSnackbar(
+                message = "\"${song.title}\" added to the queue",
+                withDismissAction = false,
+                duration = SnackbarDurationMMD.Short,
+            )
+        }
     }
 
     val onAddAllToPlaylist: (List<SongUiModel>) -> Unit = { songs ->
@@ -1120,6 +1145,8 @@ fun CalmMusic(app: CalmMusic) {
                     startShuffledPlaybackFromQueue(songs)
                 },
                 onAddToPlaylistClick = onAddToPlaylist,
+                onPlayNextClick = onPlayNext,
+                onAddToQueueClick = onAddToQueue,
                 onRemoveFromLibraryClick = onRemoveFromLibrary,
                 onDeleteClick = onDelete,
                 onKeepOnPhoneClick = onKeepOnPhone,
@@ -1429,6 +1456,8 @@ fun CalmMusic(app: CalmMusic) {
                             startShuffledPlaybackFromQueue(librarySongs)
                         },
                         onAddToPlaylistClick = onAddToPlaylist,
+                onPlayNextClick = onPlayNext,
+                onAddToQueueClick = onAddToQueue,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
@@ -1488,6 +1517,8 @@ fun CalmMusic(app: CalmMusic) {
                         },
                         librarySongIds = librarySongIds,
                         onAddToPlaylistClick = onAddToPlaylist,
+                onPlayNextClick = onPlayNext,
+                onAddToQueueClick = onAddToQueue,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
@@ -1507,6 +1538,8 @@ fun CalmMusic(app: CalmMusic) {
                         },
                         librarySongIds = librarySongIds,
                         onAddToPlaylistClick = onAddToPlaylist,
+                onPlayNextClick = onPlayNext,
+                onAddToQueueClick = onAddToQueue,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
@@ -1531,6 +1564,8 @@ fun CalmMusic(app: CalmMusic) {
                             startShuffledPlaybackFromQueue(songs)
                         },
                         onAddToPlaylistClick = onAddToPlaylist,
+                onPlayNextClick = onPlayNext,
+                onAddToQueueClick = onAddToQueue,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
@@ -1555,6 +1590,8 @@ fun CalmMusic(app: CalmMusic) {
                             startShuffledPlaybackFromQueue(songs)
                         },
                         onAddToPlaylistClick = onAddToPlaylist,
+                onPlayNextClick = onPlayNext,
+                onAddToQueueClick = onAddToQueue,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
