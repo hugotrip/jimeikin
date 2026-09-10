@@ -149,6 +149,12 @@ Releases.
 - YouTube stream resolution via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) by TeamNewPipe (GPL-3.0).
 - UI built with Mudita's MMD component library for Kompakt.
 
+## Support
+
+This is free software and it stays free; there is nothing here to buy. If you would like to
+send something somewhere anyway, there are some llamas in Hot Springs, North Carolina who go
+through a great deal of hay: <https://hotspringsllamas.org/donate/>
+
 ## Licence
 
 GPL-3.0, the same as upstream CalmMusic. See [LICENSE](LICENSE).
