@@ -73,6 +73,14 @@ private fun playsOnThisPhone(sourceType: String?): Boolean =
         sourceType == "SUBSONIC_DOWNLOAD" ||
         sourceType == "RADIO"
 
+/**
+ * How far into a song "previous" stops meaning the song before it and starts meaning this
+ * one from the top. Three seconds is what every other player uses, and the number matters
+ * less than having one: without it there was no way to hear a song again except back and
+ * then forward, and on a queue of one there was no way at all.
+ */
+private const val RESTART_RATHER_THAN_PREVIOUS_MS = 3_000L
+
 class CalmMusicViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
@@ -735,6 +743,28 @@ class CalmMusicViewModel(
             isNewQueue = false,
             localController = localController,
         )
+    }
+
+    /**
+     * What the button under the SkipPrevious icon actually does. It went straight to the
+     * previous track however long the current one had been playing, so pressing it to hear
+     * a song again took you off the song instead.
+     *
+     * Past the first few seconds it now starts the current song over; inside them it does
+     * what it always did. A live stream has no beginning to return to, so it is left alone.
+     */
+    fun playPreviousOrRestart(localController: MediaController?) {
+        val state = _playbackState.value
+        val isLive = state.nowPlayingSong?.sourceType == "RADIO"
+        if (!isLive && state.nowPlayingPositionMs > RESTART_RATHER_THAN_PREVIOUS_MS) {
+            // A seek, not a restart of the queue: re-entering it would resolve a YouTube or
+            // server stream over again for a song the player is already holding.
+            localController?.seekTo(0L)
+            _playbackState.value = state.copy(nowPlayingPositionMs = 0L)
+            persistPlaybackSnapshot()
+            return
+        }
+        playPreviousInQueue(localController)
     }
 
     fun toggleShuffleMode(localController: MediaController?) {

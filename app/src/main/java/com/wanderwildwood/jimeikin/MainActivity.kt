@@ -1761,7 +1761,7 @@ fun CalmMusic(app: CalmMusic) {
                     }
                 },
                 onSeekBackwardClick = {
-                    viewModel.playPreviousInQueue(localMediaController)
+                    viewModel.playPreviousOrRestart(localMediaController)
                 },
                 onSeekForwardClick = {
                     viewModel.playNextInQueue(localMediaController)
