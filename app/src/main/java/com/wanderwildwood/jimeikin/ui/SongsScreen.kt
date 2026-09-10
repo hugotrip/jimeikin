@@ -58,7 +58,14 @@ fun SongsScreen(
                 }
             }
 
-            errorMessage != null -> {
+            // Only when there is nothing else to show. This error comes from the scan of
+            // the folders on the phone and from nowhere else, but this list holds the
+            // music server's songs too - so a card that failed to mount, or a folder
+            // whose permission did not survive an update, used to replace a working
+            // library of thousands with the words "could not be read". The failure is
+            // worth saying when it leaves the reader with nothing; it is not worth
+            // hiding everything they still have.
+            errorMessage != null && songs.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
