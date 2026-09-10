@@ -1764,10 +1764,19 @@ fun CalmMusic(app: CalmMusic) {
                 isShuffleOn = playbackState.isShuffleOn,
                 onPlayPauseClick = { togglePlayback() },
                 onSeek = { positionMs ->
-                    when (song.sourceType) {
-                        "LOCAL_FILE", "YOUTUBE", "YOUTUBE_DOWNLOAD" -> {
-                            localMediaController?.seekTo(positionMs)
-                        }
+                    // Everything except a live stream plays through this controller, so
+                    // everything except a live stream can be seeked. This named three source
+                    // types and was never told about the server: a song on Navidrome drew a
+                    // full scrubber, let you drag it, and then ignored you - and the thumb
+                    // sprang back, because the only thing that moves it is a position that
+                    // nothing had changed. A kept server song is a file on the card and could
+                    // always have been seeked; a streamed one seeks over http like any other.
+                    //
+                    // Radio never reaches here - a live stream is given the word "Live" where
+                    // the bar goes - but it is named rather than assumed, so that a source
+                    // added later is seekable by default and only what cannot seek is listed.
+                    if (song.sourceType != "RADIO") {
+                        localMediaController?.seekTo(positionMs)
                     }
                 },
                 onSeekBackwardClick = {
