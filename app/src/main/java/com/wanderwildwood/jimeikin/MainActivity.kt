@@ -1122,6 +1122,8 @@ fun CalmMusic(app: CalmMusic) {
                 onAddToPlaylistClick = onAddToPlaylist,
                 onRemoveFromLibraryClick = onRemoveFromLibrary,
                 onDeleteClick = onDelete,
+                onKeepOnPhoneClick = onKeepOnPhone,
+                onKeepAllClick = onKeepAllOnPhone,
             )
         }
         composable(Screen.PlaylistAddSongs.route) {

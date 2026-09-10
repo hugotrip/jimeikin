@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -57,6 +58,7 @@ fun PlaylistDetailsScreen(
     onRemoveFromLibraryClick: (SongUiModel) -> Unit,
     onDeleteClick: (SongUiModel) -> Unit,
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
+    onKeepAllClick: (List<SongUiModel>) -> Unit = {},
 ) {
     // Local State
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
@@ -199,7 +201,7 @@ fun PlaylistDetailsScreen(
                                 onAddToPlaylist = { onAddToPlaylistClick(song) },
                                 onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
                                 onDelete = { onDeleteClick(song) },
-                                        onKeepOnPhone = { onKeepOnPhoneClick(song) },
+                                onKeepOnPhone = { onKeepOnPhoneClick(song) },
                                 isInLibrary = true,
                                 showDivider = !isLast,
                             )
@@ -233,6 +235,22 @@ fun PlaylistDetailsScreen(
                         imageVector = Icons.Filled.Add,
                         contentDescription = "Add songs",
                     )
+                }
+
+                // A playlist is the thing a reader most wants off the server before
+                // leaving the house, and it was the one list that could not be kept:
+                // an album and an artist each had this button already. Shown only where
+                // something is still on the server, so it never offers work with
+                // nothing behind it.
+                if (songs.any { it.sourceType == "SUBSONIC" }) {
+                    FloatingActionButtonMMD(
+                        onClick = { onKeepAllClick(songs) },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = "Keep the playlist on this phone",
+                        )
+                    }
                 }
             }
         }
