@@ -1767,8 +1767,6 @@ fun CalmMusic(app: CalmMusic) {
         if (showNowPlaying && playbackState.nowPlayingSong != null) {
             val song = playbackState.nowPlayingSong!!
 
-            val isInLibrary = librarySongIds.contains(song.id)
-
             val displayDuration = when {
                 playbackState.nowPlayingDurationMs > 0L -> playbackState.nowPlayingDurationMs
                 song.durationMillis != null && song.durationMillis > 0L -> song.durationMillis
@@ -1871,26 +1869,20 @@ fun CalmMusic(app: CalmMusic) {
                         app.youTubeDownloadManager.cancelDownload(active.id)
                     }
                 },
-                canAddToLibrary = (streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE" && !isInLibrary),
-                onAddToLibraryClick = {
-                    libraryScope.launch {
-                        try {
-                            viewModel.addStreamingSongToLibrary(song)
-                            snackbarHostState.showSnackbar(
-                                message = "Added to library",
-                                withDismissAction = false,
-                                duration = SnackbarDurationMMD.Short,
-                            )
-                        } catch (_: Exception) {
-                            snackbarHostState.showSnackbar(
-                                message = "Couldn't add to library",
-                                withDismissAction = false,
-                                duration = SnackbarDurationMMD.Short,
-                            )
-                        }
-                    }
+                // A completed download replaces the streamed song in the queue with the
+                // local one, so the source type is the durable answer to "is this on the
+                // phone" - the download list itself is only held in memory.
+                isDownloaded = song.sourceType == "YOUTUBE_DOWNLOAD",
+                // Undoing a download deletes the file and the library row, which is to say
+                // it deletes the song this screen is about: the row it came from is gone
+                // from the library, and leaving the screen up would leave a crossed-out
+                // button offering to delete it again. What is playing keeps playing - the
+                // file is already open - and this closes the page, the way deleting a song
+                // from the library closes its row.
+                onDeleteDownloadClick = {
+                    onDelete(song)
+                    showNowPlaying = false
                 },
-                isInLibrary = isInLibrary,
                 sourceType = song.sourceType,
                 streamResolverLabel = if (song.sourceType == "YOUTUBE") overlayState.streamResolverLabel else null,
             )

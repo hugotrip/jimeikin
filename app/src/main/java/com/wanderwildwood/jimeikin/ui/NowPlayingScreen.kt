@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.LibraryAdd
-import androidx.compose.material.icons.outlined.LibraryAddCheck
+import androidx.compose.material.icons.outlined.FileDownloadOff
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlaylistAdd
@@ -73,9 +71,8 @@ fun NowPlayingScreen(
     isDownloadInProgress: Boolean = false,
     onDownloadClick: () -> Unit = {},
     onCancelDownloadClick: () -> Unit = {},
-    canAddToLibrary: Boolean = false,
-    onAddToLibraryClick: () -> Unit = {},
-    isInLibrary: Boolean = false,
+    isDownloaded: Boolean = false,
+    onDeleteDownloadClick: () -> Unit = {},
     sourceType: String? = null,
     streamResolverLabel: String? = null,
 ) {
@@ -99,27 +96,72 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Only the arrow and the title navigate back - the whole row used to, which would
-            // now swallow taps meant for the actions.
+            // All the slack on this line belongs to the title. It used to be a weight(1f)
+            // spacer that pushed the actions right, but a Row splits weight between every
+            // weighted child: with the title asking for the slack as well, the two halved
+            // it and the title came out as "N...". One weighted box holds the slack, and
+            // the actions sit at the end of the row behind it.
             Row(
-                modifier = Modifier.clickable(onClick = onBackClick),
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                )
+                // Only the arrow and the title navigate back, so the clickable row is the
+                // words and not the empty space beside them.
+                Row(
+                    modifier = Modifier.clickable(onClick = onBackClick),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                    )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                TextMMD(
-                    text = "Now playing",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                    TextMMD(
+                        text = "Now playing",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Download does not disappear once the song is on the phone: it inverts, and
+            // the second press takes it back. A button that vanishes when you use it
+            // cannot be undone, and leaves you unsure whether it worked or was never
+            // there.
+            //
+            // There is no "add to library" here. Downloading puts the song in the library
+            // as well, so the two buttons differed only in whether the song came with it -
+            // and a saved song you cannot play off the network is a thin thing to carry.
+            // Taking a song back out of the library is still on its row in the library.
+            if (canDownload || isDownloaded) {
+                if (isDownloadInProgress) {
+                    // The spinner here was also the only way to cancel, which nothing said.
+                    IconButton(onClick = onCancelDownloadClick) {
+                        TextMMD(text = "Stop", fontSize = 13.sp)
+                    }
+                } else {
+                    IconButton(
+                        onClick = if (isDownloaded) onDeleteDownloadClick else onDownloadClick,
+                    ) {
+                        Icon(
+                            imageVector = if (isDownloaded) {
+                                Icons.Outlined.FileDownloadOff
+                            } else {
+                                Icons.Outlined.Download
+                            },
+                            contentDescription = if (isDownloaded) {
+                                "Delete download"
+                            } else {
+                                "Download"
+                            },
+                        )
+                    }
+                }
+            }
 
             IconButton(onClick = onAddToPlaylistClick) {
                 Icon(
@@ -171,6 +213,30 @@ fun NowPlayingScreen(
                         )
                     }
                 }
+            }
+        }
+
+        // Where this track is coming from, and whether it is kept. Under the top bar and
+        // hard right, so it sits beneath the two buttons it describes rather than at the
+        // far end of the page from them.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val isLocal = sourceType == "LOCAL_FILE" ||
+                sourceType == "YOUTUBE_DOWNLOAD" ||
+                sourceType == "SUBSONIC_DOWNLOAD"
+
+            if (!isLocal) {
+                // This was a solid black lozenge with a white cloud in it: the only inverted
+                // thing on the page, and the heaviest mark on a screen whose subject is the
+                // title. A word at the size of the timestamps says the same thing.
+                //
+                // "In the library" stood beside it and has gone with the button that put it
+                // there: with downloading the only way to keep a song, a kept song is a song
+                // that is not streaming, and the absence of this word already says so.
+                TextMMD(text = "Streaming", fontSize = 14.sp)
             }
         }
 
@@ -352,59 +418,6 @@ fun NowPlayingScreen(
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Bottom row for actions about this track rather than the queue: adding it to the
-        // library, downloading it, and where it came from. Queue actions moved to the top bar.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (canAddToLibrary) {
-                IconButton(onClick = onAddToLibraryClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.LibraryAdd,
-                        contentDescription = "Add to library",
-                    )
-                }
-            }
-
-            if (canDownload) {
-                if (isDownloadInProgress) {
-                    // The spinner here was also the only way to cancel, which nothing said.
-                    IconButton(onClick = onCancelDownloadClick) {
-                        TextMMD(text = "Stop", fontSize = 13.sp)
-                    }
-                } else {
-                    IconButton(onClick = onDownloadClick) {
-                        Icon(
-                            imageVector = Icons.Outlined.Download,
-                            contentDescription = "Download",
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            val isLocal = sourceType == "LOCAL_FILE" ||
-                sourceType == "YOUTUBE_DOWNLOAD" ||
-                sourceType == "SUBSONIC_DOWNLOAD"
-            if (!isLocal) {
-                // This was a solid black lozenge with a white cloud in it: the only inverted
-                // thing on the page, and the heaviest mark on a screen whose subject is the
-                // title. A word at the size of the timestamps says the same thing.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextMMD(text = "Streaming", fontSize = 14.sp)
-
-                    if (isInLibrary) {
-                        Spacer(modifier = Modifier.width(12.dp))
-                        TextMMD(text = "In the library", fontSize = 14.sp)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -438,9 +451,43 @@ private fun NowPlayingScreenPreview() {
         isDownloadInProgress = false,
         onDownloadClick = {},
         onCancelDownloadClick = {},
-        canAddToLibrary = false,
-        onAddToLibraryClick = {},
-        isInLibrary = true,
+        sourceType = "YOUTUBE",
+        streamResolverLabel = "Innertube",
+    )
+}
+
+// Both buttons showing their undo at once. The app does not reach this state - a finished
+// download replaces the streamed song, which takes the library button away - but it is the
+// widest the top bar can ever be asked to be, so it is the one to look at before changing
+// that row.
+@Preview(showBackground = true, widthDp = 360, heightDp = 600)
+@Composable
+private fun NowPlayingScreenSavedPreview() {
+    NowPlayingScreen(
+        title = "Song Title",
+        artist = "Artist Name",
+        album = "Album Name",
+        isPlaying = true,
+        isLoading = false,
+        currentPosition = 30_000L,
+        duration = 210_000L,
+        repeatMode = RepeatMode.OFF,
+        isShuffleOn = false,
+        onPlayPauseClick = {},
+        onSeek = {},
+        onSeekBackwardClick = {},
+        onSeekForwardClick = {},
+        onShuffleClick = {},
+        onRepeatClick = {},
+        onAddToPlaylistClick = {},
+        isVideo = false,
+        player = null,
+        canDownload = true,
+        isDownloadInProgress = false,
+        onDownloadClick = {},
+        onCancelDownloadClick = {},
+        isDownloaded = true,
+        onDeleteDownloadClick = {},
         sourceType = "YOUTUBE",
         streamResolverLabel = "Innertube",
     )
