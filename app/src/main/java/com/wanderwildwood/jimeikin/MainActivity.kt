@@ -1816,11 +1816,29 @@ fun CalmMusic(app: CalmMusic) {
                         localMediaController?.seekTo(positionMs)
                     }
                 },
-                onSeekBackwardClick = {
+                onPreviousClick = {
                     viewModel.playPreviousOrRestart(localMediaController)
                 },
-                onSeekForwardClick = {
+                onNextClick = {
                     viewModel.playNextInQueue(localMediaController)
+                },
+                // The same test the scrubber uses: everything but a live stream plays through
+                // this controller, so everything but a live stream can be moved within.
+                onRewindClick = {
+                    if (song.sourceType != "RADIO") {
+                        localMediaController?.let { controller ->
+                            controller.seekTo((controller.currentPosition - 10_000L).coerceAtLeast(0L))
+                        }
+                    }
+                },
+                onFastForwardClick = {
+                    if (song.sourceType != "RADIO") {
+                        localMediaController?.let { controller ->
+                            val end = controller.duration
+                            val target = controller.currentPosition + 10_000L
+                            controller.seekTo(if (end > 0L) target.coerceAtMost(end) else target)
+                        }
+                    }
                 },
                 onShuffleClick = {
                     viewModel.toggleShuffleMode(localMediaController)

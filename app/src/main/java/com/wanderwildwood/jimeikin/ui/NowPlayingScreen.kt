@@ -2,41 +2,49 @@ package com.wanderwildwood.jimeikin.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FileDownloadOff
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.RepeatOne
 import androidx.compose.material.icons.outlined.Shuffle
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
-import com.mudita.mmd.components.buttons.ButtonMMD
-import com.mudita.mmd.components.slider.SliderMMD
 import com.mudita.mmd.components.text.TextMMD
 
 enum class RepeatMode {
@@ -58,8 +66,10 @@ fun NowPlayingScreen(
     isShuffleOn: Boolean,
     onPlayPauseClick: () -> Unit,
     onSeek: (Long) -> Unit,
-    onSeekBackwardClick: () -> Unit,
-    onSeekForwardClick: () -> Unit,
+    onPreviousClick: () -> Unit,
+    onNextClick: () -> Unit,
+    onRewindClick: () -> Unit = {},
+    onFastForwardClick: () -> Unit = {},
     onShuffleClick: () -> Unit,
     onRepeatClick: () -> Unit,
     onAddToPlaylistClick: () -> Unit,
@@ -245,20 +255,19 @@ fun NowPlayingScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .padding(horizontal = 4.dp),
+                .weight(1f),
             verticalArrangement = Arrangement.Bottom,
         ) {
-            // Laid out like Audio Reading's player: who it is by, then what it is, then
-            // where it came from - one bold line among three, sitting at the bottom of the
-            // space with the transport under it. The title used to be 42sp and bold with a
-            // bold artist under it, which made the block read as two headings rather than
-            // one thing being played.
+            // Audio Reading's block, to its measurements: the artist bold against the italic
+            // title between them, so it reads as a name over a work rather than as three
+            // lines of one weight. Artist and album are one size, as author and chapter are
+            // there - 24sp lands on the ascender, 23 falls a pixel short.
             if (!isVideo) {
                 TextMMD(
                     text = artist,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontSize = 24.sp,
+                    lineHeight = 29.5.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -268,8 +277,10 @@ fun NowPlayingScreen(
 
             TextMMD(
                 text = title,
-                fontSize = if (isVideo) 24.sp else 26.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = if (isVideo) 24.sp else 27.5.sp,
+                lineHeight = if (isVideo) 29.5.sp else 34.sp,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Normal,
                 maxLines = if (isVideo) 1 else 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -277,11 +288,12 @@ fun NowPlayingScreen(
             if (!isVideo) {
                 val hasAlbum = !album.isNullOrBlank()
                 if (hasAlbum) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     TextMMD(
                         text = album!!,
-                        fontSize = 20.sp,
+                        fontSize = 24.sp,
+                        lineHeight = 29.5.sp,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -309,7 +321,9 @@ fun NowPlayingScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // The bar sits where it always did: what stands above and below gives up exactly what
+        // the bar took for somewhere to be pressed.
+        Spacer(modifier = Modifier.height(44.dp - (SeekBarHeight - KnobSize) / 2))
 
         // A radio stream has no length and no position to seek to, so it gets neither a bar
         // nor a pair of clocks. Both would have sat at 0:00 for as long as you listened, which
@@ -317,109 +331,204 @@ fun NowPlayingScreen(
         if (isLive) {
             TextMMD(
                 text = "Live",
-                fontSize = 14.sp,
+                fontSize = 20.sp,
+                lineHeight = 24.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-        } else Column(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            SliderMMD(
-                modifier = Modifier.fillMaxWidth(),
-                value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                onValueChange = { value ->
-                    if (duration > 0) {
-                        val newPosition = (value * duration).toLong().coerceIn(0L, duration)
-                        onSeek(newPosition)
-                    }
-                },
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(20.dp - (SeekBarHeight - KnobSize) / 2))
+        } else {
+            SeekBar(
+                positionMs = currentPosition,
+                durationMs = duration,
+                onSeekTo = onSeek,
+            )
+
+            Spacer(modifier = Modifier.height(20.dp - (SeekBarHeight - KnobSize) / 2))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                TextMMD(
-                    text = formatDurationMillisNonNull(currentPosition),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                TextMMD(
-                    text = formatDurationMillisNonNull(duration),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                Clock(currentPosition)
+                Clock(duration)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(25.dp))
 
+        // Audio Reading's transport, to its measurements. Plain glyphs on white rather than
+        // the two filled black slabs that used to sit either side of play: on a page whose
+        // subject is the title, the heaviest marks should not be the ones that skip past it.
+        //
+        // Its outer pair moves a chapter; here it moves a track, which is the same gesture
+        // on a thing with the same shape. The inner pair is new - this screen had no way to
+        // move within a song at all, only to leave it.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 32.dp),
+                .height(56.dp)
+                .padding(horizontal = 19.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            ButtonMMD(
-                onClick = onSeekBackwardClick,
-                modifier = Modifier.size(72.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
-                )
+            TransportButton(PlayerIcons.Previous, "Previous song", 36.dp, onPreviousClick)
 
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.SkipPrevious,
-                    modifier = Modifier.size(46.dp),
-                    contentDescription = "Previous song",
-                    tint = MaterialTheme.colorScheme.onSecondary
-                )
+            // Nothing to seek within on a live stream, so the pair that seeks is not drawn.
+            if (!isLive) {
+                TransportButton(PlayerIcons.Rewind, "Back $SEEK_SECONDS seconds", 32.dp, onRewindClick) {
+                    "${SEEK_SECONDS}s"
+                }
             }
 
-            if (isLoading) {
-                // A word, not a spinner: this panel cannot animate without smearing.
-                TextMMD(
-                    // Both have to fit the 72dp the play button occupies, or the word wraps
-                    // mid-syllable: "Reconnecting" broke as "Reconnecti / ng".
-                    text = if (isLive) "Waiting" else "Loading",
-                    fontSize = 14.sp,
-                    modifier = Modifier.size(72.dp).wrapContentSize(Alignment.Center),
-                )
-            } else {
-                IconButton(
-                    onClick = onPlayPauseClick,
-                    modifier = Modifier.size(72.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                        modifier = Modifier.size(46.dp),
+            // A fixed width whichever of the three things is in it, so that saying "Loading"
+            // does not shove the four buttons around it sideways and back again.
+            Box(
+                modifier = Modifier.width(56.dp).fillMaxHeight(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isLoading) {
+                    // A word, not a spinner: this panel cannot animate without smearing.
+                    TextMMD(
+                        text = if (isLive) "Waiting" else "Loading",
+                        fontSize = 14.sp,
+                    )
+                } else {
+                    TransportButton(
+                        icon = if (isPlaying) PlayerIcons.Pause else PlayerIcons.Play,
+                        description = if (isPlaying) "Pause" else "Play",
+                        size = 48.dp,
+                        onClick = onPlayPauseClick,
                     )
                 }
             }
 
-            ButtonMMD(
-                onClick = onSeekForwardClick,
-                modifier = Modifier.size(72.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.SkipNext,
-                    modifier = Modifier.size(46.dp),
-                    contentDescription = "Next song",
-                    tint = MaterialTheme.colorScheme.onSecondary
-                )
+            if (!isLive) {
+                TransportButton(PlayerIcons.Forward, "On $SEEK_SECONDS seconds", 32.dp, onFastForwardClick) {
+                    "${SEEK_SECONDS}s"
+                }
             }
+
+            TransportButton(PlayerIcons.Next, "Next song", 36.dp, onNextClick)
+        }
+
+        Spacer(modifier = Modifier.height(42.dp))
+    }
+}
+
+/**
+ * How far the inner pair moves. Audio Reading makes this a setting because a listener picks
+ * up a book mid-sentence; a song is three minutes long and ten seconds is the step everything
+ * else uses, so it is a number here and not a preference.
+ */
+private const val SEEK_SECONDS = 10
+
+/**
+ * One transport control, and under it whatever it has to say about itself - which is only
+ * ever how far the two seeking arrows move.
+ *
+ * The label hangs off the bottom of the box rather than sitting in a column under the icon,
+ * so that having one does not push an arrow up out of line with the play button beside it.
+ */
+@Composable
+private fun TransportButton(
+    icon: ImageVector,
+    description: String,
+    size: Dp,
+    onClick: () -> Unit,
+    label: (() -> String)? = null,
+) {
+    Box(
+        modifier = Modifier.fillMaxHeight().clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            modifier = Modifier.size(size),
+        )
+        if (label != null) {
+            TextMMD(
+                text = label(),
+                fontSize = 14.sp,
+                lineHeight = 14.sp,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
+
+@Composable
+private fun Clock(ms: Long) {
+    TextMMD(
+        text = formatDurationMillisNonNull(ms),
+        fontSize = 20.sp,
+        lineHeight = 24.sp,
+    )
+}
+
+/**
+ * Where the song is, and a way to move it.
+ *
+ * Drawn rather than taken from the toolkit: the stock slider animates its thumb, grows it on
+ * press and draws a halo around it, all of which are redraws the panel pays for and none of
+ * which say anything a filled line does not.
+ */
+@Composable
+private fun SeekBar(positionMs: Long, durationMs: Long, onSeekTo: (Long) -> Unit) {
+    var width by remember { mutableIntStateOf(0) }
+    val knob = with(LocalDensity.current) { KnobSize.toPx() }
+    val fraction = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    val travel = (width - knob).coerceAtLeast(0f)
+
+    fun seek(x: Float) {
+        if (durationMs > 0 && travel > 0f) {
+            onSeekTo((durationMs * ((x - knob / 2) / travel).coerceIn(0f, 1f)).toLong())
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            // Sixteen dense pixels of line is something to look at, not something to catch: a
+            // drag has to start inside it, and a thumb on a bus does not land that accurately.
+            // The strip that takes the press is as tall as a button; the line stays a line.
+            .height(SeekBarHeight)
+            .onSizeChanged { width = it.width }
+            .pointerInput(durationMs, width) {
+                detectHorizontalDragGestures { change, _ -> seek(change.position.x) }
+            }
+            .pointerInput(durationMs, width) {
+                detectTapGestures { seek(it.x) }
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        // The track stops where the knob's travel stops, half a knob in from each end, so that
+        // a song at the very beginning or the very end has the knob sitting on the track rather
+        // than hanging off it.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = KnobSize / 2)
+                .height(2.dp)
+                .background(TrackGrey),
+        )
+        Box(
+            modifier = Modifier
+                .offset { IntOffset((travel * fraction).toInt(), 0) }
+                .size(KnobSize)
+                .clip(CircleShape)
+                .background(Color.Black),
+        )
+    }
+}
+
+private val KnobSize = 16.dp
+
+/** How much of the screen listens for the bar. Twice a fingertip, and all of it pressable. */
+private val SeekBarHeight = 44.dp
+
+private val TrackGrey = Color(0xFFB2B2B2)
 
 private fun formatDurationMillisNonNull(millis: Long): String {
     return com.wanderwildwood.jimeikin.formatDurationMillis(millis) ?: "0:00"
@@ -440,8 +549,10 @@ private fun NowPlayingScreenPreview() {
         isShuffleOn = false,
         onPlayPauseClick = {},
         onSeek = {},
-        onSeekBackwardClick = {},
-        onSeekForwardClick = {},
+        onPreviousClick = {},
+        onNextClick = {},
+        onRewindClick = {},
+        onFastForwardClick = {},
         onShuffleClick = {},
         onRepeatClick = {},
         onAddToPlaylistClick = {},
@@ -475,8 +586,10 @@ private fun NowPlayingScreenSavedPreview() {
         isShuffleOn = false,
         onPlayPauseClick = {},
         onSeek = {},
-        onSeekBackwardClick = {},
-        onSeekForwardClick = {},
+        onPreviousClick = {},
+        onNextClick = {},
+        onRewindClick = {},
+        onFastForwardClick = {},
         onShuffleClick = {},
         onRepeatClick = {},
         onAddToPlaylistClick = {},
