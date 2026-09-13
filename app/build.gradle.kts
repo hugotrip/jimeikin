@@ -64,6 +64,16 @@ android {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = realSigningConfig ?: signingConfigs.getByName("debug")
+
+            // Two builds of the same commit differed by 120 bytes, and this was all of it:
+            // AGP stamps the git revision into META-INF, CI builds from a clone and the
+            // build box builds from an rsync with no .git, so one said the commit and the
+            // other said NO_SUPPORTED_VCS_FOUND. Off, and a release APK built here hashes
+            // the same as the one GitHub publishes - which is the only way the checksum in
+            // a forum post can be checked against anything but itself.
+            vcsInfo {
+                include = false
+            }
         }
     }
 
