@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.mudita.mmd.components.text_field.TextFieldMMD
 
 @Composable
 fun PlaylistEditScreen(
@@ -38,7 +38,7 @@ fun PlaylistEditScreen(
             .fillMaxSize()
             .padding(16.dp),
     ) {
-        OutlinedTextField(
+        TextFieldMMD(
             modifier = Modifier.fillMaxWidth(),
             value = name,
             onValueChange = { name = it },

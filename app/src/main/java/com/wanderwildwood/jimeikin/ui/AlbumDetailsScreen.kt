@@ -8,10 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -24,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
@@ -121,7 +121,7 @@ fun AlbumDetailsScreen(
                                     text = {
                                         TextMMD(
                                             text = "Disc $disc",
-                                            fontSize = 16.sp,
+                                            style = MaterialTheme.typography.titleSmall,
                                             fontWeight = if (selectedDiscIndex == index) FontWeight.Bold else FontWeight.Normal,
                                         )
                                     },
@@ -192,7 +192,7 @@ fun AlbumDetailsScreen(
                 // asked for; the write underneath it was already here and unused.
                 FloatingActionButtonMMD(onClick = { onAddAllToPlaylistClick(songs) }) {
                     Icon(
-                        imageVector = Icons.Filled.PlaylistAdd,
+                        imageVector = Icons.Outlined.PlaylistAdd,
                         contentDescription = "Add the album to a playlist",
                     )
                 }

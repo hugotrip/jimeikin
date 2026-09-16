@@ -3,7 +3,7 @@ package com.wanderwildwood.jimeikin
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Headphones
@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -22,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -107,7 +107,7 @@ fun CalmMusicTopAppBar(
                 canNavigateBack && currentDestination?.route !in navRoutes -> {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back",
                         )
                     }
@@ -149,7 +149,7 @@ fun CalmMusicTopAppBar(
                     androidx.compose.foundation.layout.Column {
                         TextMMD(
                             text = selectedAlbum.title,
-                            fontSize = 18.sp,
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -158,7 +158,7 @@ fun CalmMusicTopAppBar(
                         if (!artist.isNullOrBlank()) {
                             TextMMD(
                                 text = artist,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Normal,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -172,7 +172,7 @@ fun CalmMusicTopAppBar(
                     selectedArtistName != null -> {
                     TextMMD(
                         text = selectedArtistName,
-                        fontSize = 20.sp,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -182,7 +182,7 @@ fun CalmMusicTopAppBar(
                 currentDestination.isPlaylistDetails() && selectedPlaylist != null -> {
                     TextMMD(
                         text = selectedPlaylist.name,
-                        fontSize = 20.sp,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -192,7 +192,7 @@ fun CalmMusicTopAppBar(
                 else -> {
                     TextMMD(
                         text = getAppBarTitle(currentDestination, isEditingPlaylist = selectedPlaylist != null),
-                        fontSize = 24.sp,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
@@ -355,7 +355,7 @@ private fun CalmMusicTopAppBarActions(
             TextMMD(
                 text = "Remove $playlistDetailsSelectionCount",
                 textAlign = TextAlign.Center,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -374,7 +374,7 @@ private fun CalmMusicTopAppBarActions(
             TextMMD(
                 text = "Delete $playlistEditSelectionCount",
                 textAlign = TextAlign.Center,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -389,7 +389,7 @@ private fun CalmMusicTopAppBarActions(
             TextMMD(
                 text = "Done",
                 textAlign = TextAlign.Center,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
             )
         }

@@ -1,5 +1,6 @@
 package com.wanderwildwood.jimeikin.ui
 
+import androidx.compose.material3.MaterialTheme
 import com.wanderwildwood.jimeikin.data.ArtistNames
 
 import android.net.Uri
@@ -36,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.checkbox.CheckboxMMD
 import com.mudita.mmd.components.menus.DropdownMenuItemMMD
 import com.mudita.mmd.components.menus.DropdownMenuMMD
@@ -178,7 +178,7 @@ fun SongItem(
                 // is the emphasis instead - the only one the house style allows.
                 TextMMD(
                     text = song.trackNumber.toString(),
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = if (isCurrentlyPlaying) FontWeight.Bold else FontWeight.Normal,
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center
@@ -198,7 +198,7 @@ fun SongItem(
             ) {
                 TextMMD(
                     text = song.title,
-                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -220,7 +220,7 @@ fun SongItem(
 
                     TextMMD(
                         text = subtitle,
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -382,7 +382,7 @@ fun PlaylistItem(
         Column(modifier = Modifier.fillMaxWidth()) {
             TextMMD(
                 text = playlist.name,
-                fontSize = 20.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -392,7 +392,7 @@ fun PlaylistItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 TextMMD(
                     text = subtitle,
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Normal,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -462,7 +462,7 @@ fun SelectablePlaylistItem(
             ) {
                 TextMMD(
                     text = playlist.name,
-                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -472,7 +472,7 @@ fun SelectablePlaylistItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     TextMMD(
                         text = subtitle,
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Normal,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,

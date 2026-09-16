@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.YouTubeDownloadStatus
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
@@ -75,13 +74,13 @@ private fun DownloadItem(
             Column(modifier = Modifier.weight(1f)) {
                 TextMMD(
                     text = status.title,
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
                 TextMMD(
                     text = status.artist,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
@@ -103,19 +102,19 @@ private fun DownloadItem(
             // No bars. The panel redraws in full, so a sweeping indicator is a smear and a
             // battery cost, and the percentage below it already said the same thing.
             YouTubeDownloadStatus.State.PENDING -> {
-                TextMMD(text = "Waiting", fontSize = 12.sp)
+                TextMMD(text = "Waiting", style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.IN_PROGRESS -> {
-                TextMMD(text = "${(status.progress * 100).toInt()}%", fontSize = 12.sp)
+                TextMMD(text = "${(status.progress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.COMPLETED -> {
-                TextMMD(text = "Downloaded", fontSize = 12.sp)
+                TextMMD(text = "Downloaded", style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.FAILED -> {
-                TextMMD(text = "This one did not download", fontSize = 12.sp)
+                TextMMD(text = "This one did not download", style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.CANCELED -> {
-                TextMMD(text = "Canceled", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextMMD(text = "Canceled", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 

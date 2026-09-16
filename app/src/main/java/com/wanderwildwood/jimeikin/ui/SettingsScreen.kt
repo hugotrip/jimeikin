@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
@@ -74,7 +74,7 @@ fun SettingsScreen(
                 item {
                     TextMMD(
                         text = "No folders yet",
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
@@ -97,14 +97,14 @@ fun SettingsScreen(
                     ButtonMMD(
                         onClick = onAddFolderClick,
                         modifier = Modifier.weight(1f),
-                    ) { TextMMD(text = "Add a folder", fontSize = 16.sp) }
+                    ) { TextMMD(text = "Add a folder", style = MaterialTheme.typography.titleSmall) }
 
                     if (localFolders.isNotEmpty()) {
                         OutlinedButtonMMD(
                             onClick = onRescanLocalMusicClick,
                             modifier = Modifier.weight(1f),
                             enabled = !isRescanningLocal && !isIngestingLocal,
-                        ) { TextMMD(text = "Read them again", fontSize = 16.sp) }
+                        ) { TextMMD(text = "Read them again", style = MaterialTheme.typography.titleSmall) }
                     }
                 }
             }
@@ -128,7 +128,7 @@ fun SettingsScreen(
                 item {
                     TextMMD(
                         text = scanLine,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
@@ -144,13 +144,13 @@ fun SettingsScreen(
                                 (localScanIndexedNewOrUpdated
                                     ?.takeIf { it > 0 }
                                     ?.let { ", $it new or changed" } ?: ""),
-                            fontSize = 13.sp,
+                            style = MaterialTheme.typography.labelSmall,
                         )
                         if (localScanDeletedMissing != null && localScanDeletedMissing > 0) {
                             TextMMD(
                                 text = "$localScanDeletedMissing were no longer in the folders " +
                                     "and have left the library. The files were not touched.",
-                                fontSize = 13.sp,
+                                style = MaterialTheme.typography.labelSmall,
                             )
                         }
                         if (localScanUnreadableFolders != null && localScanUnreadableFolders > 0) {
@@ -161,7 +161,7 @@ fun SettingsScreen(
                                     "$localScanUnreadableFolders folders could not be read. " +
                                         "Their songs were left alone."
                                 },
-                                fontSize = 13.sp,
+                                style = MaterialTheme.typography.labelSmall,
                             )
                         }
                     }
@@ -240,7 +240,7 @@ private fun LinkRow(label: String, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextMMD(text = label, fontSize = 16.sp)
+        TextMMD(text = label, style = MaterialTheme.typography.titleSmall)
     }
 }
 
@@ -265,7 +265,7 @@ private fun SwitchRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextMMD(text = label, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        TextMMD(text = label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
         SwitchMMD(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
@@ -286,8 +286,8 @@ private fun ValueRow(
             )
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        TextMMD(text = label, fontSize = 16.sp)
-        TextMMD(text = value, fontSize = 14.sp)
+        TextMMD(text = label, style = MaterialTheme.typography.titleSmall)
+        TextMMD(text = value, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -326,7 +326,7 @@ private fun ArmedRow(
     ) {
         TextMMD(
             text = if (armed) armedLabel else label,
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = if (armed) FontWeight.Bold else FontWeight.Normal,
         )
     }
@@ -362,12 +362,12 @@ private fun FolderRow(path: String, onRemove: () -> Unit) {
         if (armed) {
             TextMMD(
                 text = "Stop reading this folder — its songs leave the library; tap again",
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(2.dp))
         }
-        TextMMD(text = path, fontSize = 14.sp)
+        TextMMD(text = path, style = MaterialTheme.typography.labelSmall)
     }
 }
 

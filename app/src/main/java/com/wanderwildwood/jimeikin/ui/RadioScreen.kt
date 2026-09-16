@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,9 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.mudita.mmd.components.text_field.TextFieldMMD
 import com.wanderwildwood.jimeikin.data.ArtistNames
 import com.wanderwildwood.jimeikin.data.RadioChannel
 import com.wanderwildwood.jimeikin.data.RadioGarden
@@ -151,7 +150,7 @@ fun RadioScreen(
 
     if (loading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            TextMMD("Reading the list…", fontSize = 16.sp)
+            TextMMD("Reading the list…", style = MaterialTheme.typography.titleSmall)
         }
         return
     }
@@ -293,11 +292,11 @@ private fun StationRow(
             .combinedClickable(onClick = onPlay, onLongClick = onToggleFavourite)
             .padding(vertical = 10.dp),
     ) {
-        TextMMD(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-        if (subtitle != null) TextMMD(subtitle, fontSize = 14.sp, maxLines = 1)
+        TextMMD(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 2)
+        if (subtitle != null) TextMMD(subtitle, style = MaterialTheme.typography.labelSmall, maxLines = 1)
         TextMMD(
             text = if (isFavourite) "A favorite — hold to remove" else "Hold to add to favorites",
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -326,7 +325,7 @@ private fun RowList(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
         item {
-            OutlinedTextField(
+            TextFieldMMD(
                 modifier = Modifier.fillMaxWidth(),
                 value = query,
                 onValueChange = onQueryChange,
@@ -334,14 +333,14 @@ private fun RowList(
                 singleLine = true,
             )
             Spacer(Modifier.height(8.dp))
-            TextMMD(heading, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+            TextMMD(heading, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
         }
         if (rows.isEmpty()) {
             item {
                 Spacer(Modifier.height(24.dp))
                 TextMMD(
                     text = "Nothing by that name",
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleSmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -355,9 +354,9 @@ private fun RowList(
                     .clickable { row.onClick() }
                     .padding(vertical = 10.dp),
             ) {
-                TextMMD(row.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                TextMMD(row.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                 if (row.subtitle != null) {
-                    TextMMD(row.subtitle, fontSize = 14.sp, maxLines = 1)
+                    TextMMD(row.subtitle, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                 }
             }
             if (index != rows.lastIndex) HorizontalDividerMMD(thickness = 1.dp)
@@ -375,7 +374,7 @@ private fun ChannelList(
 ) {
     if (channels.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            TextMMD("No stations here", fontSize = 16.sp)
+            TextMMD("No stations here", style = MaterialTheme.typography.titleSmall)
         }
         return
     }
@@ -384,7 +383,7 @@ private fun ChannelList(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
         item {
-            TextMMD(place.title, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+            TextMMD(place.title, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
         }
         items(channels.size) { index ->
             val channel = channels[index]
@@ -424,8 +423,8 @@ private fun RadioHome(
                     .clickable { onBrowse() }
                     .padding(vertical = 10.dp),
             ) {
-                TextMMD("Stations by place", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                TextMMD("Somewhere else, on the air now", fontSize = 14.sp)
+                TextMMD("Stations by place", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                TextMMD("Somewhere else, on the air now", style = MaterialTheme.typography.labelSmall)
             }
             if (hasTuner) {
                 HorizontalDividerMMD(thickness = 1.dp)
@@ -435,8 +434,8 @@ private fun RadioHome(
                         .clickable { onOpenTuner() }
                         .padding(vertical = 10.dp),
                 ) {
-                    TextMMD("FM radio", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    TextMMD("Opens the phone's tuner. Needs headphones.", fontSize = 14.sp)
+                    TextMMD("FM radio", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    TextMMD("Opens the phone's tuner. Needs headphones.", style = MaterialTheme.typography.labelSmall)
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -444,14 +443,14 @@ private fun RadioHome(
             Spacer(Modifier.height(12.dp))
             TextMMD(
                 text = if (keptStations.isEmpty()) "No favorite stations yet" else "Favorite stations",
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
             if (keptStations.isEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 TextMMD(
                     text = "Hold a station anywhere in this app to put it here.",
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
@@ -515,7 +514,7 @@ private fun RadioSearch(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
         item {
-            OutlinedTextField(
+            TextFieldMMD(
                 modifier = Modifier.fillMaxWidth(),
                 value = query,
                 onValueChange = onQueryChange,
@@ -529,7 +528,7 @@ private fun RadioSearch(
 
         if (searching) {
             item {
-                TextMMD("Looking…", fontSize = 16.sp)
+                TextMMD("Looking…", style = MaterialTheme.typography.titleSmall)
             }
             return@PagedColumnMMD
         }
@@ -538,7 +537,7 @@ private fun RadioSearch(
             item {
                 TextMMD(
                     text = "Near $searchedFor",
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
             }
@@ -550,10 +549,10 @@ private fun RadioSearch(
                         .clickable { onOpenPlace(place) }
                         .padding(vertical = 10.dp),
                 ) {
-                    TextMMD(place.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    TextMMD(place.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                     TextMMD(
                         text = place.country + " • " + plural(place.stationCount),
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
                     )
                 }
@@ -564,7 +563,7 @@ private fun RadioSearch(
 
         if (results.channels.isNotEmpty()) {
             item {
-                TextMMD("Stations", fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+                TextMMD("Stations", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
             }
             items(results.channels.size) { index ->
                 val channel = results.channels[index]
@@ -585,7 +584,7 @@ private fun RadioSearch(
         if (results.places.isNotEmpty()) {
             item {
                 Spacer(Modifier.height(8.dp))
-                TextMMD("Places", fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+                TextMMD("Places", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
             }
             items(results.places.size) { index ->
                 val place = results.places[index]
@@ -595,8 +594,8 @@ private fun RadioSearch(
                         .clickable { onOpenPlace(place) }
                         .padding(vertical = 10.dp),
                 ) {
-                    TextMMD(place.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    TextMMD(place.country, fontSize = 14.sp, maxLines = 1)
+                    TextMMD(place.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+                    TextMMD(place.country, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                 }
                 if (index != results.places.lastIndex) HorizontalDividerMMD(thickness = 1.dp)
             }
@@ -607,7 +606,7 @@ private fun RadioSearch(
                 Spacer(Modifier.height(24.dp))
                 TextMMD(
                     text = "Nothing for \"$searchedFor\"",
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleSmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )

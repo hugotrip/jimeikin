@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,9 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.mudita.mmd.components.text_field.TextFieldMMD
 import com.wanderwildwood.jimeikin.data.SubsonicConfig
 import kotlinx.coroutines.delay
 
@@ -65,7 +65,7 @@ fun MusicServerScreen(
             .fillMaxSize()
             .padding(16.dp),
     ) {
-        OutlinedTextField(
+        TextFieldMMD(
             modifier = Modifier.fillMaxWidth(),
             value = address,
             onValueChange = { address = it },
@@ -77,7 +77,7 @@ fun MusicServerScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedTextField(
+        TextFieldMMD(
             modifier = Modifier.fillMaxWidth(),
             value = user,
             onValueChange = { user = it },
@@ -88,7 +88,7 @@ fun MusicServerScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedTextField(
+        TextFieldMMD(
             modifier = Modifier.fillMaxWidth(),
             value = password,
             onValueChange = { password = it },
@@ -108,13 +108,13 @@ fun MusicServerScreen(
         ) {
             TextMMD(
                 text = if (config == null) "Connect" else "Connect again",
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.titleSmall,
             )
         }
 
         if (statusMessage != null) {
             Spacer(modifier = Modifier.height(16.dp))
-            TextMMD(text = statusMessage, fontSize = 14.sp)
+            TextMMD(text = statusMessage, style = MaterialTheme.typography.labelSmall)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -124,7 +124,7 @@ fun MusicServerScreen(
                 "request carries a one-time signature made from it instead. Anyone who can " +
                 "read your network can still replay a request, so a server reachable from " +
                 "outside the house wants https.",
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.labelSmall,
         )
 
         if (config != null) {
@@ -158,7 +158,7 @@ private fun ForgetServerRow(onForget: () -> Unit) {
             } else {
                 "Forget this server"
             },
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = if (armed) FontWeight.Bold else FontWeight.Normal,
         )
     }

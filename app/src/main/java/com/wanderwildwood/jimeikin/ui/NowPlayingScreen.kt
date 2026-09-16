@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FileDownloadOff
 import androidx.compose.material.icons.outlined.PlaylistAdd
@@ -34,7 +34,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -122,7 +121,7 @@ fun NowPlayingScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
                     )
 
@@ -130,7 +129,7 @@ fun NowPlayingScreen(
 
                     TextMMD(
                         text = "Now playing",
-                        fontSize = 18.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -151,7 +150,7 @@ fun NowPlayingScreen(
                 if (isDownloadInProgress) {
                     // The spinner here was also the only way to cancel, which nothing said.
                     IconButton(onClick = onCancelDownloadClick) {
-                        TextMMD(text = "Stop", fontSize = 13.sp)
+                        TextMMD(text = "Stop", style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     IconButton(
@@ -246,7 +245,7 @@ fun NowPlayingScreen(
                 // "In the library" stood beside it and has gone with the button that put it
                 // there: with downloading the only way to keep a song, a kept song is a song
                 // that is not streaming, and the absence of this word already says so.
-                TextMMD(text = "Streaming", fontSize = 14.sp)
+                TextMMD(text = "Streaming", style = MaterialTheme.typography.labelSmall)
             }
         }
 
@@ -265,7 +264,7 @@ fun NowPlayingScreen(
             if (!isVideo) {
                 TextMMD(
                     text = artist,
-                    fontSize = 24.sp,
+                    style = MaterialTheme.typography.titleLarge,
                     lineHeight = 29.5.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -279,7 +278,6 @@ fun NowPlayingScreen(
                 text = title,
                 fontSize = if (isVideo) 24.sp else 27.5.sp,
                 lineHeight = if (isVideo) 29.5.sp else 34.sp,
-                fontStyle = FontStyle.Italic,
                 fontWeight = FontWeight.Normal,
                 maxLines = if (isVideo) 1 else 2,
                 overflow = TextOverflow.Ellipsis
@@ -292,7 +290,7 @@ fun NowPlayingScreen(
 
                     TextMMD(
                         text = album!!,
-                        fontSize = 24.sp,
+                        style = MaterialTheme.typography.titleLarge,
                         lineHeight = 29.5.sp,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
@@ -331,7 +329,7 @@ fun NowPlayingScreen(
         if (isLive) {
             TextMMD(
                 text = "Live",
-                fontSize = 20.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 lineHeight = 24.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -391,7 +389,7 @@ fun NowPlayingScreen(
                     // A word, not a spinner: this panel cannot animate without smearing.
                     TextMMD(
                         text = if (isLive) "Waiting" else "Loading",
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 } else {
                     TransportButton(
@@ -450,7 +448,7 @@ private fun TransportButton(
         if (label != null) {
             TextMMD(
                 text = label(),
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.labelSmall,
                 lineHeight = 14.sp,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
@@ -462,7 +460,7 @@ private fun TransportButton(
 private fun Clock(ms: Long) {
     TextMMD(
         text = formatDurationMillisNonNull(ms),
-        fontSize = 20.sp,
+        style = MaterialTheme.typography.bodyLarge,
         lineHeight = 24.sp,
     )
 }

@@ -43,11 +43,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 /**
- * ViewModel responsible for owning long-lived CalmMusic library state and
- */
-
-/**
- * Whether a song is played by the player on this phone.
+ * Whether the player can be handed this song's uri and left to get on with it.
  *
  * Files on the card, downloads, songs streamed from a music server and songs kept from one
  * all go through media3 the same way — a uri is a uri, whether it names a file or a server.
@@ -56,9 +52,6 @@ import kotlin.math.abs
  * This used to be spelled out at six separate call sites, and adding a source meant finding
  * all six. Two were missed, which is why a server song reached the queue and then sat on
  * "Loading" for ever: nothing routed it to a player.
- */
-/**
- * Whether the player can be handed this song's uri and left to get on with it.
  *
  * The name is about where playback happens, not about whether a network is needed: a song on a
  * music server needs one, and a radio stream needs one and never ends. What they have in common

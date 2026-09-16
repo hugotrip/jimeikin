@@ -1,5 +1,6 @@
 package com.wanderwildwood.jimeikin.ui
 
+import androidx.compose.material3.MaterialTheme
 import com.wanderwildwood.jimeikin.data.ArtistNames
 
 import androidx.compose.foundation.layout.Arrangement
@@ -12,7 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
@@ -135,7 +135,7 @@ fun ArtistDetailsScreen(
                                 text = {
                                     TextMMD(
                                         text = title,
-                                        fontSize = 16.sp,
+                                        style = MaterialTheme.typography.titleSmall,
                                         fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                                     )
                                 },
@@ -231,7 +231,7 @@ fun ArtistDetailsScreen(
                 // asked for; the write underneath it was already here and unused.
                 FloatingActionButtonMMD(onClick = { onAddAllToPlaylistClick(songs) }) {
                     Icon(
-                        imageVector = Icons.Filled.PlaylistAdd,
+                        imageVector = Icons.Outlined.PlaylistAdd,
                         contentDescription = "Add these to a playlist",
                     )
                 }

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
@@ -126,7 +126,7 @@ fun YouTubeArtistDetailsScreen(
                                 text = {
                                     TextMMD(
                                         text = title,
-                                        fontSize = 16.sp,
+                                        style = MaterialTheme.typography.titleSmall,
                                         fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                                     )
                                 },

@@ -13,12 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.wanderwildwood.jimeikin.PlaylistsViewModel
 import com.mudita.mmd.components.buttons.ButtonMMD
@@ -149,7 +149,7 @@ fun PlaylistDetailsScreen(
                     ) {
                         TextMMD(
                             text = "No songs in this playlist",
-                            fontSize = 22.sp,
+                            style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -236,7 +236,7 @@ fun PlaylistDetailsScreen(
                     onClick = onAddSongsClick,
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
+                        imageVector = Icons.Outlined.Add,
                         contentDescription = "Add songs",
                     )
                 }
@@ -301,7 +301,7 @@ private fun EditablePlaylistSongItem(
             ) {
                 TextMMD(
                     text = song.title,
-                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -323,7 +323,7 @@ private fun EditablePlaylistSongItem(
                 if (subtitle.isNotEmpty()) {
                     TextMMD(
                         text = subtitle,
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

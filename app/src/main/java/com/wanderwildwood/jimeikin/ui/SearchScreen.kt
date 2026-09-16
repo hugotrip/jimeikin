@@ -9,12 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
@@ -55,7 +55,7 @@ fun SearchScreen(
                 text = {
                     TextMMD(
                         text = "Songs",
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
@@ -66,7 +66,7 @@ fun SearchScreen(
                 text = {
                     TextMMD(
                         text = "Albums",
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
@@ -77,7 +77,7 @@ fun SearchScreen(
                 text = {
                     TextMMD(
                         text = "Artists",
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
@@ -196,7 +196,7 @@ private fun SearchArtistItem(
     ) {
         TextMMD(
             text = artist.name,
-            fontSize = 20.sp,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -205,7 +205,7 @@ private fun SearchArtistItem(
         Spacer(modifier = Modifier.height(4.dp))
         TextMMD(
             text = "Artist",
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

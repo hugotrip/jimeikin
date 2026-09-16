@@ -31,10 +31,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -63,7 +63,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -712,11 +711,6 @@ fun CalmMusic(app: CalmMusic) {
     }
 
     /**
-     * Keeps a server song on the phone. The row is not duplicated: when the file is whole its
-     * source changes from a pointer to the server into a file, which is what makes its rule
-     * solid and lets it play with the network off. Deleting it later puts the pointer back.
-     */
-    /**
      * Keeps a whole album, or everything by an artist, on the phone.
      *
      * One at a time and in order, rather than all at once: a phone on a home network gains
@@ -780,6 +774,11 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
+    /**
+     * Keeps a server song on the phone. The row is not duplicated: when the file is whole its
+     * source changes from a pointer to the server into a file, which is what makes its rule
+     * solid and lets it play with the network off. Deleting it later puts the pointer back.
+     */
     val onKeepOnPhone: (SongUiModel) -> Unit = { song ->
         libraryScope.launch {
             val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
@@ -1932,7 +1931,7 @@ fun CalmMusic(app: CalmMusic) {
                             } else {
                                 "Add ${songs.size} songs to playlist"
                             },
-                            fontSize = 24.sp,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
 
@@ -1952,7 +1951,7 @@ fun CalmMusic(app: CalmMusic) {
                     if (libraryPlaylists.isEmpty()) {
                         TextMMD(
                             text = "No playlists yet",
-                            fontSize = 16.sp,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Normal
                         )
 
@@ -2003,7 +2002,7 @@ fun CalmMusic(app: CalmMusic) {
                     ) {
                         TextMMD(
                             text = "New playlist",
-                            fontSize = 24.sp,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                     }
@@ -2036,7 +2035,7 @@ fun CalmMusic(app: CalmMusic) {
                                 } else {
                                     "Remove songs from \"${playlist.name}\""
                                 },
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
 
@@ -2059,7 +2058,7 @@ fun CalmMusic(app: CalmMusic) {
                             } else {
                                 "This will remove the selected songs from this playlist. The songs will remain in your library."
                             },
-                            fontSize = 16.sp,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Normal,
                         )
 
@@ -2112,7 +2111,7 @@ fun CalmMusic(app: CalmMusic) {
                         ) {
                             TextMMD(
                                 text = "Remove",
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -2126,7 +2125,7 @@ fun CalmMusic(app: CalmMusic) {
                         ) {
                             TextMMD(
                                 text = "Back",
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Normal,
                             )
                         }
@@ -2153,7 +2152,7 @@ fun CalmMusic(app: CalmMusic) {
                         ) {
                             TextMMD(
                                 text = "Delete playlist${if (playlistEditSelectionCount > 1) "s" else ""}",
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
 
@@ -2176,7 +2175,7 @@ fun CalmMusic(app: CalmMusic) {
                             } else {
                                 "This will permanently remove the selected playlists. Songs in your library will not be deleted."
                             },
-                            fontSize = 16.sp,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Normal,
                         )
 
@@ -2238,7 +2237,7 @@ fun CalmMusic(app: CalmMusic) {
                         ) {
                             TextMMD(
                                 text = "Delete",
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -2252,7 +2251,7 @@ fun CalmMusic(app: CalmMusic) {
                         ) {
                             TextMMD(
                                 text = "Back",
-                                fontSize = 24.sp,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Normal,
                             )
                         }
