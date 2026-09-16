@@ -10,14 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.FileDownloadOff
-import androidx.compose.material.icons.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.RepeatOne
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -121,7 +113,7 @@ fun NowPlayingScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        imageVector = Icons.Back,
                         contentDescription = "Back",
                     )
 
@@ -158,9 +150,9 @@ fun NowPlayingScreen(
                     ) {
                         Icon(
                             imageVector = if (isDownloaded) {
-                                Icons.Outlined.FileDownloadOff
+                                Icons.DownloadOff
                             } else {
-                                Icons.Outlined.Download
+                                Icons.Download
                             },
                             contentDescription = if (isDownloaded) {
                                 "Delete download"
@@ -174,7 +166,7 @@ fun NowPlayingScreen(
 
             IconButton(onClick = onAddToPlaylistClick) {
                 Icon(
-                    imageVector = Icons.Outlined.PlaylistAdd,
+                    imageVector = Icons.PlaylistAdd,
                     contentDescription = "Add to playlist",
                 )
             }
@@ -182,7 +174,7 @@ fun NowPlayingScreen(
             IconButton(onClick = onShuffleClick) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Outlined.Shuffle,
+                        imageVector = Icons.Shuffle,
                         contentDescription = "Shuffle queue",
                     )
                     if (isShuffleOn) {
@@ -201,9 +193,9 @@ fun NowPlayingScreen(
 
             IconButton(onClick = onRepeatClick) {
                 val (icon, description, isActive) = when (repeatMode) {
-                    RepeatMode.OFF -> Triple(Icons.Outlined.Repeat, "Repeat off", false)
-                    RepeatMode.QUEUE -> Triple(Icons.Outlined.Repeat, "Repeat queue", true)
-                    RepeatMode.ONE -> Triple(Icons.Outlined.RepeatOne, "Repeat current song", true)
+                    RepeatMode.OFF -> Triple(Icons.Repeat, "Repeat off", false)
+                    RepeatMode.QUEUE -> Triple(Icons.Repeat, "Repeat queue", true)
+                    RepeatMode.ONE -> Triple(Icons.RepeatOne, "Repeat current song", true)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(

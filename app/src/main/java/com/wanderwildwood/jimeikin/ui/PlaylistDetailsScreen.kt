@@ -12,12 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -227,7 +221,7 @@ fun PlaylistDetailsScreen(
                     onClick = { onShuffleClick(songs) },
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Shuffle,
+                        imageVector = Icons.Shuffle,
                         contentDescription = "Shuffle playlist",
                     )
                 }
@@ -236,7 +230,7 @@ fun PlaylistDetailsScreen(
                     onClick = onAddSongsClick,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Add,
+                        imageVector = Icons.Plus,
                         contentDescription = "Add songs",
                     )
                 }
@@ -251,7 +245,7 @@ fun PlaylistDetailsScreen(
                         onClick = { onKeepAllClick(songs) },
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Download,
+                            imageVector = Icons.Download,
                             contentDescription = "Keep the playlist on this phone",
                         )
                     }
@@ -337,7 +331,7 @@ private fun EditablePlaylistSongItem(
             ) {
                 if (canMoveUp) {
                     Icon(
-                        imageVector = Icons.Outlined.ArrowUpward,
+                        imageVector = Icons.ArrowUp,
                         contentDescription = "Move up",
                         modifier = Modifier
                             .size(24.dp)
@@ -347,7 +341,7 @@ private fun EditablePlaylistSongItem(
                 }
                 if (canMoveDown) {
                     Icon(
-                        imageVector = Icons.Outlined.ArrowDownward,
+                        imageVector = Icons.ArrowDown,
                         contentDescription = "Move down",
                         modifier = Modifier
                             .size(24.dp)

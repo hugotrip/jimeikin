@@ -18,11 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Headphones
-import androidx.compose.material.icons.outlined.LibraryAddCheck
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -185,7 +180,7 @@ fun SongItem(
                 )
             } else if (isCurrentlyPlaying) {
                 Icon(
-                    imageVector = Icons.Outlined.Headphones,
+                    imageVector = Icons.Headphones,
                     contentDescription = "Now playing",
                     modifier = Modifier
                         .size(24.dp)
@@ -210,7 +205,7 @@ fun SongItem(
                 ) {
                     if (!isLocal && isInLibrary) {
                         Icon(
-                            imageVector = Icons.Outlined.LibraryAddCheck,
+                            imageVector = Icons.LibraryAddCheck,
                             contentDescription = "In the library",
                             modifier = Modifier.size(16.dp)
                         )
@@ -231,7 +226,7 @@ fun SongItem(
             if (showMenu) {
                 Box(modifier = Modifier.wrapContentSize()) {
                     Icon(
-                        imageVector = Icons.Outlined.Clear,
+                        imageVector = Icons.Close,
                         contentDescription = "Close menu",
                         modifier = Modifier
                             .size(24.dp)

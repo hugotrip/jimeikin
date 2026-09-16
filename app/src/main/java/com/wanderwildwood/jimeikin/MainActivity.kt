@@ -30,12 +30,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,6 +77,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wanderwildwood.jimeikin.data.StreamingProvider
 import com.wanderwildwood.jimeikin.ui.AboutDialog
+import com.wanderwildwood.jimeikin.ui.Icons
 import com.wanderwildwood.jimeikin.ui.MusicServerScreen
 import com.wanderwildwood.jimeikin.ui.AlbumDetailsScreen
 import com.wanderwildwood.jimeikin.ui.AlbumUiModel
@@ -1940,7 +1935,7 @@ fun CalmMusic(app: CalmMusic) {
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Close,
+                                imageVector = Icons.Close,
                                 contentDescription = "Cancel adding to a playlist"
                             )
                         }
@@ -2044,7 +2039,7 @@ fun CalmMusic(app: CalmMusic) {
                                 modifier = Modifier.size(32.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Close,
+                                    imageVector = Icons.Close,
                                     contentDescription = "Cancel song removal",
                                 )
                             }
@@ -2161,7 +2156,7 @@ fun CalmMusic(app: CalmMusic) {
                                 modifier = Modifier.size(32.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Close,
+                                    imageVector = Icons.Close,
                                     contentDescription = "Cancel playlist deletion",
                                 )
                             }

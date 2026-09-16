@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -222,7 +218,7 @@ fun ArtistDetailsScreen(
             ) {
                 FloatingActionButtonMMD(onClick = { onShuffleSongsClick(songs) }) {
                     Icon(
-                        imageVector = Icons.Outlined.Shuffle,
+                        imageVector = Icons.Shuffle,
                         contentDescription = "Shuffle artist songs",
                     )
                 }
@@ -231,7 +227,7 @@ fun ArtistDetailsScreen(
                 // asked for; the write underneath it was already here and unused.
                 FloatingActionButtonMMD(onClick = { onAddAllToPlaylistClick(songs) }) {
                     Icon(
-                        imageVector = Icons.Outlined.PlaylistAdd,
+                        imageVector = Icons.PlaylistAdd,
                         contentDescription = "Add these to a playlist",
                     )
                 }
@@ -241,7 +237,7 @@ fun ArtistDetailsScreen(
                 if (songs.any { it.sourceType == "SUBSONIC" }) {
                     FloatingActionButtonMMD(onClick = { onKeepAllClick(songs) }) {
                         Icon(
-                            imageVector = Icons.Outlined.Download,
+                            imageVector = Icons.Download,
                             contentDescription = "Keep these on this phone",
                         )
                     }

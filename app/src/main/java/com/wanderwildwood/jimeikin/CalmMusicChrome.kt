@@ -2,15 +2,6 @@ package com.wanderwildwood.jimeikin
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Headphones
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +18,7 @@ import androidx.navigation.NavDestination
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.wanderwildwood.jimeikin.ui.AlbumUiModel
+import com.wanderwildwood.jimeikin.ui.Icons
 import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
@@ -89,7 +81,7 @@ fun CalmMusicTopAppBar(
                 currentDestination.isPlaylistDetails() && isPlaylistDetailsEditMode -> {
                     IconButton(onClick = onCancelPlaylistDetailsEditClick) {
                         Icon(
-                            imageVector = Icons.Outlined.Clear,
+                            imageVector = Icons.Close,
                             contentDescription = "Cancel playlist edits",
                         )
                     }
@@ -98,7 +90,7 @@ fun CalmMusicTopAppBar(
                 currentDestination?.route == Screen.Playlists.route && isPlaylistsEditMode -> {
                     IconButton(onClick = onCancelPlaylistsEditClick) {
                         Icon(
-                            imageVector = Icons.Outlined.Clear,
+                            imageVector = Icons.Close,
                             contentDescription = "Cancel playlist edit",
                         )
                     }
@@ -107,7 +99,7 @@ fun CalmMusicTopAppBar(
                 canNavigateBack && currentDestination?.route !in navRoutes -> {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            imageVector = Icons.Back,
                             contentDescription = "Back",
                         )
                     }
@@ -135,7 +127,7 @@ fun CalmMusicTopAppBar(
                                 },
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Search,
+                                    imageVector = Icons.Search,
                                     contentDescription = "Search",
                                 )
                             }
@@ -261,7 +253,7 @@ private fun CalmMusicTopAppBarActions(
         if (currentDestination?.route == Screen.Playlists.route && hasLibraryPlaylists && !isPlaylistsEditMode) {
             IconButton(onClick = onEnterPlaylistsEditClick) {
                 Icon(
-                    imageVector = Icons.Outlined.Edit,
+                    imageVector = Icons.Edit,
                     contentDescription = "Edit playlists",
                 )
             }
@@ -269,7 +261,7 @@ private fun CalmMusicTopAppBarActions(
 
         IconButton(onClick = onNavigateToSearchClick) {
             Icon(
-                imageVector = Icons.Outlined.Search,
+                imageVector = Icons.Search,
                 contentDescription = "Search",
             )
         }
@@ -278,7 +270,7 @@ private fun CalmMusicTopAppBarActions(
         // promised a menu of places and held one.
         IconButton(onClick = onNavigateToSettingsClick) {
             Icon(
-                imageVector = Icons.Outlined.Settings,
+                imageVector = Icons.Settings,
                 contentDescription = "Settings",
             )
         }
@@ -290,7 +282,7 @@ private fun CalmMusicTopAppBarActions(
     if (currentDestination?.route == Screen.Settings.route) {
         IconButton(onClick = onShowAboutClick) {
             Icon(
-                imageVector = Icons.Outlined.Info,
+                imageVector = Icons.Info,
                 contentDescription = "About",
             )
         }
@@ -300,7 +292,7 @@ private fun CalmMusicTopAppBarActions(
         androidx.compose.foundation.layout.Box {
             IconButton(onClick = onPlaylistDetailsMenuToggle) {
                 Icon(
-                    imageVector = Icons.Outlined.MoreVert,
+                    imageVector = Icons.More,
                     contentDescription = "Playlist options",
                 )
             }
@@ -412,7 +404,7 @@ private fun CalmMusicTopAppBarActions(
         // draw and undraw as you move between screens.
         IconButton(onClick = onNowPlayingClick) {
             Icon(
-                imageVector = Icons.Outlined.Headphones,
+                imageVector = Icons.Headphones,
                 contentDescription = "Now playing",
             )
         }
