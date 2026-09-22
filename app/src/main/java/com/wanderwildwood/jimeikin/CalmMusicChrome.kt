@@ -120,16 +120,34 @@ fun CalmMusicTopAppBar(
                         onExpandedChange = { },
                         placeholder = { TextMMD("Search") },
                         trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    keyboardController?.hide()
-                                    onPerformSearchClick()
-                                },
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Search,
-                                    contentDescription = "Search",
-                                )
+                            // Emptying the field took a long press and a delete on a keyboard
+                            // that e-ink redraws key by key. (From upstream CalmMusic's
+                            // feature/full-cleanup.)
+                            androidx.compose.foundation.layout.Row {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = {
+                                            onSearchQueryChange("")
+                                            focusRequester.requestFocus()
+                                        },
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Close,
+                                            contentDescription = "Clear search",
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = {
+                                        keyboardController?.hide()
+                                        onPerformSearchClick()
+                                    },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Search,
+                                        contentDescription = "Search",
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier
