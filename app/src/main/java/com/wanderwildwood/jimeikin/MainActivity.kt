@@ -54,6 +54,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -384,7 +386,7 @@ fun CalmMusic(app: CalmMusic) {
                 val topVideoIds = songResults.take(5).map { it.videoId }
                 app.youTubePrecacheManager.precacheSearchResults(topVideoIds)
             } catch (e: Exception) {
-                searchError = "The search did not reach YouTube"
+                searchError = context.getString(R.string.main_search_error)
                 searchSongs = emptyList()
                 searchAlbums = emptyList()
                 searchArtists = emptyList()
@@ -455,7 +457,7 @@ fun CalmMusic(app: CalmMusic) {
         if (needsLocalController && controller == null) {
             libraryScope.launch {
                 snackbarHostState.showSnackbar(
-                    message = "Playback is still starting",
+                    message = context.getString(R.string.main_playback_still_starting),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -500,15 +502,15 @@ fun CalmMusic(app: CalmMusic) {
                     }
                 }
                 snackbarMessage = when {
-                    result.wasAdded -> "Added \"${song.title}\" to \"${playlist.name}\""
-                    result.alreadyInPlaylist -> "This song is already in \"${playlist.name}\""
+                    result.wasAdded -> context.getString(R.string.main_added_song_to_playlist, song.title, playlist.name)
+                    result.alreadyInPlaylist -> context.getString(R.string.main_song_already_in_playlist, playlist.name)
                     else -> null
                 }
                 if (result.wasAdded || result.alreadyInPlaylist) {
                     showAddToPlaylistDialog = false
                 }
             } catch (_: Exception) {
-                snackbarMessage = "That song was not added to the playlist"
+                snackbarMessage = context.getString(R.string.main_song_not_added)
             }
             snackbarMessage?.let { message ->
                 snackbarHostState.showSnackbar(
@@ -536,12 +538,11 @@ fun CalmMusic(app: CalmMusic) {
                     }
                 }
                 when {
-                    result.addedCount == 0 -> "Every one of those is already in \"${playlist.name}\""
-                    result.addedCount == 1 -> "Added one song to \"${playlist.name}\""
-                    else -> "Added ${result.addedCount} songs to \"${playlist.name}\""
+                    result.addedCount == 0 -> context.getString(R.string.main_all_already_in_playlist, playlist.name)
+                    else -> context.resources.getQuantityString(R.plurals.main_added_songs_to_playlist, result.addedCount, result.addedCount, playlist.name)
                 }
             } catch (_: Exception) {
-                "Those songs were not added to the playlist"
+                context.getString(R.string.main_songs_not_added)
             }
             snackbarHostState.showSnackbar(
                 message = message,
@@ -559,9 +560,9 @@ fun CalmMusic(app: CalmMusic) {
     fun connectToMusicServer(entered: com.wanderwildwood.jimeikin.data.SubsonicConfig) {
         if (isServerBusy) return
         isServerBusy = true
-        serverStatus = "Connecting"
+        serverStatus = context.getString(R.string.main_server_connecting)
         libraryScope.launch {
-            val client = com.wanderwildwood.jimeikin.data.SubsonicClient(entered)
+            val client = com.wanderwildwood.jimeikin.data.SubsonicClient(entered, context.resources)
             when (val ping = client.ping()) {
                 is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> {
                     serverStatus = ping.message
@@ -572,7 +573,7 @@ fun CalmMusic(app: CalmMusic) {
             }
 
             settingsManager.setSubsonicConfig(entered)
-            serverStatus = "Reading the library"
+            serverStatus = context.getString(R.string.main_server_reading_library)
 
             val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
             val result = com.wanderwildwood.jimeikin.data.SubsonicSync.sync(
@@ -582,13 +583,13 @@ fun CalmMusic(app: CalmMusic) {
                 artistDao = database.artistDao(),
                 playlistDao = database.playlistDao(),
                 onProgress = { done, total ->
-                    serverStatus = "Reading the library, album $done of $total"
+                    serverStatus = context.getString(R.string.main_server_reading_album, done, total)
                 },
             )
             serverStatus = when (result) {
                 is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> result.message
                 is com.wanderwildwood.jimeikin.data.SubsonicResult.Success ->
-                    "${result.value} songs from the server are in the library"
+                    context.resources.getQuantityString(R.plurals.main_server_songs_in_library, result.value, result.value)
             }
             viewModel.refreshLibraryFromDatabase()
             isServerBusy = false
@@ -618,7 +619,7 @@ fun CalmMusic(app: CalmMusic) {
             val stream = com.wanderwildwood.jimeikin.data.RadioGarden.resolveStream(channel.id)
             if (stream.isNullOrBlank()) {
                 snackbarHostState.showSnackbar(
-                    message = "That station would not give a stream",
+                    message = context.getString(R.string.main_station_no_stream),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -639,7 +640,7 @@ fun CalmMusic(app: CalmMusic) {
             }
             reloadRadioStations()
             snackbarHostState.showSnackbar(
-                message = "Kept \"" + channel.title + "\"",
+                message = context.getString(R.string.main_station_kept, channel.title),
                 withDismissAction = false,
                 duration = SnackbarDurationMMD.Short,
             )
@@ -657,7 +658,7 @@ fun CalmMusic(app: CalmMusic) {
             val stream = com.wanderwildwood.jimeikin.data.RadioGarden.resolveStream(channel.id)
             if (stream.isNullOrBlank()) {
                 snackbarHostState.showSnackbar(
-                    message = "That station would not give a stream",
+                    message = context.getString(R.string.main_station_no_stream),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -699,7 +700,7 @@ fun CalmMusic(app: CalmMusic) {
                 playlistDao = database.playlistDao(),
             )
             settingsManager.setSubsonicConfig(null)
-            serverStatus = "Forgotten"
+            serverStatus = context.getString(R.string.main_server_forgotten)
             viewModel.refreshLibraryFromDatabase()
             playlistsViewModel.refreshPlaylists()
         }
@@ -719,13 +720,13 @@ fun CalmMusic(app: CalmMusic) {
             val wanted = songs.filter { it.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE }
             if (wanted.isEmpty()) {
                 snackbarHostState.showSnackbar(
-                    message = "These are all on this phone already",
+                    message = context.getString(R.string.main_all_on_phone_already),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
             } else {
                 snackbarHostState.showSnackbar(
-                    message = if (wanted.size == 1) "Keeping one song" else "Keeping ${wanted.size} songs",
+                    message = context.resources.getQuantityString(R.plurals.main_keeping_songs, wanted.size, wanted.size),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -757,10 +758,9 @@ fun CalmMusic(app: CalmMusic) {
                 }
                 snackbarHostState.showSnackbar(
                     message = when {
-                        failed == 0 && kept == 1 -> "One song is on this phone now"
-                        failed == 0 -> "$kept songs are on this phone now"
-                        kept == 0 -> "None of them would download"
-                        else -> "$kept kept, $failed did not download"
+                        failed == 0 -> context.resources.getQuantityString(R.plurals.main_songs_on_phone_now, kept, kept)
+                        kept == 0 -> context.getString(R.string.main_none_would_download)
+                        else -> context.getString(R.string.main_kept_and_failed, kept, failed)
                     },
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
@@ -782,13 +782,13 @@ fun CalmMusic(app: CalmMusic) {
             }
             if (row == null || row.sourceType != com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE) {
                 snackbarHostState.showSnackbar(
-                    message = "That one is not on a server",
+                    message = context.getString(R.string.main_not_on_a_server),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
             } else {
                 snackbarHostState.showSnackbar(
-                    message = "Keeping \"${song.title}\"",
+                    message = context.getString(R.string.main_keeping_song, song.title),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -807,7 +807,7 @@ fun CalmMusic(app: CalmMusic) {
                             )
                         }
                         viewModel.refreshLibraryFromDatabase()
-                        "\"${song.title}\" is on this phone now"
+                        context.getString(R.string.main_song_on_phone_now, song.title)
                     }
                 }
                 snackbarHostState.showSnackbar(
@@ -831,7 +831,7 @@ fun CalmMusic(app: CalmMusic) {
         viewModel.enqueue(listOf(song), playNext = true, localController = localMediaController)
         libraryScope.launch {
             snackbarHostState.showSnackbar(
-                message = "\"${song.title}\" plays next",
+                message = context.getString(R.string.main_plays_next, song.title),
                 withDismissAction = false,
                 duration = SnackbarDurationMMD.Short,
             )
@@ -842,7 +842,7 @@ fun CalmMusic(app: CalmMusic) {
         viewModel.enqueue(listOf(song), playNext = false, localController = localMediaController)
         libraryScope.launch {
             snackbarHostState.showSnackbar(
-                message = "\"${song.title}\" added to the queue",
+                message = context.getString(R.string.main_added_to_queue, song.title),
                 withDismissAction = false,
                 duration = SnackbarDurationMMD.Short,
             )
@@ -861,13 +861,13 @@ fun CalmMusic(app: CalmMusic) {
             try {
                 viewModel.removeSongFromLibrary(song)
                 snackbarHostState.showSnackbar(
-                    message = "Removed from library",
+                    message = context.getString(R.string.main_removed_from_library),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
             } catch (e: Exception) {
                 snackbarHostState.showSnackbar(
-                    message = "Failed to remove: ${e.message}",
+                    message = context.getString(R.string.main_failed_to_remove, e.message),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -883,7 +883,7 @@ fun CalmMusic(app: CalmMusic) {
                     if (download != null) {
                         app.youTubeDownloadManager.cancelDownload(download.id)
                         snackbarHostState.showSnackbar(
-                            message = "Deleting download...",
+                            message = context.getString(R.string.main_deleting_download),
                             withDismissAction = false,
                             duration = SnackbarDurationMMD.Short,
                         )
@@ -898,7 +898,7 @@ fun CalmMusic(app: CalmMusic) {
                     }
 
                     snackbarHostState.showSnackbar(
-                        message = if (success) "Deleted file" else "Couldn't delete file",
+                        message = if (success) context.getString(R.string.main_deleted_file) else context.getString(R.string.main_could_not_delete_file),
                         withDismissAction = false,
                         duration = SnackbarDurationMMD.Short,
                     )
@@ -906,7 +906,7 @@ fun CalmMusic(app: CalmMusic) {
 
                 else -> {
                     snackbarHostState.showSnackbar(
-                        message = "This one is streamed, so there is nothing on the phone to delete",
+                        message = context.getString(R.string.main_streamed_nothing_to_delete),
                         withDismissAction = false,
                         duration = SnackbarDurationMMD.Short,
                     )
@@ -1015,7 +1015,7 @@ fun CalmMusic(app: CalmMusic) {
             if (isNewPipeContentNotAvailable) {
                 libraryScope.launch {
                     snackbarHostState.showSnackbar(
-                        message = "YouTube reported this track can't be played. Skipping.",
+                        message = context.getString(R.string.main_youtube_cannot_play),
                         withDismissAction = false,
                         duration = SnackbarDurationMMD.Short,
                     )
@@ -1364,16 +1364,14 @@ fun CalmMusic(app: CalmMusic) {
                                         }
 
                                         snackbarMessage = when {
-                                            result.addedCount == 1 ->
-                                                "Added 1 song to \"${playlist.name}\""
-                                            result.addedCount > 1 ->
-                                                "Added ${result.addedCount} songs to \"${playlist.name}\""
+                                            result.addedCount >= 1 ->
+                                                context.resources.getQuantityString(R.plurals.main_added_picked_songs_to_playlist, result.addedCount, result.addedCount, playlist.name)
                                             result.allSelectedAlreadyPresent ->
-                                                "All selected songs are already in \"${playlist.name}\""
+                                                context.getString(R.string.main_all_selected_already_in_playlist, playlist.name)
                                             else -> null
                                         }
                                     } catch (_: Exception) {
-                                        snackbarMessage = "Couldn't add songs to playlist"
+                                        snackbarMessage = context.getString(R.string.main_could_not_add_songs)
                                     } finally {
                                         playlistAddSongsSelectionIds = emptySet()
                                         navController.popBackStack()
@@ -1716,7 +1714,7 @@ fun CalmMusic(app: CalmMusic) {
                             navController.navigate(Screen.Downloads.route) { launchSingleTop = true }
                         },
                         musicServerSummary = if (subsonicConfig == null) {
-                            "Not connected"
+                            stringResource(R.string.main_server_not_connected)
                         } else {
                             subsonicConfig!!.baseUrl
                         },
@@ -1791,9 +1789,11 @@ fun CalmMusic(app: CalmMusic) {
                 showNowPlaying = false
             }
 
+            val localFileLabel = stringResource(R.string.main_local_file)
+
             NowPlayingScreen(
                 title = song.title,
-                artist = song.artist.ifBlank { if (song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE_DOWNLOAD") "Local file" else "" },
+                artist = song.artist.ifBlank { if (song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE_DOWNLOAD") localFileLabel else "" },
                 album = song.album,
                 isPlaying = playbackState.isPlaybackPlaying,
                 isLoading = playbackState.isBuffering,
@@ -1871,7 +1871,7 @@ fun CalmMusic(app: CalmMusic) {
                                     navController.navigate(Screen.YoutubeArtistDetails.route) { launchSingleTop = true }
                                 }
                                 null -> snackbarHostState.showSnackbar(
-                                    message = "No page for this artist",
+                                    message = context.getString(R.string.main_no_artist_page),
                                     withDismissAction = false,
                                     duration = SnackbarDurationMMD.Short,
                                 )
@@ -1889,7 +1889,7 @@ fun CalmMusic(app: CalmMusic) {
                                 navController.navigate(Screen.AlbumDetails.route) { launchSingleTop = true }
                             } else {
                                 snackbarHostState.showSnackbar(
-                                    message = "No page for this album",
+                                    message = context.getString(R.string.main_no_album_page),
                                     withDismissAction = false,
                                     duration = SnackbarDurationMMD.Short,
                                 )
@@ -1921,7 +1921,7 @@ fun CalmMusic(app: CalmMusic) {
                     app.youTubeDownloadManager.enqueueDownload(song, albumArtist)
                     libraryScope.launch {
                         snackbarHostState.showSnackbar(
-                            message = "Download started",
+                            message = context.getString(R.string.main_download_started),
                             withDismissAction = false,
                             duration = SnackbarDurationMMD.Short,
                         )
@@ -1973,9 +1973,9 @@ fun CalmMusic(app: CalmMusic) {
                     ) {
                         TextMMD(
                             text = if (songs.size == 1) {
-                                "Add to playlist"
+                                stringResource(R.string.main_add_to_playlist)
                             } else {
-                                "Add ${songs.size} songs to playlist"
+                                pluralStringResource(R.plurals.main_add_songs_to_playlist, songs.size, songs.size)
                             },
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
@@ -1987,7 +1987,7 @@ fun CalmMusic(app: CalmMusic) {
                         ) {
                             Icon(
                                 imageVector = Icons.Close,
-                                contentDescription = "Cancel adding to a playlist"
+                                contentDescription = stringResource(R.string.main_cd_cancel_add_to_playlist)
                             )
                         }
                     }
@@ -1996,7 +1996,7 @@ fun CalmMusic(app: CalmMusic) {
 
                     if (libraryPlaylists.isEmpty()) {
                         TextMMD(
-                            text = "No playlists yet",
+                            text = stringResource(R.string.main_no_playlists_yet),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Normal
                         )
@@ -2047,7 +2047,7 @@ fun CalmMusic(app: CalmMusic) {
                         contentPadding = PaddingValues(12.dp)
                     ) {
                         TextMMD(
-                            text = "New playlist",
+                            text = stringResource(R.string.main_title_new_playlist),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
@@ -2076,11 +2076,7 @@ fun CalmMusic(app: CalmMusic) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             TextMMD(
-                                text = if (playlistDetailsSelectionCount == 1) {
-                                    "Remove song from \"${playlist.name}\""
-                                } else {
-                                    "Remove songs from \"${playlist.name}\""
-                                },
+                                text = pluralStringResource(R.plurals.main_remove_songs_from_playlist_title, playlistDetailsSelectionCount, playlist.name),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -2091,7 +2087,7 @@ fun CalmMusic(app: CalmMusic) {
                             ) {
                                 Icon(
                                     imageVector = Icons.Close,
-                                    contentDescription = "Cancel song removal",
+                                    contentDescription = stringResource(R.string.main_cd_cancel_song_removal),
                                 )
                             }
                         }
@@ -2099,11 +2095,7 @@ fun CalmMusic(app: CalmMusic) {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         TextMMD(
-                            text = if (playlistDetailsSelectionCount == 1) {
-                                "This will remove the selected song from this playlist. The song will remain in your library."
-                            } else {
-                                "This will remove the selected songs from this playlist. The songs will remain in your library."
-                            },
+                            text = pluralStringResource(R.plurals.main_remove_songs_from_playlist_body, playlistDetailsSelectionCount),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Normal,
                         )
@@ -2129,13 +2121,9 @@ fun CalmMusic(app: CalmMusic) {
                                         }
 
                                         val removedCount = idsToRemove.size
-                                        snackbarMessage = if (removedCount == 1) {
-                                            "Removed 1 song from \"${playlist.name}\""
-                                        } else {
-                                            "Removed $removedCount songs from \"${playlist.name}\""
-                                        }
+                                        snackbarMessage = context.resources.getQuantityString(R.plurals.main_removed_songs_from_playlist, removedCount, removedCount, playlist.name)
                                     } catch (_: Exception) {
-                                        snackbarMessage = "Couldn't remove songs from playlist"
+                                        snackbarMessage = context.getString(R.string.main_could_not_remove_songs)
                                     } finally {
                                         playlistDetailsSelectionIds.clear()
                                         playlistDetailsSelectionCount = 0
@@ -2156,7 +2144,7 @@ fun CalmMusic(app: CalmMusic) {
                             contentPadding = PaddingValues(12.dp),
                         ) {
                             TextMMD(
-                                text = "Remove",
+                                text = stringResource(R.string.main_button_remove),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -2170,7 +2158,7 @@ fun CalmMusic(app: CalmMusic) {
                             onClick = { showDeletePlaylistSongsConfirmation = false },
                         ) {
                             TextMMD(
-                                text = "Back",
+                                text = stringResource(R.string.main_button_back),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Normal,
                             )
@@ -2197,7 +2185,7 @@ fun CalmMusic(app: CalmMusic) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             TextMMD(
-                                text = "Delete playlist${if (playlistEditSelectionCount > 1) "s" else ""}",
+                                text = pluralStringResource(R.plurals.main_delete_playlists_title, playlistEditSelectionCount),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -2208,7 +2196,7 @@ fun CalmMusic(app: CalmMusic) {
                             ) {
                                 Icon(
                                     imageVector = Icons.Close,
-                                    contentDescription = "Cancel playlist deletion",
+                                    contentDescription = stringResource(R.string.main_cd_cancel_playlist_deletion),
                                 )
                             }
                         }
@@ -2216,11 +2204,7 @@ fun CalmMusic(app: CalmMusic) {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         TextMMD(
-                            text = if (playlistEditSelectionCount == 1) {
-                                "This will permanently remove the selected playlist. Songs in your library will not be deleted."
-                            } else {
-                                "This will permanently remove the selected playlists. Songs in your library will not be deleted."
-                            },
+                            text = pluralStringResource(R.plurals.main_delete_playlists_body, playlistEditSelectionCount),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Normal,
                         )
@@ -2255,13 +2239,9 @@ fun CalmMusic(app: CalmMusic) {
                                         }
 
                                         val deletedCount = idsToDelete.size
-                                        snackbarMessage = if (deletedCount == 1) {
-                                            "Deleted 1 playlist"
-                                        } else {
-                                            "Deleted $deletedCount playlists"
-                                        }
+                                        snackbarMessage = context.resources.getQuantityString(R.plurals.main_deleted_playlists, deletedCount, deletedCount)
                                     } catch (_: Exception) {
-                                        snackbarMessage = "Couldn't delete playlists"
+                                        snackbarMessage = context.getString(R.string.main_could_not_delete_playlists)
                                     } finally {
                                         playlistEditSelectionIds.clear()
                                         playlistEditSelectionCount = 0
@@ -2282,7 +2262,7 @@ fun CalmMusic(app: CalmMusic) {
                             contentPadding = PaddingValues(12.dp),
                         ) {
                             TextMMD(
-                                text = "Delete",
+                                text = stringResource(R.string.main_button_delete),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -2296,7 +2276,7 @@ fun CalmMusic(app: CalmMusic) {
                             onClick = { showDeletePlaylistsConfirmation = false },
                         ) {
                             TextMMD(
-                                text = "Back",
+                                text = stringResource(R.string.main_button_back),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Normal,
                             )
@@ -2322,23 +2302,23 @@ fun CalmMusic(app: CalmMusic) {
 @Composable
 fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boolean = false): String {
     return when {
-        currentDestination?.route == Screen.Playlists.route -> "Playlists"
-        currentDestination?.route == Screen.Songs.route -> "Songs"
-        currentDestination?.route == Screen.Albums.route -> "Albums"
-        currentDestination?.route == Screen.AlbumDetails.route -> "Album"
-        currentDestination?.route == Screen.Artists.route -> "Artists"
-        currentDestination?.route == Screen.ArtistDetails.route -> "Artist"
-        currentDestination?.route == Screen.YoutubeArtistDetails.route -> "Artist"
-        currentDestination?.route == Screen.Search.route -> "Search"
-        currentDestination?.route == Screen.Radio.route -> "Radio"
-        currentDestination?.route == Screen.Downloads.route -> "Downloads"
-        currentDestination?.route == Screen.Settings.route -> "Settings"
-        currentDestination?.route == Screen.MusicServer.route -> "Music server"
-        currentDestination?.route == Screen.YouTubeLogin.route -> "Connect a YouTube account"
-        currentDestination?.route == Screen.PlaylistEdit.route -> if (isEditingPlaylist) "Rename playlist" else "New playlist"
-        currentDestination?.route == Screen.PlaylistAddSongs.route -> "Add songs"
-        currentDestination.isPlaylistDetails() -> "Playlist"
-        currentDestination?.route?.startsWith("playlistDetails/") == true -> "Playlist"
+        currentDestination?.route == Screen.Playlists.route -> stringResource(R.string.main_title_playlists)
+        currentDestination?.route == Screen.Songs.route -> stringResource(R.string.main_title_songs)
+        currentDestination?.route == Screen.Albums.route -> stringResource(R.string.main_title_albums)
+        currentDestination?.route == Screen.AlbumDetails.route -> stringResource(R.string.main_title_album)
+        currentDestination?.route == Screen.Artists.route -> stringResource(R.string.main_title_artists)
+        currentDestination?.route == Screen.ArtistDetails.route -> stringResource(R.string.main_title_artist)
+        currentDestination?.route == Screen.YoutubeArtistDetails.route -> stringResource(R.string.main_title_artist)
+        currentDestination?.route == Screen.Search.route -> stringResource(R.string.main_title_search)
+        currentDestination?.route == Screen.Radio.route -> stringResource(R.string.main_title_radio)
+        currentDestination?.route == Screen.Downloads.route -> stringResource(R.string.main_title_downloads)
+        currentDestination?.route == Screen.Settings.route -> stringResource(R.string.main_title_settings)
+        currentDestination?.route == Screen.MusicServer.route -> stringResource(R.string.main_title_music_server)
+        currentDestination?.route == Screen.YouTubeLogin.route -> stringResource(R.string.main_title_connect_youtube)
+        currentDestination?.route == Screen.PlaylistEdit.route -> if (isEditingPlaylist) stringResource(R.string.main_title_rename_playlist) else stringResource(R.string.main_title_new_playlist)
+        currentDestination?.route == Screen.PlaylistAddSongs.route -> stringResource(R.string.main_title_add_songs)
+        currentDestination.isPlaylistDetails() -> stringResource(R.string.main_title_playlist)
+        currentDestination?.route?.startsWith("playlistDetails/") == true -> stringResource(R.string.main_title_playlist)
         else -> ""
     }
 }

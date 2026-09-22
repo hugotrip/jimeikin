@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +24,7 @@ import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.text_field.TextFieldMMD
+import com.wanderwildwood.jimeikin.R
 
 @Composable
 fun PlaylistEditScreen(
@@ -42,7 +44,7 @@ fun PlaylistEditScreen(
             modifier = Modifier.fillMaxWidth(),
             value = name,
             onValueChange = { name = it },
-            label = { TextMMD(text = "Playlist name") },
+            label = { TextMMD(text = stringResource(R.string.player_playlist_name)) },
             singleLine = true,
         )
 
@@ -55,7 +57,7 @@ fun PlaylistEditScreen(
                 onClick = onCancel,
                 modifier = Modifier.weight(1f),
             ) {
-                TextMMD(text = "Cancel")
+                TextMMD(text = stringResource(R.string.player_cancel))
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -65,7 +67,7 @@ fun PlaylistEditScreen(
                 enabled = name.isNotBlank(),
                 modifier = Modifier.weight(1f),
             ) {
-                TextMMD(text = if (isEditing) "Save" else "Create")
+                TextMMD(text = if (isEditing) stringResource(R.string.player_save) else stringResource(R.string.player_create))
             }
         }
     }

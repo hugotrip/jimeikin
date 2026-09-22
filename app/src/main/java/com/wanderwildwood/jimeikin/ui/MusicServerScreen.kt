@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,7 @@ import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.text_field.TextFieldMMD
 import com.wanderwildwood.jimeikin.data.SubsonicConfig
 import kotlinx.coroutines.delay
+import com.wanderwildwood.jimeikin.R
 
 /**
  * Where a Navidrome — or any Subsonic — server is entered.
@@ -69,7 +71,7 @@ fun MusicServerScreen(
             modifier = Modifier.fillMaxWidth(),
             value = address,
             onValueChange = { address = it },
-            label = { TextMMD(text = "Address") },
+            label = { TextMMD(text = stringResource(R.string.library_server_address)) },
             placeholder = { TextMMD(text = "192.168.1.10:4533") },
             singleLine = true,
             enabled = !isBusy,
@@ -81,7 +83,7 @@ fun MusicServerScreen(
             modifier = Modifier.fillMaxWidth(),
             value = user,
             onValueChange = { user = it },
-            label = { TextMMD(text = "Username") },
+            label = { TextMMD(text = stringResource(R.string.library_server_username)) },
             singleLine = true,
             enabled = !isBusy,
         )
@@ -92,7 +94,7 @@ fun MusicServerScreen(
             modifier = Modifier.fillMaxWidth(),
             value = password,
             onValueChange = { password = it },
-            label = { TextMMD(text = "Password") },
+            label = { TextMMD(text = stringResource(R.string.library_server_password)) },
             singleLine = true,
             enabled = !isBusy,
             visualTransformation = PasswordVisualTransformation(),
@@ -107,7 +109,7 @@ fun MusicServerScreen(
             enabled = entered.isComplete && !isBusy,
         ) {
             TextMMD(
-                text = if (config == null) "Connect" else "Connect again",
+                text = if (config == null) stringResource(R.string.library_server_connect) else stringResource(R.string.library_server_connect_again),
                 style = MaterialTheme.typography.titleSmall,
             )
         }
@@ -120,10 +122,7 @@ fun MusicServerScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         TextMMD(
-            text = "The password is kept on this phone. It is not sent to the server: each " +
-                "request carries a one-time signature made from it instead. Anyone who can " +
-                "read your network can still replay a request, so a server reachable from " +
-                "outside the house wants https.",
+            text = stringResource(R.string.library_server_password_note),
             style = MaterialTheme.typography.labelSmall,
         )
 
@@ -154,9 +153,9 @@ private fun ForgetServerRow(onForget: () -> Unit) {
     ) {
         TextMMD(
             text = if (armed) {
-                "Forget this server — its songs leave the library; tap again"
+                stringResource(R.string.library_server_forget_armed)
             } else {
-                "Forget this server"
+                stringResource(R.string.library_server_forget)
             },
             style = MaterialTheme.typography.titleSmall,
             fontWeight = if (armed) FontWeight.Bold else FontWeight.Normal,

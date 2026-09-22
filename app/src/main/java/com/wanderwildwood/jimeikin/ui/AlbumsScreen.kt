@@ -15,11 +15,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 /** UI model for displaying albums in the library. */
 data class AlbumUiModel(
@@ -51,7 +53,7 @@ fun AlbumsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Loading albums...")
+                    TextMMD(text = stringResource(R.string.library_albums_loading))
                 }
             }
 
@@ -60,7 +62,7 @@ fun AlbumsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "The albums could not be read")
+                    TextMMD(text = stringResource(R.string.library_albums_error))
                 }
             }
 
@@ -69,7 +71,7 @@ fun AlbumsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Music sync is in progress…")
+                    TextMMD(text = stringResource(R.string.library_sync_in_progress))
                 }
             }
 
@@ -80,13 +82,13 @@ fun AlbumsScreen(
                 ) {
                     if (!hasAnySongs) {
                         LibraryOnboardingEmptyState(
-                            title = "No albums yet",
-                            body = "Nothing has been added yet.",
+                            title = stringResource(R.string.library_albums_empty_title),
+                            body = stringResource(R.string.library_nothing_added_yet),
                             onOpenStreamingSettingsClick = onOpenStreamingSettingsClick,
                             onOpenLocalSettingsClick = onOpenLocalSettingsClick,
                         )
                     } else {
-                        TextMMD(text = "No albums to show yet. Once your songs have album info, they'll appear here.")
+                        TextMMD(text = stringResource(R.string.library_albums_no_album_info))
                     }
                 }
             }
@@ -138,7 +140,7 @@ fun AlbumItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 val subtitle = when {
                     !album.artist.isNullOrBlank() && album.releaseYear != null ->
-                        "${album.artist} • ${album.releaseYear}"
+                        stringResource(R.string.library_album_artist_and_year, album.artist, album.releaseYear)
                     !album.artist.isNullOrBlank() -> album.artist
                     album.releaseYear != null -> album.releaseYear.toString()
                     else -> ""

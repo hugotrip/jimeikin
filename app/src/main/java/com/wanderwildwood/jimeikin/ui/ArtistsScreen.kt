@@ -14,11 +14,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 /** Simple UI model for distinct artists in the library. */
 data class ArtistUiModel(
@@ -46,7 +49,7 @@ fun ArtistsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Loading artists...")
+                    TextMMD(text = stringResource(R.string.library_artists_loading))
                 }
             }
 
@@ -55,7 +58,7 @@ fun ArtistsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "The artists could not be read")
+                    TextMMD(text = stringResource(R.string.library_artists_error))
                 }
             }
 
@@ -64,7 +67,7 @@ fun ArtistsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Music sync is in progress…")
+                    TextMMD(text = stringResource(R.string.library_sync_in_progress))
                 }
             }
 
@@ -75,13 +78,13 @@ fun ArtistsScreen(
                 ) {
                     if (!hasAnySongs) {
                         LibraryOnboardingEmptyState(
-                            title = "No artists yet",
-                            body = "Nothing has been added yet.",
+                            title = stringResource(R.string.library_artists_empty_title),
+                            body = stringResource(R.string.library_nothing_added_yet),
                             onOpenStreamingSettingsClick = onOpenStreamingSettingsClick,
                             onOpenLocalSettingsClick = onOpenLocalSettingsClick,
                         )
                     } else {
-                        TextMMD(text = "No artists to show yet. Once your songs have artist info, they'll appear here.")
+                        TextMMD(text = stringResource(R.string.library_artists_no_artist_info))
                     }
                 }
             }
@@ -126,9 +129,9 @@ fun ArtistItem(
             overflow = TextOverflow.Ellipsis,
         )
 
-        val songLabel = if (artist.songCount == 1) "1 song" else "${artist.songCount} songs"
-        val albumLabel = if (artist.albumCount == 1) "1 album" else "${artist.albumCount} albums"
-        val subtitle = "$songLabel • $albumLabel"
+        val songLabel = pluralStringResource(R.plurals.library_artist_song_count, artist.songCount, artist.songCount)
+        val albumLabel = pluralStringResource(R.plurals.library_artist_album_count, artist.albumCount, artist.albumCount)
+        val subtitle = stringResource(R.string.library_artist_songs_and_albums, songLabel, albumLabel)
 
         Spacer(modifier = Modifier.height(4.dp))
         TextMMD(

@@ -24,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
@@ -31,6 +32,7 @@ import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +57,10 @@ fun ArtistDetailsScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    val tabOptions = listOf("Albums", "Songs")
+    val tabOptions = listOf(
+        stringResource(R.string.library_artist_tab_albums),
+        stringResource(R.string.library_artist_tab_songs),
+    )
 
     // Whose page this is, taken from the records rather than from the row being drawn, so a
     // track credited to somebody else and filed here under its album artist still says so.
@@ -68,6 +73,7 @@ fun ArtistDetailsScreen(
     val currentSongId = playbackState.currentSongId
 
     val refreshTrigger by viewModel.libraryRefreshTrigger.collectAsState()
+    val loadFailedText = stringResource(R.string.library_artist_load_failed)
 
     LaunchedEffect(artistId, refreshTrigger) {
         if (artistId == null) {
@@ -81,7 +87,7 @@ fun ArtistDetailsScreen(
             songs = content.songs
             albums = content.albums
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Failed to load artist"
+            errorMessage = e.message ?: loadFailedText
         } finally {
             isLoading = false
         }
@@ -96,7 +102,7 @@ fun ArtistDetailsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Loading artist...")
+                    TextMMD(text = stringResource(R.string.library_artist_loading))
                 }
             }
 
@@ -106,7 +112,7 @@ fun ArtistDetailsScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        TextMMD(text = "This artist could not be read")
+                        TextMMD(text = stringResource(R.string.library_artist_error))
                         TextMMD(text = errorMessage!!)
                     }
                 }
@@ -117,7 +123,7 @@ fun ArtistDetailsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "No content for this artist yet")
+                    TextMMD(text = stringResource(R.string.library_artist_no_content))
                 }
             }
 
@@ -161,7 +167,7 @@ fun ArtistDetailsScreen(
                                             .height(200.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        TextMMD(text = "No albums for this artist")
+                                        TextMMD(text = stringResource(R.string.library_artist_no_albums))
                                     }
                                 }
                             }
@@ -198,7 +204,7 @@ fun ArtistDetailsScreen(
                                             .height(200.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        TextMMD(text = "No songs for this artist")
+                                        TextMMD(text = stringResource(R.string.library_artist_no_songs))
                                     }
                                 }
                             }
@@ -219,7 +225,7 @@ fun ArtistDetailsScreen(
                 FloatingActionButtonMMD(onClick = { onShuffleSongsClick(songs) }) {
                     Icon(
                         imageVector = Icons.Shuffle,
-                        contentDescription = "Shuffle artist songs",
+                        contentDescription = stringResource(R.string.library_artist_shuffle),
                     )
                 }
 
@@ -228,7 +234,7 @@ fun ArtistDetailsScreen(
                 FloatingActionButtonMMD(onClick = { onAddAllToPlaylistClick(songs) }) {
                     Icon(
                         imageVector = Icons.PlaylistAdd,
-                        contentDescription = "Add these to a playlist",
+                        contentDescription = stringResource(R.string.library_artist_add_to_playlist),
                     )
                 }
 
@@ -238,7 +244,7 @@ fun ArtistDetailsScreen(
                     FloatingActionButtonMMD(onClick = { onKeepAllClick(songs) }) {
                         Icon(
                             imageVector = Icons.Download,
-                            contentDescription = "Keep these on this phone",
+                            contentDescription = stringResource(R.string.library_artist_keep_on_phone),
                         )
                     }
                 }

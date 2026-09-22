@@ -12,12 +12,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 @Composable
 fun LibraryOnboardingEmptyState(
@@ -57,7 +59,7 @@ fun LibraryOnboardingEmptyState(
             onClick = onOpenStreamingSettingsClick,
         ) {
             TextMMD(
-                text = "Set up YouTube",
+                text = stringResource(R.string.library_empty_set_up_youtube),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -71,7 +73,7 @@ fun LibraryOnboardingEmptyState(
             onClick = onOpenLocalSettingsClick,
         ) {
             TextMMD(
-                text = "Choose a folder",
+                text = stringResource(R.string.library_empty_choose_folder),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )

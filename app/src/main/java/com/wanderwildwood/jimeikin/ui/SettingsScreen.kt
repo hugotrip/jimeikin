@@ -21,6 +21,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.ButtonMMD
@@ -30,6 +33,7 @@ import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.switcher.SwitchMMD
 import com.mudita.mmd.components.text.TextMMD
 import kotlinx.coroutines.delay
+import com.wanderwildwood.jimeikin.R
 
 /**
  * One flat screen. It used to be three tabs holding one, three and five controls between
@@ -65,6 +69,7 @@ fun SettingsScreen(
     localScanDeletedMissing: Int?,
     localScanUnreadableFolders: Int?,
 ) {
+    val context = LocalContext.current
     LazyColumnMMD(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
@@ -73,7 +78,7 @@ fun SettingsScreen(
             if (localFolders.isEmpty()) {
                 item {
                     TextMMD(
-                        text = "No folders yet",
+                        text = stringResource(R.string.settings_no_folders),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
@@ -81,7 +86,11 @@ fun SettingsScreen(
             } else {
                 items(localFolders) { folder ->
                     FolderRow(
-                        path = formatDirectoryPath(folder),
+                        path = formatDirectoryPath(
+                            folder,
+                            stringResource(R.string.settings_folder_phone),
+                            stringResource(R.string.settings_folder_card),
+                        ),
                         onRemove = { onRemoveFolderClick(folder) },
                     )
                 }
@@ -97,14 +106,14 @@ fun SettingsScreen(
                     ButtonMMD(
                         onClick = onAddFolderClick,
                         modifier = Modifier.weight(1f),
-                    ) { TextMMD(text = "Add a folder", style = MaterialTheme.typography.titleSmall) }
+                    ) { TextMMD(text = stringResource(R.string.settings_add_folder), style = MaterialTheme.typography.titleSmall) }
 
                     if (localFolders.isNotEmpty()) {
                         OutlinedButtonMMD(
                             onClick = onRescanLocalMusicClick,
                             modifier = Modifier.weight(1f),
                             enabled = !isRescanningLocal && !isIngestingLocal,
-                        ) { TextMMD(text = "Read them again", style = MaterialTheme.typography.titleSmall) }
+                        ) { TextMMD(text = stringResource(R.string.settings_rescan_folders), style = MaterialTheme.typography.titleSmall) }
                     }
                 }
             }
@@ -114,14 +123,14 @@ fun SettingsScreen(
             // move, once as a number underneath it.
             val scanLine = when {
                 isIngestingLocal ->
-                    "Adding to the library, ${(localIngestProgress * 100f).toInt().coerceIn(0, 100)}%"
+                    context.getString(R.string.settings_scan_adding, (localIngestProgress * 100f).toInt().coerceIn(0, 100))
                 // Until the folders have been walked the app does not know how many songs
                 // there are, so it does not know what fraction of them it has read. It used
                 // to say 0% for the whole of that, which on a large card reads as stuck.
                 isRescanningLocal && localScanProgress <= 0f ->
-                    "Looking through the folders"
+                    context.getString(R.string.settings_scan_looking)
                 isRescanningLocal ->
-                    "Reading the songs, ${(localScanProgress * 100f).toInt().coerceIn(0, 100)}%"
+                    context.getString(R.string.settings_scan_reading, (localScanProgress * 100f).toInt().coerceIn(0, 100))
                 else -> null
             }
             if (scanLine != null) {
@@ -140,26 +149,43 @@ fun SettingsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
                         TextMMD(
-                            text = "$localScanTotalDiscovered songs found" +
-                                (localScanIndexedNewOrUpdated
-                                    ?.takeIf { it > 0 }
-                                    ?.let { ", $it new or changed" } ?: ""),
+                            text = localScanIndexedNewOrUpdated
+                                ?.takeIf { it > 0 }
+                                ?.let {
+                                    pluralStringResource(
+                                        R.plurals.settings_scan_found_new_or_changed,
+                                        localScanTotalDiscovered,
+                                        localScanTotalDiscovered,
+                                        it,
+                                    )
+                                }
+                                ?: pluralStringResource(
+                                    R.plurals.settings_scan_found,
+                                    localScanTotalDiscovered,
+                                    localScanTotalDiscovered,
+                                ),
                             style = MaterialTheme.typography.labelSmall,
                         )
                         if (localScanDeletedMissing != null && localScanDeletedMissing > 0) {
                             TextMMD(
-                                text = "$localScanDeletedMissing were no longer in the folders " +
-                                    "and have left the library. The files were not touched.",
+                                text = pluralStringResource(
+                                    R.plurals.settings_scan_removed_missing,
+                                    localScanDeletedMissing,
+                                    localScanDeletedMissing,
+                                ),
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         }
                         if (localScanUnreadableFolders != null && localScanUnreadableFolders > 0) {
                             TextMMD(
                                 text = if (localScanUnreadableFolders == 1) {
-                                    "One folder could not be read. Its songs were left alone."
+                                    stringResource(R.string.settings_scan_one_folder_unreadable)
                                 } else {
-                                    "$localScanUnreadableFolders folders could not be read. " +
-                                        "Their songs were left alone."
+                                    pluralStringResource(
+                                        R.plurals.settings_scan_folders_unreadable,
+                                        localScanUnreadableFolders,
+                                        localScanUnreadableFolders,
+                                    )
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -173,7 +199,7 @@ fun SettingsScreen(
 
         item {
             SwitchRow(
-                label = "Fill in album gaps from YouTube",
+                label = stringResource(R.string.settings_fill_album_gaps),
                 checked = completeAlbumsWithYouTube,
                 onCheckedChange = onCompleteAlbumsWithYouTubeChange,
             )
@@ -181,11 +207,11 @@ fun SettingsScreen(
 
         item {
             ValueRow(
-                label = "Background playback",
+                label = stringResource(R.string.settings_background_playback),
                 value = if (hasBatteryOptimizationExemption) {
-                    "Allowed"
+                    stringResource(R.string.settings_background_playback_allowed)
                 } else {
-                    "The system may stop it — tap to allow"
+                    stringResource(R.string.settings_background_playback_not_allowed)
                 },
                 onClick = onRequestBatteryOptimizationExemption,
                 enabled = !hasBatteryOptimizationExemption,
@@ -196,12 +222,12 @@ fun SettingsScreen(
             // Downloads is transient status about streaming rather than a place of its own;
             // it used to cost a row on a screen that existed only to hold three doors. The
             // label carries itself, so it gets no second line.
-            LinkRow(label = "Downloads", onClick = onNavigateToDownloadsClick)
+            LinkRow(label = stringResource(R.string.settings_downloads), onClick = onNavigateToDownloadsClick)
         }
 
         item {
             ValueRow(
-                label = "Music server",
+                label = stringResource(R.string.settings_music_server),
                 value = musicServerSummary,
                 onClick = onNavigateToMusicServerClick,
                 enabled = true,
@@ -210,8 +236,8 @@ fun SettingsScreen(
 
         item {
             ValueRow(
-                label = "YouTube account",
-                value = if (isYoutubeAccountConnected) "Connected" else "Not connected",
+                label = stringResource(R.string.settings_youtube_account),
+                value = if (isYoutubeAccountConnected) stringResource(R.string.settings_youtube_connected) else stringResource(R.string.settings_youtube_not_connected),
                 onClick = if (isYoutubeAccountConnected) null else onConnectYoutubeAccountClick,
                 enabled = !isYoutubeAccountConnected,
             )
@@ -221,8 +247,8 @@ fun SettingsScreen(
             item { Separator() }
             item {
                 ArmedRow(
-                    label = "Disconnect the account",
-                    armedLabel = "Disconnect the account — tap again",
+                    label = stringResource(R.string.settings_disconnect_account),
+                    armedLabel = stringResource(R.string.settings_disconnect_account_armed),
                     onConfirm = onDisconnectYoutubeAccountClick,
                 )
             }
@@ -361,7 +387,7 @@ private fun FolderRow(path: String, onRemove: () -> Unit) {
     ) {
         if (armed) {
             TextMMD(
-                text = "Stop reading this folder — its songs leave the library; tap again",
+                text = stringResource(R.string.settings_remove_folder_armed),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -371,7 +397,7 @@ private fun FolderRow(path: String, onRemove: () -> Unit) {
     }
 }
 
-private fun formatDirectoryPath(uriString: String): String {
+private fun formatDirectoryPath(uriString: String, phone: String, card: String): String {
     try {
         val decoded = Uri.decode(uriString)
         // A card is "<uuid>:Music", the built-in storage is "primary:Music". Both used to
@@ -381,8 +407,8 @@ private fun formatDirectoryPath(uriString: String): String {
         val volume = body.substringBefore(':', "")
         val path = body.substringAfter(':', "").replace("/", " > ")
         val volumeLabel = when {
-            volume.equals("primary", ignoreCase = true) -> "Phone"
-            volume.isNotEmpty() -> "Card"
+            volume.equals("primary", ignoreCase = true) -> phone
+            volume.isNotEmpty() -> card
             else -> return uriString
         }
         return if (path.isEmpty()) volumeLabel else "$volumeLabel > $path"

@@ -20,12 +20,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.checkbox.CheckboxMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 @Composable
 fun PlaylistAddSongsScreen(
@@ -47,7 +49,7 @@ fun PlaylistAddSongsScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                TextMMD(text = "No songs available to add")
+                TextMMD(text = stringResource(R.string.player_add_songs_empty))
             }
         } else {
             PagedColumnMMD(
@@ -128,7 +130,8 @@ private fun SelectableSongItem(
                 }
                 val isMp4 = isLocal && fileExtension == "mp4"
 
-                val baseArtist = song.artist.ifBlank { if (isLocal) "Local file" else "" }
+                val localFileLabel = stringResource(R.string.player_song_local_file)
+                val baseArtist = song.artist.ifBlank { if (isLocal) localFileLabel else "" }
                 val prefix = when {
                     isMp4 -> "MP4 • "
                     else -> ""

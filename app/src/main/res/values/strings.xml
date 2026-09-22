@@ -1,5 +1,559 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Music Box</string>
-    <string name="playlists">Playlists</string>
-    <string name="songs">Songs</string>
+
+    <!-- ============================================================ -->
+    <!-- Main screen, navigation and the actions around it -->
+
+    <!-- Screen names: the bottom navigation tabs and the title in the top bar -->
+    <string name="main_title_playlists">Playlists</string>
+    <!-- Top bar title on a single playlist's page (noun) -->
+    <string name="main_title_playlist">Playlist</string>
+    <!-- Top bar title on the screen for picking songs to put in a playlist -->
+    <string name="main_title_add_songs">Add songs</string>
+    <string name="main_title_artists">Artists</string>
+    <string name="main_title_songs">Songs</string>
+    <string name="main_title_albums">Albums</string>
+    <!-- Top bar title on a single album's page (noun) -->
+    <string name="main_title_album">Album</string>
+    <!-- Top bar title on a single artist's page (noun) -->
+    <string name="main_title_artist">Artist</string>
+    <!-- Screen name and top bar title for search (noun) -->
+    <string name="main_title_search">Search</string>
+    <string name="main_title_radio">Radio</string>
+    <string name="main_title_downloads">Downloads</string>
+    <string name="main_title_settings">Settings</string>
+    <string name="main_title_music_server">Music server</string>
+    <string name="main_title_connect_youtube">Connect a YouTube account</string>
+    <!-- Top bar title when renaming an existing playlist -->
+    <string name="main_title_rename_playlist">Rename playlist</string>
+    <!-- Top bar title when making a new playlist; also the button in the add-to-playlist sheet -->
+    <string name="main_title_new_playlist">New playlist</string>
+
+    <!-- Top bar: icon descriptions read aloud by a screen reader -->
+    <string name="main_cd_cancel_playlist_edits">Cancel playlist edits</string>
+    <string name="main_cd_cancel_playlist_edit">Cancel playlist edit</string>
+    <string name="main_cd_back">Back</string>
+    <string name="main_cd_clear_search">Clear search</string>
+    <!-- The magnifying-glass button (verb or noun, whichever reads naturally as a button) -->
+    <string name="main_cd_search">Search</string>
+    <string name="main_cd_edit_playlists">Edit playlists</string>
+    <string name="main_cd_settings">Settings</string>
+    <string name="main_cd_about">About</string>
+    <string name="main_cd_playlist_options">Playlist options</string>
+    <string name="main_cd_now_playing">Now playing</string>
+
+    <!-- Top bar: the search field -->
+    <!-- Placeholder shown inside the empty search field -->
+    <string name="main_search_placeholder">Search</string>
+
+    <!-- Top bar: the menu on a playlist's page -->
+    <!-- Menu item (verb): edit the playlist's songs -->
+    <string name="main_menu_edit">Edit</string>
+    <!-- Menu item (verb) -->
+    <string name="main_menu_add_songs">Add songs</string>
+    <!-- Menu item (verb) -->
+    <string name="main_menu_rename">Rename</string>
+    <!-- Menu item (verb) -->
+    <string name="main_menu_delete">Delete</string>
+
+    <!-- Top bar: buttons in edit modes. %1$d is how many rows are ticked. -->
+    <string name="main_button_remove_count">Remove %1$d</string>
+    <string name="main_button_delete_count">Delete %1$d</string>
+    <!-- Button (finished picking songs to add to a playlist) -->
+    <string name="main_button_done">Done</string>
+
+    <!-- Search -->
+    <string name="main_search_error">The search did not reach YouTube</string>
+
+    <!-- Playback messages (snackbars) -->
+    <string name="main_playback_still_starting">Playback is still starting</string>
+    <string name="main_youtube_cannot_play">YouTube reported this track can\'t be played. Skipping.</string>
+    <string name="main_no_artist_page">No page for this artist</string>
+    <string name="main_no_album_page">No page for this album</string>
+    <string name="main_download_started">Download started</string>
+    <!-- %1$s is a song title -->
+    <string name="main_plays_next">\"%1$s\" plays next</string>
+    <!-- %1$s is a song title -->
+    <string name="main_added_to_queue">\"%1$s\" added to the queue</string>
+
+    <!-- Now Playing: shown in place of the artist for a file with no artist tag -->
+    <string name="main_local_file">Local file</string>
+
+    <!-- Adding to a playlist (snackbars). %1$s is a song title, %2$s a playlist name. -->
+    <string name="main_added_song_to_playlist">Added \"%1$s\" to \"%2$s\"</string>
+    <!-- %1$s is a playlist name -->
+    <string name="main_song_already_in_playlist">This song is already in \"%1$s\"</string>
+    <string name="main_song_not_added">That song was not added to the playlist</string>
+    <!-- %1$s is a playlist name -->
+    <string name="main_all_already_in_playlist">Every one of those is already in \"%1$s\"</string>
+    <!-- A whole album or artist added to a playlist. %1$d is the count, %2$s the playlist name. -->
+    <plurals name="main_added_songs_to_playlist">
+        <item quantity="one">Added one song to \"%2$s\"</item>
+        <item quantity="other">Added %1$d songs to \"%2$s\"</item>
+    </plurals>
+    <string name="main_songs_not_added">Those songs were not added to the playlist</string>
+    <!-- Songs picked on the Add songs screen. %1$d is the count, %2$s the playlist name. -->
+    <plurals name="main_added_picked_songs_to_playlist">
+        <item quantity="one">Added %1$d song to \"%2$s\"</item>
+        <item quantity="other">Added %1$d songs to \"%2$s\"</item>
+    </plurals>
+    <!-- %1$s is a playlist name -->
+    <string name="main_all_selected_already_in_playlist">All selected songs are already in \"%1$s\"</string>
+    <string name="main_could_not_add_songs">Couldn\'t add songs to playlist</string>
+
+    <!-- The add-to-playlist sheet -->
+    <!-- Sheet title when one song is being added -->
+    <string name="main_add_to_playlist">Add to playlist</string>
+    <!-- Sheet title when several songs are being added. %1$d is the count (always more than one in English). -->
+    <plurals name="main_add_songs_to_playlist">
+        <item quantity="one">Add %1$d song to playlist</item>
+        <item quantity="other">Add %1$d songs to playlist</item>
+    </plurals>
+    <string name="main_cd_cancel_add_to_playlist">Cancel adding to a playlist</string>
+    <string name="main_no_playlists_yet">No playlists yet</string>
+
+    <!-- The remove-songs-from-playlist sheet. %1$s is a playlist name. -->
+    <plurals name="main_remove_songs_from_playlist_title">
+        <item quantity="one">Remove song from \"%1$s\"</item>
+        <item quantity="other">Remove songs from \"%1$s\"</item>
+    </plurals>
+    <string name="main_cd_cancel_song_removal">Cancel song removal</string>
+    <plurals name="main_remove_songs_from_playlist_body">
+        <item quantity="one">This will remove the selected song from this playlist. The song will remain in your library.</item>
+        <item quantity="other">This will remove the selected songs from this playlist. The songs will remain in your library.</item>
+    </plurals>
+    <!-- %1$d is the count, %2$s the playlist name -->
+    <plurals name="main_removed_songs_from_playlist">
+        <item quantity="one">Removed %1$d song from \"%2$s\"</item>
+        <item quantity="other">Removed %1$d songs from \"%2$s\"</item>
+    </plurals>
+    <string name="main_could_not_remove_songs">Couldn\'t remove songs from playlist</string>
+    <!-- Button (verb) confirming the removal -->
+    <string name="main_button_remove">Remove</string>
+    <!-- Button that closes the sheet without doing anything -->
+    <string name="main_button_back">Back</string>
+
+    <!-- The delete-playlists sheet -->
+    <plurals name="main_delete_playlists_title">
+        <item quantity="one">Delete playlist</item>
+        <item quantity="other">Delete playlists</item>
+    </plurals>
+    <string name="main_cd_cancel_playlist_deletion">Cancel playlist deletion</string>
+    <plurals name="main_delete_playlists_body">
+        <item quantity="one">This will permanently remove the selected playlist. Songs in your library will not be deleted.</item>
+        <item quantity="other">This will permanently remove the selected playlists. Songs in your library will not be deleted.</item>
+    </plurals>
+    <!-- %1$d is the count -->
+    <plurals name="main_deleted_playlists">
+        <item quantity="one">Deleted %1$d playlist</item>
+        <item quantity="other">Deleted %1$d playlists</item>
+    </plurals>
+    <string name="main_could_not_delete_playlists">Couldn\'t delete playlists</string>
+    <!-- Button (verb) confirming the deletion -->
+    <string name="main_button_delete">Delete</string>
+
+    <!-- Library: removing and deleting songs (snackbars) -->
+    <string name="main_removed_from_library">Removed from library</string>
+    <!-- %1$s is the error's own message, not translated -->
+    <string name="main_failed_to_remove">Failed to remove: %1$s</string>
+    <string name="main_deleting_download">Deleting download...</string>
+    <string name="main_deleted_file">Deleted file</string>
+    <string name="main_could_not_delete_file">Couldn\'t delete file</string>
+    <string name="main_streamed_nothing_to_delete">This one is streamed, so there is nothing on the phone to delete</string>
+
+    <!-- Keeping server songs on the phone (snackbars) -->
+    <string name="main_all_on_phone_already">These are all on this phone already</string>
+    <!-- %1$d is how many songs are being downloaded -->
+    <plurals name="main_keeping_songs">
+        <item quantity="one">Keeping one song</item>
+        <item quantity="other">Keeping %1$d songs</item>
+    </plurals>
+    <!-- %1$d is how many songs downloaded -->
+    <plurals name="main_songs_on_phone_now">
+        <item quantity="one">One song is on this phone now</item>
+        <item quantity="other">%1$d songs are on this phone now</item>
+    </plurals>
+    <string name="main_none_would_download">None of them would download</string>
+    <!-- %1$d songs downloaded, %2$d failed -->
+    <string name="main_kept_and_failed">%1$d kept, %2$d did not download</string>
+    <string name="main_not_on_a_server">That one is not on a server</string>
+    <!-- %1$s is a song title -->
+    <string name="main_keeping_song">Keeping \"%1$s\"</string>
+    <!-- %1$s is a song title -->
+    <string name="main_song_on_phone_now">\"%1$s\" is on this phone now</string>
+
+    <!-- Music server (status line on the Music server screen, and the summary in Settings) -->
+    <string name="main_server_connecting">Connecting</string>
+    <string name="main_server_reading_library">Reading the library</string>
+    <!-- %1$d albums read so far, %2$d albums in all -->
+    <string name="main_server_reading_album">Reading the library, album %1$d of %2$d</string>
+    <!-- %1$d is how many songs were read. English uses the same wording for every count. -->
+    <plurals name="main_server_songs_in_library">
+        <item quantity="one">%1$d songs from the server are in the library</item>
+        <item quantity="other">%1$d songs from the server are in the library</item>
+    </plurals>
+    <!-- Status after the server has been forgotten -->
+    <string name="main_server_forgotten">Forgotten</string>
+    <!-- Settings summary when no music server is set up -->
+    <string name="main_server_not_connected">Not connected</string>
+
+    <!-- Radio (snackbars) -->
+    <string name="main_station_no_stream">That station would not give a stream</string>
+    <!-- %1$s is a radio station's name -->
+    <string name="main_station_kept">Kept \"%1$s\"</string>
+
+    <!-- ============================================================ -->
+    <!-- Now playing, radio, playlists and downloads -->
+
+    <!-- Now Playing screen: top bar -->
+    <string name="player_back">Back</string>
+    <string name="player_now_playing_title">Now playing</string>
+    <!-- Now Playing: small button that cancels a download in progress (a verb) -->
+    <string name="player_download_stop">Stop</string>
+    <string name="player_delete_download">Delete download</string>
+    <!-- Now Playing: button that downloads the song (a verb) -->
+    <string name="player_download">Download</string>
+    <string name="player_add_to_playlist">Add to playlist</string>
+    <string name="player_shuffle_queue">Shuffle queue</string>
+    <string name="player_repeat_off">Repeat off</string>
+    <string name="player_repeat_queue">Repeat queue</string>
+    <string name="player_repeat_current_song">Repeat current song</string>
+
+    <!-- Now Playing: a small word under the top bar saying the song is not on the phone -->
+    <string name="player_streaming">Streaming</string>
+    <!-- Now Playing: shown in place of the seek bar for a radio stream -->
+    <string name="player_live">Live</string>
+
+    <!-- Now Playing: transport buttons (spoken descriptions) -->
+    <string name="player_previous_song">Previous song</string>
+    <string name="player_next_song">Next song</string>
+    <!-- Now Playing: button label, "Pause" is a verb -->
+    <string name="player_pause">Pause</string>
+    <!-- Now Playing: button label, "Play" is a verb -->
+    <string name="player_play">Play</string>
+    <plurals name="player_seek_back_seconds">
+        <item quantity="one">Back %1$d second</item>
+        <item quantity="other">Back %1$d seconds</item>
+    </plurals>
+    <plurals name="player_seek_on_seconds">
+        <item quantity="one">On %1$d second</item>
+        <item quantity="other">On %1$d seconds</item>
+    </plurals>
+    <!-- Now Playing: tiny label under the seek arrows, a number of seconds, e.g. "10s" -->
+    <string name="player_seek_seconds_short">%1$ds</string>
+    <!-- Now Playing: shown in place of the play button while a radio stream connects -->
+    <string name="player_waiting_live">Waiting</string>
+    <!-- Now Playing: shown in place of the play button while a song loads -->
+    <string name="player_loading">Loading</string>
+
+    <!-- Song and playlist rows -->
+    <!-- Song row: shown instead of an artist for a file with no artist tag -->
+    <string name="player_song_local_file">Local file</string>
+    <!-- Song row: icon description on the row of the song that is playing -->
+    <string name="player_song_now_playing">Now playing</string>
+    <string name="player_song_in_library">In the library</string>
+    <string name="player_song_close_menu">Close menu</string>
+    <string name="player_song_play_next">Play next</string>
+    <string name="player_song_add_to_queue">Add to queue</string>
+    <string name="player_song_keep_on_phone">Keep on this phone</string>
+    <!-- Song row menu: "Delete" is a verb; tapping it once arms it -->
+    <string name="player_song_delete">Delete</string>
+    <string name="player_song_delete_file_confirm">Delete — this erases the file; tap again</string>
+    <string name="player_song_delete_download_confirm">Delete the download — tap again</string>
+    <string name="player_song_remove_from_library_confirm">Remove from library — tap again</string>
+    <string name="player_song_remove_from_library">Remove from library</string>
+    <!-- Playlist row: how many songs a playlist holds -->
+    <plurals name="player_song_count">
+        <item quantity="one">%1$d song</item>
+        <item quantity="other">%1$d songs</item>
+    </plurals>
+
+    <!-- Playlist screen -->
+    <string name="player_playlist_load_failed">Failed to load playlist songs</string>
+    <string name="player_playlist_save_order_failed">Failed to save order</string>
+    <string name="player_playlist_loading">Loading playlist...</string>
+    <string name="player_playlist_empty">No songs in this playlist</string>
+    <!-- Playlist screen: button and icon description, adds songs to the playlist -->
+    <string name="player_playlist_add_songs">Add songs</string>
+    <string name="player_playlist_shuffle">Shuffle playlist</string>
+    <string name="player_playlist_keep_on_phone">Keep the playlist on this phone</string>
+    <string name="player_playlist_move_up">Move up</string>
+    <string name="player_playlist_move_down">Move down</string>
+
+    <!-- Adding songs to a playlist -->
+    <string name="player_add_songs_empty">No songs available to add</string>
+
+    <!-- Naming a playlist -->
+    <string name="player_playlist_name">Playlist name</string>
+    <string name="player_cancel">Cancel</string>
+    <!-- Naming a playlist: confirm button when renaming (a verb) -->
+    <string name="player_save">Save</string>
+    <!-- Naming a playlist: confirm button for a new playlist (a verb) -->
+    <string name="player_create">Create</string>
+
+    <!-- Playlists list -->
+    <string name="player_playlists_empty">No playlists yet</string>
+    <string name="player_playlists_add">Add playlist</string>
+    <string name="player_playlists_new">New playlist</string>
+
+    <!-- Downloads screen -->
+    <string name="player_downloads_empty">No recent downloads</string>
+    <!-- Downloads: icon description, cancels one download (a verb) -->
+    <string name="player_downloads_cancel">Cancel</string>
+    <!-- Downloads: a download queued but not started -->
+    <string name="player_downloads_waiting">Waiting</string>
+    <!-- Downloads: progress of one download, e.g. "42%" -->
+    <string name="player_downloads_percent">%1$d%%</string>
+    <string name="player_downloads_done">Downloaded</string>
+    <string name="player_downloads_failed">This one did not download</string>
+    <string name="player_downloads_canceled">Canceled</string>
+
+    <!-- Radio screen -->
+    <string name="player_radio_reading_list">Reading the list…</string>
+    <string name="player_radio_find_town">Find a town</string>
+    <!-- Radio: heading over the list of every country -->
+    <string name="player_radio_everywhere">Everywhere</string>
+    <string name="player_radio_find_country_or_town">Find a country or a town</string>
+    <string name="player_radio_favorite_hold_to_remove">A favorite — hold to remove</string>
+    <string name="player_radio_hold_to_add">Hold to add to favorites</string>
+    <!-- Radio: how many stations a country or town has -->
+    <plurals name="player_radio_station_count">
+        <item quantity="one">%1$d station</item>
+        <item quantity="other">%1$d stations</item>
+    </plurals>
+    <string name="player_radio_nothing_by_that_name">Nothing by that name</string>
+    <string name="player_radio_no_stations_here">No stations here</string>
+    <string name="player_radio_by_place">Stations by place</string>
+    <string name="player_radio_by_place_subtitle">Somewhere else, on the air now</string>
+    <string name="player_radio_fm">FM radio</string>
+    <string name="player_radio_fm_subtitle">Opens the phone\'s tuner. Needs headphones.</string>
+    <string name="player_radio_no_favorites">No favorite stations yet</string>
+    <string name="player_radio_favorites">Favorite stations</string>
+    <string name="player_radio_favorites_hint">Hold a station anywhere in this app to put it here.</string>
+    <string name="player_radio_search_label">Station, town or postcode</string>
+    <string name="player_radio_searching">Looking…</string>
+    <!-- Radio search: heading over the towns nearest a postcode; %1$s is what was typed -->
+    <string name="player_radio_near">Near %1$s</string>
+    <!-- Radio search: heading over matching stations -->
+    <string name="player_radio_stations">Stations</string>
+    <!-- Radio search: shown for a station whose town and country are both unknown -->
+    <string name="player_radio_somewhere">Somewhere</string>
+    <!-- Radio search: heading over matching towns -->
+    <string name="player_radio_places">Places</string>
+    <!-- Radio search: no results; %1$s is what was typed -->
+    <string name="player_radio_nothing_for">Nothing for \"%1$s\"</string>
+
+    <!-- ============================================================ -->
+    <!-- Library, search, settings and About -->
+
+    <!-- Settings screen: the list of music folders on the phone, and the scan that reads them -->
+    <string name="settings_no_folders">No folders yet</string>
+    <!-- Button: choose another folder of music for the app to read -->
+    <string name="settings_add_folder">Add a folder</string>
+    <!-- Button: scan the chosen folders again for new or changed songs -->
+    <string name="settings_rescan_folders">Read them again</string>
+    <!-- Shown in bold above a folder after one tap; a second tap removes the folder -->
+    <string name="settings_remove_folder_armed">Stop reading this folder — its songs leave the library; tap again</string>
+    <!-- Scan progress. %1$d is a percentage from 0 to 100, followed by a percent sign -->
+    <string name="settings_scan_adding">Adding to the library, %1$d%%</string>
+    <!-- Scan progress, before the number of songs is known -->
+    <string name="settings_scan_looking">Looking through the folders</string>
+    <!-- Scan progress. %1$d is a percentage from 0 to 100, followed by a percent sign -->
+    <string name="settings_scan_reading">Reading the songs, %1$d%%</string>
+    <!-- After a scan. %1$d is the number of songs found -->
+    <plurals name="settings_scan_found">
+        <item quantity="one">%1$d songs found</item>
+        <item quantity="other">%1$d songs found</item>
+    </plurals>
+    <!-- After a scan. %1$d is the number of songs found, %2$d how many of them are new or changed -->
+    <plurals name="settings_scan_found_new_or_changed">
+        <item quantity="one">%1$d songs found, %2$d new or changed</item>
+        <item quantity="other">%1$d songs found, %2$d new or changed</item>
+    </plurals>
+    <!-- After a scan. %1$d is the number of songs whose files were gone -->
+    <plurals name="settings_scan_removed_missing">
+        <item quantity="one">%1$d were no longer in the folders and have left the library. The files were not touched.</item>
+        <item quantity="other">%1$d were no longer in the folders and have left the library. The files were not touched.</item>
+    </plurals>
+    <!-- After a scan, when exactly one folder could not be read -->
+    <string name="settings_scan_one_folder_unreadable">One folder could not be read. Its songs were left alone.</string>
+    <!-- After a scan. %1$d is the number of folders that could not be read (never 1: that case has its own line above) -->
+    <plurals name="settings_scan_folders_unreadable">
+        <item quantity="one">%1$d folders could not be read. Their songs were left alone.</item>
+        <item quantity="other">%1$d folders could not be read. Their songs were left alone.</item>
+    </plurals>
+
+    <!-- Settings screen: the rows below the folders -->
+    <!-- Switch: fetch an album's missing tracks from YouTube -->
+    <string name="settings_fill_album_gaps">Fill in album gaps from YouTube</string>
+    <!-- Row title: whether the app may keep playing in the background -->
+    <string name="settings_background_playback">Background playback</string>
+    <!-- Value under "Background playback" when the battery exemption is granted -->
+    <string name="settings_background_playback_allowed">Allowed</string>
+    <!-- Value under "Background playback" when it is not granted; tapping the row asks for it -->
+    <string name="settings_background_playback_not_allowed">The system may stop it — tap to allow</string>
+    <!-- Row that opens the Downloads screen -->
+    <string name="settings_downloads">Downloads</string>
+    <!-- Row that opens the music server (Navidrome/Subsonic) screen -->
+    <string name="settings_music_server">Music server</string>
+    <!-- Row title for the signed-in YouTube account -->
+    <string name="settings_youtube_account">YouTube account</string>
+    <!-- Value under "YouTube account" -->
+    <string name="settings_youtube_connected">Connected</string>
+    <!-- Value under "YouTube account" -->
+    <string name="settings_youtube_not_connected">Not connected</string>
+    <!-- Row that signs the YouTube account out; the second label is shown after one tap -->
+    <string name="settings_disconnect_account">Disconnect the account</string>
+    <string name="settings_disconnect_account_armed">Disconnect the account — tap again</string>
+
+    <!-- About dialog. Keep the names of the app, people, projects and licences as they are -->
+    <!-- Heading. %1$s is the version number, e.g. 2.8.14 -->
+    <string name="about_title">Music Box %1$s</string>
+    <string name="about_privacy">Your library and your settings stay on the phone. Searching, streaming and downloading talk to YouTube; connecting an account stores its cookie here until you disconnect it. A music server you point this at is asked for its library and its songs; its password is kept on this phone, because each request is signed with it rather than carrying it. That password and the YouTube cookie are sealed with a key held in this phone\'s keystore and are left out of Android\'s backups, so neither leaves with one. Radio stations come from radio.garden, which is asked what is on the air in a place; a station you keep is stored as its own address and plays without asking anything further. The FM row opens the phone\'s own tuner and does nothing else. This app does not read your notifications and does not ask for an accessibility service. There are no ads, no analytics and nothing is counted.</string>
+    <!-- The name of the app's licence -->
+    <string name="about_licence">GNU General Public License v3</string>
+    <string name="about_built_on">Built on CalmMusic by David Ray Wilson, same licence</string>
+    <string name="about_subsonic">Music servers are reached over the Subsonic API, which Navidrome, Airsonic and Gonic all speak.</string>
+    <!-- The donation link label, beside a drawing of a llama. A fixed phrase: a verb and an object, so the reader knows what pressing it does -->
+    <string name="about_feed_the_llamas">Feed the llamas</string>
+    <!-- Toast when the donation link cannot be opened -->
+    <string name="about_no_browser">There is no browser on this phone to open that with.</string>
+    <!-- Button that closes the About dialog -->
+    <string name="about_close">Close</string>
+
+    <!-- Music server screen: where a Navidrome or other Subsonic server is entered -->
+    <!-- Text field label: the server's address -->
+    <string name="library_server_address">Address</string>
+    <!-- Text field label -->
+    <string name="library_server_username">Username</string>
+    <!-- Text field label -->
+    <string name="library_server_password">Password</string>
+    <!-- Button, when no server is set up yet -->
+    <string name="library_server_connect">Connect</string>
+    <!-- Button, when a server is already set up -->
+    <string name="library_server_connect_again">Connect again</string>
+    <string name="library_server_password_note">The password is kept on this phone. It is not sent to the server: each request carries a one-time signature made from it instead. Anyone who can read your network can still replay a request, so a server reachable from outside the house wants https.</string>
+    <!-- Row at the foot of the screen; the second label is shown in bold after one tap -->
+    <string name="library_server_forget">Forget this server</string>
+    <string name="library_server_forget_armed">Forget this server — its songs leave the library; tap again</string>
+
+    <!-- YouTube sign-in screen, when the web page fails -->
+    <string name="library_youtube_login_failed">The sign-in page did not load</string>
+    <!-- Button: try loading the sign-in page again -->
+    <string name="library_youtube_login_retry">Retry</string>
+
+    <!-- Search screen -->
+    <!-- Tab over the search results -->
+    <string name="library_search_tab_songs">Songs</string>
+    <!-- Tab over the search results -->
+    <string name="library_search_tab_albums">Albums</string>
+    <!-- Tab over the search results -->
+    <string name="library_search_tab_artists">Artists</string>
+    <string name="library_search_searching">Searching...</string>
+    <string name="library_search_failed">The search did not reach YouTube</string>
+    <string name="library_search_no_songs">No songs. Try a different search.</string>
+    <string name="library_search_no_albums">No albums. Try a different search.</string>
+    <string name="library_search_no_artists">No artists. Try a different search.</string>
+    <!-- Second line under an artist's name in the search results, saying the result is an artist -->
+    <string name="library_search_result_artist">Artist</string>
+
+    <!-- Library lists (Songs, Albums, Artists), shared -->
+    <string name="library_sync_in_progress">Music sync is in progress…</string>
+    <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
+    <string name="library_nothing_added_yet">Nothing has been added yet.</string>
+    <!-- Empty library: button that opens the YouTube settings -->
+    <string name="library_empty_set_up_youtube">Set up YouTube</string>
+    <!-- Empty library: button that opens the folder settings -->
+    <string name="library_empty_choose_folder">Choose a folder</string>
+
+    <!-- Albums list -->
+    <string name="library_albums_loading">Loading albums...</string>
+    <string name="library_albums_error">The albums could not be read</string>
+    <string name="library_albums_empty_title">No albums yet</string>
+    <string name="library_albums_no_album_info">No albums to show yet. Once your songs have album info, they\'ll appear here.</string>
+    <!-- Second line of an album row. %1$s is the artist, %2$d the release year -->
+    <string name="library_album_artist_and_year">%1$s • %2$d</string>
+
+    <!-- Artists list -->
+    <string name="library_artists_loading">Loading artists...</string>
+    <string name="library_artists_error">The artists could not be read</string>
+    <string name="library_artists_empty_title">No artists yet</string>
+    <string name="library_artists_no_artist_info">No artists to show yet. Once your songs have artist info, they\'ll appear here.</string>
+    <!-- Part of the second line of an artist row -->
+    <plurals name="library_artist_song_count">
+        <item quantity="one">%1$d song</item>
+        <item quantity="other">%1$d songs</item>
+    </plurals>
+    <!-- Part of the second line of an artist row -->
+    <plurals name="library_artist_album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d albums</item>
+    </plurals>
+    <!-- Second line of an artist row. %1$s is the song count ("3 songs"), %2$s the album count ("1 album") -->
+    <string name="library_artist_songs_and_albums">%1$s • %2$s</string>
+
+    <!-- Songs list -->
+    <string name="library_songs_loading">Loading songs...</string>
+    <string name="library_songs_error">The songs could not be read</string>
+    <string name="library_songs_empty_title">No songs yet</string>
+    <!-- Screen-reader label for the shuffle button -->
+    <string name="library_songs_shuffle">Shuffle songs</string>
+
+    <!-- Album page -->
+    <string name="library_album_loading">Loading album...</string>
+    <!-- Shown when the album's songs fail to load and the error carries no message of its own -->
+    <string name="library_album_load_failed">Failed to load album songs</string>
+    <string name="library_album_no_songs">No songs in this album</string>
+    <!-- Tab over a multi-disc album. %1$d is the disc number -->
+    <string name="library_album_disc">Disc %1$d</string>
+    <!-- Screen-reader labels for the album page's buttons -->
+    <string name="library_album_shuffle">Shuffle album</string>
+    <string name="library_album_add_to_playlist">Add the album to a playlist</string>
+    <string name="library_album_keep_on_phone">Keep the album on this phone</string>
+
+    <!-- Artist page (the library's, and YouTube's) -->
+    <string name="library_artist_loading">Loading artist...</string>
+    <!-- Shown when the artist fails to load and the error carries no message of its own -->
+    <string name="library_artist_load_failed">Failed to load artist</string>
+    <!-- YouTube artist page opened without an artist id -->
+    <string name="library_artist_unknown">Unknown artist</string>
+    <string name="library_artist_error">This artist could not be read</string>
+    <string name="library_artist_no_content">No content for this artist yet</string>
+    <!-- Tab on an artist page -->
+    <string name="library_artist_tab_albums">Albums</string>
+    <!-- Tab on an artist page -->
+    <string name="library_artist_tab_songs">Songs</string>
+    <!-- Tab on a YouTube artist page: singles and new releases -->
+    <string name="library_artist_tab_singles">Singles</string>
+    <string name="library_artist_no_albums">No albums for this artist</string>
+    <string name="library_artist_no_songs">No songs for this artist</string>
+    <string name="library_artist_no_singles">No singles or new releases</string>
+    <!-- Screen-reader labels for the artist page's buttons -->
+    <string name="library_artist_shuffle">Shuffle artist songs</string>
+    <string name="library_artist_add_to_playlist">Add these to a playlist</string>
+    <string name="library_artist_keep_on_phone">Keep these on this phone</string>
+
+    <!-- Settings: a music folder's location, shown before its path ("Phone > Music") -->
+    <string name="settings_folder_phone">Phone</string>
+    <string name="settings_folder_card">Card</string>
+
+    <!-- ============================================================ -->
+    <!-- Notifications and music-server messages -->
+    <!-- Playback notification channel (PlaybackService) -->
+    <string name="service_playback_channel_name">Music Box playback</string>
+    <string name="service_playback_channel_description">Music playback controls</string>
+
+    <!-- Keeping a song from a music server on the phone (SubsonicDownloader) -->
+    <string name="service_subsonic_download_no_storage">There is nowhere on this phone to put it.</string>
+    <string name="service_subsonic_download_server_answered">The server answered %1$d.</string>
+    <string name="service_subsonic_download_empty">The server sent nothing.</string>
+    <string name="service_subsonic_download_not_saved">The download could not be saved.</string>
+    <string name="service_subsonic_download_unfinished">That song did not finish downloading.</string>
+    <!-- Connecting to a music server (Subsonic/Navidrome), shown under the server row in settings -->
+    <string name="service_subsonic_not_a_music_server">That address answered, but not like a music server.</string>
+    <string name="service_subsonic_login_refused">That username and password were not accepted.</string>
+    <string name="service_subsonic_not_allowed">That account is not allowed to read the library.</string>
+    <string name="service_subsonic_refused">The server refused the request.</string>
+    <string name="service_subsonic_unreachable">The server could not be reached.</string>
 </resources>

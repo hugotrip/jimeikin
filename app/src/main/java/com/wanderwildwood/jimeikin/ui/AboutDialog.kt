@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.wanderwildwood.jimeikin.R
 
 /**
@@ -36,33 +37,21 @@ import com.wanderwildwood.jimeikin.R
 fun AboutDialog(onDismiss: () -> Unit) {
     EInkDialog(onDismiss = onDismiss) {
         TextMMD(
-            text = "Music Box ${BuildConfig.VERSION_NAME}",
+            text = stringResource(R.string.about_title, BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
         )
 
         Spacer(Modifier.height(14.dp))
         TextMMD(
-            text = "Your library and your settings stay on the phone. Searching, streaming " +
-                "and downloading talk to YouTube; connecting an account stores its cookie " +
-                "here until you disconnect it. A music server you point this at is asked " +
-                "for its library and its songs; its password is kept on this phone, because " +
-                "each request is signed with it rather than carrying it. That password and " +
-                "the YouTube cookie are sealed with a key held in this phone's keystore and " +
-                "are left out of Android's backups, so neither leaves with one. " +
-                "Radio stations come from radio.garden, which is asked what is on the air " +
-                "in a place; a station you keep is stored as its own address and plays " +
-                "without asking anything further. The FM row opens the phone's own tuner and " +
-                "does nothing else. This app does not read your notifications and does not " +
-                "ask for an accessibility service. There are no ads, no analytics and " +
-                "nothing is counted.",
+            text = stringResource(R.string.about_privacy),
             style = MaterialTheme.typography.labelSmall,
         )
 
         Spacer(Modifier.height(14.dp))
-        TextMMD(text = "GNU General Public License v3", style = MaterialTheme.typography.labelSmall)
+        TextMMD(text = stringResource(R.string.about_licence), style = MaterialTheme.typography.labelSmall)
         TextMMD(
-            text = "Built on CalmMusic by David Ray Wilson, same licence",
+            text = stringResource(R.string.about_built_on),
             style = MaterialTheme.typography.labelSmall,
         )
         TextMMD(
@@ -71,8 +60,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         )
         TextMMD(text = "MMD — Mudita, Apache 2.0", style = MaterialTheme.typography.labelSmall)
         TextMMD(
-            text = "Music servers are reached over the Subsonic API, which Navidrome, " +
-                "Airsonic and Gonic all speak.",
+            text = stringResource(R.string.about_subsonic),
             style = MaterialTheme.typography.labelSmall,
         )
 
@@ -88,7 +76,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-        ) { TextMMD(text = "Close", style = MaterialTheme.typography.bodySmall) }
+        ) { TextMMD(text = stringResource(R.string.about_close), style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -120,7 +108,7 @@ private fun Llama() {
                         Intent(Intent.ACTION_VIEW, Uri.parse("https://square.link/u/AGu8oT10")),
                     )
                 }.onFailure {
-                    Toast.makeText(context, "There is no browser on this phone to open that with.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.about_no_browser), Toast.LENGTH_SHORT).show()
                 }
             }
             .padding(vertical = 4.dp),
@@ -131,6 +119,6 @@ private fun Llama() {
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.width(6.dp))
-        TextMMD(text = "Feed the llamas", style = MaterialTheme.typography.labelSmall)
+        TextMMD(text = stringResource(R.string.about_feed_the_llamas), style = MaterialTheme.typography.labelSmall)
     }
 }

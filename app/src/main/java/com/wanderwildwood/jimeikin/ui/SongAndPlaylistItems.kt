@@ -28,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +39,7 @@ import com.mudita.mmd.components.menus.DropdownMenuItemMMD
 import com.mudita.mmd.components.menus.DropdownMenuMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -62,6 +65,7 @@ fun SongItem(
     // the reader could not need repeated eight times, pushing the one they might, the
     // length, off the end of a 480px line. A screen that already names the artist or the
     // album says so, and the row leaves that part out.
+    val localFileLabel = stringResource(R.string.player_song_local_file)
     val (isLocal, subtitle) = remember(
         song.id,
         song.audioUri,
@@ -71,6 +75,7 @@ fun SongItem(
         song.sourceType,
         knownArtist,
         knownAlbum,
+        localFileLabel,
     ) {
         val local = song.sourceType == "LOCAL_FILE" ||
             song.sourceType == "YOUTUBE_DOWNLOAD" ||
@@ -94,7 +99,7 @@ fun SongItem(
             !a.isNullOrBlank() && !b.isNullOrBlank() && ArtistNames.key(a) == ArtistNames.key(b)
 
         val baseArtist = song.artist
-            .ifBlank { if (local) "Local file" else "" }
+            .ifBlank { if (local) localFileLabel else "" }
             .takeUnless { sameName(it, knownArtist) }
             .orEmpty()
         val album = song.album
@@ -181,7 +186,7 @@ fun SongItem(
             } else if (isCurrentlyPlaying) {
                 Icon(
                     imageVector = Icons.Headphones,
-                    contentDescription = "Now playing",
+                    contentDescription = stringResource(R.string.player_song_now_playing),
                     modifier = Modifier
                         .size(24.dp)
                         .padding(start = 4.dp),
@@ -206,7 +211,7 @@ fun SongItem(
                     if (!isLocal && isInLibrary) {
                         Icon(
                             imageVector = Icons.LibraryAddCheck,
-                            contentDescription = "In the library",
+                            contentDescription = stringResource(R.string.player_song_in_library),
                             modifier = Modifier.size(16.dp)
                         )
 
@@ -227,7 +232,7 @@ fun SongItem(
                 Box(modifier = Modifier.wrapContentSize()) {
                     Icon(
                         imageVector = Icons.Close,
-                        contentDescription = "Close menu",
+                        contentDescription = stringResource(R.string.player_song_close_menu),
                         modifier = Modifier
                             .size(24.dp)
                             .clickable { showMenu = false }
@@ -241,7 +246,7 @@ fun SongItem(
                         // here that cannot wait its turn.
                         if (song.sourceType != "RADIO") {
                             DropdownMenuItemMMD(
-                                text = { TextMMD(text = "Play next") },
+                                text = { TextMMD(text = stringResource(R.string.player_song_play_next)) },
                                 onClick = {
                                     showMenu = false
                                     onPlayNext()
@@ -249,7 +254,7 @@ fun SongItem(
                             )
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
-                                text = { TextMMD(text = "Add to queue") },
+                                text = { TextMMD(text = stringResource(R.string.player_song_add_to_queue)) },
                                 onClick = {
                                     showMenu = false
                                     onAddToQueue()
@@ -259,7 +264,7 @@ fun SongItem(
                         }
 
                         DropdownMenuItemMMD(
-                            text = { TextMMD(text = "Add to playlist") },
+                            text = { TextMMD(text = stringResource(R.string.player_add_to_playlist)) },
                             onClick = {
                                 showMenu = false
                                 onAddToPlaylist()
@@ -271,7 +276,7 @@ fun SongItem(
                         if (song.sourceType == "SUBSONIC") {
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
-                                text = { TextMMD(text = "Keep on this phone") },
+                                text = { TextMMD(text = stringResource(R.string.player_song_keep_on_phone)) },
                                 onClick = {
                                     showMenu = false
                                     onKeepOnPhone()
@@ -285,11 +290,11 @@ fun SongItem(
                                 text = {
                                     TextMMD(
                                         text = when {
-                                            !armedDelete -> "Delete"
+                                            !armedDelete -> stringResource(R.string.player_song_delete)
                                             isLocal ->
-                                                "Delete — this erases the file; tap again"
+                                                stringResource(R.string.player_song_delete_file_confirm)
                                             else ->
-                                                "Delete the download — tap again"
+                                                stringResource(R.string.player_song_delete_download_confirm)
                                         },
                                     )
                                 },
@@ -310,9 +315,9 @@ fun SongItem(
                                 text = {
                                     TextMMD(
                                         text = if (armedRemove) {
-                                            "Remove from library — tap again"
+                                            stringResource(R.string.player_song_remove_from_library_confirm)
                                         } else {
-                                            "Remove from library"
+                                            stringResource(R.string.player_song_remove_from_library)
                                         },
                                     )
                                 },
@@ -350,10 +355,10 @@ fun PlaylistItem(
     onClick: () -> Unit,
     showDivider: Boolean = true,
 ) {
-    val subtitle = remember(playlist.id, playlist.description, playlist.songCount) {
-        val songCountText = playlist.songCount?.let { count ->
-            if (count == 1) "1 song" else "$count songs"
-        }
+    val songCountText = playlist.songCount?.let { count ->
+        pluralStringResource(R.plurals.player_song_count, count, count)
+    }
+    val subtitle = remember(playlist.id, playlist.description, playlist.songCount, songCountText) {
         buildString {
             val description = playlist.description?.takeIf { it.isNotBlank() }
             if (!description.isNullOrEmpty()) {
@@ -410,10 +415,10 @@ fun SelectablePlaylistItem(
     onSelectionChange: (Boolean) -> Unit,
     showDivider: Boolean,
 ) {
-    val subtitle = remember(playlist.id, playlist.description, playlist.songCount) {
-        val songCountText = playlist.songCount?.let { count ->
-            if (count == 1) "1 song" else "$count songs"
-        }
+    val songCountText = playlist.songCount?.let { count ->
+        pluralStringResource(R.plurals.player_song_count, count, count)
+    }
+    val subtitle = remember(playlist.id, playlist.description, playlist.songCount, songCountText) {
         buildString {
             val description = playlist.description?.takeIf { it.isNotBlank() }
             if (!description.isNullOrEmpty()) {

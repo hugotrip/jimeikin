@@ -16,11 +16,13 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 data class PlaylistUiModel(
     val id: String,
@@ -60,7 +62,7 @@ fun PlaylistsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     TextMMD(
-                        text = "No playlists yet",
+                        text = stringResource(R.string.player_playlists_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                     )
@@ -68,7 +70,7 @@ fun PlaylistsScreen(
                     ButtonMMD(
                         onClick = onAddPlaylistClick,
                     ) {
-                        TextMMD(text = "Add playlist")
+                        TextMMD(text = stringResource(R.string.player_playlists_add))
                     }
                 }
             }
@@ -122,7 +124,7 @@ fun PlaylistsScreen(
             ) {
                 Icon(
                     imageVector = Icons.Plus,
-                    contentDescription = "New playlist",
+                    contentDescription = stringResource(R.string.player_playlists_new),
                 )
             }
         }

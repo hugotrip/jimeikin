@@ -20,11 +20,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 private const val YOUTUBE_MUSIC_LOGIN_URL =
     "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
@@ -71,7 +73,7 @@ fun YouTubeLoginScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             TextMMD(
-                text = "The sign-in page did not load",
+                text = stringResource(R.string.library_youtube_login_failed),
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(16.dp))
@@ -79,7 +81,7 @@ fun YouTubeLoginScreen(
                 rendererGone = false
                 retryKey++
             }) {
-                TextMMD(text = "Retry")
+                TextMMD(text = stringResource(R.string.library_youtube_login_retry))
             }
         }
     } else {

@@ -236,8 +236,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun createNotificationChannel() {
-        val name = "Music Box playback"
-        val descriptionText = "Music playback controls"
+        val name = getString(R.string.service_playback_channel_name)
+        val descriptionText = getString(R.string.service_playback_channel_description)
         val importance = NotificationManager.IMPORTANCE_LOW
         val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
             description = descriptionText

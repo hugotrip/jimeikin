@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,6 +39,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 enum class RepeatMode {
     OFF,
@@ -116,13 +119,13 @@ fun NowPlayingScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Back,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.player_back),
                     )
 
                     Spacer(modifier = Modifier.width(12.dp))
 
                     TextMMD(
-                        text = "Now playing",
+                        text = stringResource(R.string.player_now_playing_title),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -144,7 +147,7 @@ fun NowPlayingScreen(
                 if (isDownloadInProgress) {
                     // The spinner here was also the only way to cancel, which nothing said.
                     IconButton(onClick = onCancelDownloadClick) {
-                        TextMMD(text = "Stop", style = MaterialTheme.typography.labelSmall)
+                        TextMMD(text = stringResource(R.string.player_download_stop), style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     IconButton(
@@ -157,9 +160,9 @@ fun NowPlayingScreen(
                                 Icons.Download
                             },
                             contentDescription = if (isDownloaded) {
-                                "Delete download"
+                                stringResource(R.string.player_delete_download)
                             } else {
-                                "Download"
+                                stringResource(R.string.player_download)
                             },
                         )
                     }
@@ -169,7 +172,7 @@ fun NowPlayingScreen(
             IconButton(onClick = onAddToPlaylistClick) {
                 Icon(
                     imageVector = Icons.PlaylistAdd,
-                    contentDescription = "Add to playlist",
+                    contentDescription = stringResource(R.string.player_add_to_playlist),
                 )
             }
 
@@ -177,7 +180,7 @@ fun NowPlayingScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Shuffle,
-                        contentDescription = "Shuffle queue",
+                        contentDescription = stringResource(R.string.player_shuffle_queue),
                     )
                     if (isShuffleOn) {
                         Spacer(modifier = Modifier.height(2.dp))
@@ -195,9 +198,9 @@ fun NowPlayingScreen(
 
             IconButton(onClick = onRepeatClick) {
                 val (icon, description, isActive) = when (repeatMode) {
-                    RepeatMode.OFF -> Triple(Icons.Repeat, "Repeat off", false)
-                    RepeatMode.QUEUE -> Triple(Icons.Repeat, "Repeat queue", true)
-                    RepeatMode.ONE -> Triple(Icons.RepeatOne, "Repeat current song", true)
+                    RepeatMode.OFF -> Triple(Icons.Repeat, stringResource(R.string.player_repeat_off), false)
+                    RepeatMode.QUEUE -> Triple(Icons.Repeat, stringResource(R.string.player_repeat_queue), true)
+                    RepeatMode.ONE -> Triple(Icons.RepeatOne, stringResource(R.string.player_repeat_current_song), true)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
@@ -239,7 +242,7 @@ fun NowPlayingScreen(
                 // "In the library" stood beside it and has gone with the button that put it
                 // there: with downloading the only way to keep a song, a kept song is a song
                 // that is not streaming, and the absence of this word already says so.
-                TextMMD(text = "Streaming", style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = stringResource(R.string.player_streaming), style = MaterialTheme.typography.labelSmall)
             }
         }
 
@@ -327,7 +330,7 @@ fun NowPlayingScreen(
         // reads as something broken rather than as something live.
         if (isLive) {
             TextMMD(
-                text = "Live",
+                text = stringResource(R.string.player_live),
                 style = MaterialTheme.typography.bodyLarge,
                 lineHeight = 24.sp,
                 fontWeight = FontWeight.Bold,
@@ -369,12 +372,13 @@ fun NowPlayingScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            TransportButton(PlayerIcons.Previous, "Previous song", 36.dp, onPreviousClick)
+            TransportButton(PlayerIcons.Previous, stringResource(R.string.player_previous_song), 36.dp, onPreviousClick)
 
             // Nothing to seek within on a live stream, so the pair that seeks is not drawn.
             if (!isLive) {
-                TransportButton(PlayerIcons.Rewind, "Back $SEEK_SECONDS seconds", 32.dp, onRewindClick) {
-                    "${SEEK_SECONDS}s"
+                val seekLabel = stringResource(R.string.player_seek_seconds_short, SEEK_SECONDS)
+                TransportButton(PlayerIcons.Rewind, pluralStringResource(R.plurals.player_seek_back_seconds, SEEK_SECONDS, SEEK_SECONDS), 32.dp, onRewindClick) {
+                    seekLabel
                 }
             }
 
@@ -387,13 +391,13 @@ fun NowPlayingScreen(
                 if (isLoading) {
                     // A word, not a spinner: this panel cannot animate without smearing.
                     TextMMD(
-                        text = if (isLive) "Waiting" else "Loading",
+                        text = if (isLive) stringResource(R.string.player_waiting_live) else stringResource(R.string.player_loading),
                         style = MaterialTheme.typography.labelSmall,
                     )
                 } else {
                     TransportButton(
                         icon = if (isPlaying) PlayerIcons.Pause else PlayerIcons.Play,
-                        description = if (isPlaying) "Pause" else "Play",
+                        description = if (isPlaying) stringResource(R.string.player_pause) else stringResource(R.string.player_play),
                         size = 48.dp,
                         onClick = onPlayPauseClick,
                     )
@@ -401,12 +405,13 @@ fun NowPlayingScreen(
             }
 
             if (!isLive) {
-                TransportButton(PlayerIcons.Forward, "On $SEEK_SECONDS seconds", 32.dp, onFastForwardClick) {
-                    "${SEEK_SECONDS}s"
+                val seekLabel = stringResource(R.string.player_seek_seconds_short, SEEK_SECONDS)
+                TransportButton(PlayerIcons.Forward, pluralStringResource(R.plurals.player_seek_on_seconds, SEEK_SECONDS, SEEK_SECONDS), 32.dp, onFastForwardClick) {
+                    seekLabel
                 }
             }
 
-            TransportButton(PlayerIcons.Next, "Next song", 36.dp, onNextClick)
+            TransportButton(PlayerIcons.Next, stringResource(R.string.player_next_song), 36.dp, onNextClick)
         }
 
         Spacer(modifier = Modifier.height(42.dp))

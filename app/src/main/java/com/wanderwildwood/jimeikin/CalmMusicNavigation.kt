@@ -1,27 +1,28 @@
 package com.wanderwildwood.jimeikin
 
+import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination
 import com.wanderwildwood.jimeikin.ui.Icons
 
-sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Playlists : Screen("playlists", "Playlists", Icons.LibraryMusic)
-    object PlaylistDetails : Screen("playlistDetails", "Playlist", Icons.LibraryMusic)
-    object PlaylistAddSongs : Screen("playlistAddSongs", "Add songs", Icons.LibraryMusic)
-    object PlaylistEdit : Screen("playlistEdit", "Playlist", Icons.LibraryMusic)
-    object Artists : Screen("artists", "Artists", Icons.Person)
-    object Songs : Screen("songs", "Songs", Icons.QueueMusic)
-    object Albums : Screen("albums", "Albums", Icons.Album)
-    object AlbumDetails : Screen("albumDetails", "Album", Icons.Album)
-    object ArtistDetails : Screen("artistDetails", "Artist", Icons.LibraryMusic)
-    object YoutubeArtistDetails : Screen("youtubeArtistDetails", "Artist", Icons.LibraryMusic)
-    object Search : Screen("search", "Search", Icons.Search)
+sealed class Screen(val route: String, @StringRes val labelRes: Int, val icon: ImageVector) {
+    object Playlists : Screen("playlists", R.string.main_title_playlists, Icons.LibraryMusic)
+    object PlaylistDetails : Screen("playlistDetails", R.string.main_title_playlist, Icons.LibraryMusic)
+    object PlaylistAddSongs : Screen("playlistAddSongs", R.string.main_title_add_songs, Icons.LibraryMusic)
+    object PlaylistEdit : Screen("playlistEdit", R.string.main_title_playlist, Icons.LibraryMusic)
+    object Artists : Screen("artists", R.string.main_title_artists, Icons.Person)
+    object Songs : Screen("songs", R.string.main_title_songs, Icons.QueueMusic)
+    object Albums : Screen("albums", R.string.main_title_albums, Icons.Album)
+    object AlbumDetails : Screen("albumDetails", R.string.main_title_album, Icons.Album)
+    object ArtistDetails : Screen("artistDetails", R.string.main_title_artist, Icons.LibraryMusic)
+    object YoutubeArtistDetails : Screen("youtubeArtistDetails", R.string.main_title_artist, Icons.LibraryMusic)
+    object Search : Screen("search", R.string.main_title_search, Icons.Search)
 
-    object Radio : Screen("radio", "Radio", Icons.Radio) // Add this line
-    object Downloads : Screen("downloads", "Downloads", Icons.Download)
-    object Settings : Screen("settings", "Settings", Icons.Settings)
-    object MusicServer : Screen("musicServer", "Music server", Icons.Settings)
-    object YouTubeLogin : Screen("youtubeLogin", "Connect a YouTube account", Icons.Person)
+    object Radio : Screen("radio", R.string.main_title_radio, Icons.Radio) // Add this line
+    object Downloads : Screen("downloads", R.string.main_title_downloads, Icons.Download)
+    object Settings : Screen("settings", R.string.main_title_settings, Icons.Settings)
+    object MusicServer : Screen("musicServer", R.string.main_title_music_server, Icons.Settings)
+    object YouTubeLogin : Screen("youtubeLogin", R.string.main_title_connect_youtube, Icons.Person)
 }
 
 /**

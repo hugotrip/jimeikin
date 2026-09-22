@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.wanderwildwood.jimeikin.ui.AlbumUiModel
 import com.wanderwildwood.jimeikin.ui.Icons
@@ -82,7 +83,7 @@ fun CalmMusicTopAppBar(
                     IconButton(onClick = onCancelPlaylistDetailsEditClick) {
                         Icon(
                             imageVector = Icons.Close,
-                            contentDescription = "Cancel playlist edits",
+                            contentDescription = stringResource(R.string.main_cd_cancel_playlist_edits),
                         )
                     }
                 }
@@ -91,7 +92,7 @@ fun CalmMusicTopAppBar(
                     IconButton(onClick = onCancelPlaylistsEditClick) {
                         Icon(
                             imageVector = Icons.Close,
-                            contentDescription = "Cancel playlist edit",
+                            contentDescription = stringResource(R.string.main_cd_cancel_playlist_edit),
                         )
                     }
                 }
@@ -100,7 +101,7 @@ fun CalmMusicTopAppBar(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Back,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.main_cd_back),
                         )
                     }
                 }
@@ -118,7 +119,7 @@ fun CalmMusicTopAppBar(
                         },
                         expanded = true,
                         onExpandedChange = { },
-                        placeholder = { TextMMD("Search") },
+                        placeholder = { TextMMD(stringResource(R.string.main_search_placeholder)) },
                         trailingIcon = {
                             // Emptying the field took a long press and a delete on a keyboard
                             // that e-ink redraws key by key. (From upstream CalmMusic's
@@ -133,7 +134,7 @@ fun CalmMusicTopAppBar(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Close,
-                                            contentDescription = "Clear search",
+                                            contentDescription = stringResource(R.string.main_cd_clear_search),
                                         )
                                     }
                                 }
@@ -145,7 +146,7 @@ fun CalmMusicTopAppBar(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Search,
-                                        contentDescription = "Search",
+                                        contentDescription = stringResource(R.string.main_cd_search),
                                     )
                                 }
                             }
@@ -272,7 +273,7 @@ private fun CalmMusicTopAppBarActions(
             IconButton(onClick = onEnterPlaylistsEditClick) {
                 Icon(
                     imageVector = Icons.Edit,
-                    contentDescription = "Edit playlists",
+                    contentDescription = stringResource(R.string.main_cd_edit_playlists),
                 )
             }
         }
@@ -280,7 +281,7 @@ private fun CalmMusicTopAppBarActions(
         IconButton(onClick = onNavigateToSearchClick) {
             Icon(
                 imageVector = Icons.Search,
-                contentDescription = "Search",
+                contentDescription = stringResource(R.string.main_cd_search),
             )
         }
 
@@ -289,7 +290,7 @@ private fun CalmMusicTopAppBarActions(
         IconButton(onClick = onNavigateToSettingsClick) {
             Icon(
                 imageVector = Icons.Settings,
-                contentDescription = "Settings",
+                contentDescription = stringResource(R.string.main_cd_settings),
             )
         }
     }
@@ -301,7 +302,7 @@ private fun CalmMusicTopAppBarActions(
         IconButton(onClick = onShowAboutClick) {
             Icon(
                 imageVector = Icons.Info,
-                contentDescription = "About",
+                contentDescription = stringResource(R.string.main_cd_about),
             )
         }
     }
@@ -311,7 +312,7 @@ private fun CalmMusicTopAppBarActions(
             IconButton(onClick = onPlaylistDetailsMenuToggle) {
                 Icon(
                     imageVector = Icons.More,
-                    contentDescription = "Playlist options",
+                    contentDescription = stringResource(R.string.main_cd_playlist_options),
                 )
             }
 
@@ -320,28 +321,28 @@ private fun CalmMusicTopAppBarActions(
                 onDismissRequest = onPlaylistDetailsMenuToggle,
             ) {
                 DropdownMenuItemMMD(
-                    text = { TextMMD("Edit") },
+                    text = { TextMMD(stringResource(R.string.main_menu_edit)) },
                     onClick = onPlaylistDetailsEditClick,
                 )
 
                 HorizontalDividerMMD(thickness = 1.dp)
 
                 DropdownMenuItemMMD(
-                    text = { TextMMD("Add songs") },
+                    text = { TextMMD(stringResource(R.string.main_menu_add_songs)) },
                     onClick = onPlaylistDetailsAddSongsClick,
                 )
 
                 HorizontalDividerMMD(thickness = 1.dp)
 
                 DropdownMenuItemMMD(
-                    text = { TextMMD("Rename") },
+                    text = { TextMMD(stringResource(R.string.main_menu_rename)) },
                     onClick = onPlaylistDetailsRenameClick,
                 )
 
                 HorizontalDividerMMD(thickness = 1.dp)
 
                 DropdownMenuItemMMD(
-                    text = { TextMMD("Delete") },
+                    text = { TextMMD(stringResource(R.string.main_menu_delete)) },
                     onClick = onPlaylistDetailsDeleteClick,
                 )
             }
@@ -363,7 +364,7 @@ private fun CalmMusicTopAppBarActions(
             onClick = onRemoveSelectedFromPlaylistClick,
         ) {
             TextMMD(
-                text = "Remove $playlistDetailsSelectionCount",
+                text = stringResource(R.string.main_button_remove_count, playlistDetailsSelectionCount),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -382,7 +383,7 @@ private fun CalmMusicTopAppBarActions(
             onClick = onShowDeletePlaylistsConfirmationClick,
         ) {
             TextMMD(
-                text = "Delete $playlistEditSelectionCount",
+                text = stringResource(R.string.main_button_delete_count, playlistEditSelectionCount),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -397,7 +398,7 @@ private fun CalmMusicTopAppBarActions(
             onClick = onPlaylistAddSongsDoneClick,
         ) {
             TextMMD(
-                text = "Done",
+                text = stringResource(R.string.main_button_done),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
@@ -423,7 +424,7 @@ private fun CalmMusicTopAppBarActions(
         IconButton(onClick = onNowPlayingClick) {
             Icon(
                 imageVector = Icons.Headphones,
-                contentDescription = "Now playing",
+                contentDescription = stringResource(R.string.main_cd_now_playing),
             )
         }
     }
@@ -443,16 +444,17 @@ fun CalmMusicBottomBar(
             navItems.forEach { screen ->
                 val isSelected =
                     currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                val label = stringResource(screen.labelRes)
                 NavigationBarItemMMD(
                     icon = {
                         Icon(
                             painter = rememberVectorPainter(image = screen.icon),
-                            contentDescription = screen.label,
+                            contentDescription = label,
                         )
                     },
                     label = {
                         TextMMD(
-                            text = screen.label,
+                            text = label,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         )
                     },

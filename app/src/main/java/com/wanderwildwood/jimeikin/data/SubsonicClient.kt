@@ -1,6 +1,8 @@
 package com.wanderwildwood.jimeikin.data
 
+import android.content.res.Resources
 import android.net.Uri
+import com.wanderwildwood.jimeikin.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -23,7 +25,10 @@ import java.util.concurrent.TimeUnit
  * network it is enough to keep the password itself off the wire. The password still has to
  * be kept on the phone to compute the tokens, which is worth saying plainly in the About.
  */
-class SubsonicClient(private val config: SubsonicConfig) {
+class SubsonicClient(
+    private val config: SubsonicConfig,
+    private val resources: Resources,
+) {
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -192,13 +197,13 @@ class SubsonicClient(private val config: SubsonicConfig) {
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     return@withContext SubsonicResult.Failure(
-                        "The server answered ${response.code}.",
+                        resources.getString(R.string.service_subsonic_download_server_answered, response.code),
                     )
                 }
                 val text = response.body?.string().orEmpty()
                 val body = JSONObject(text).optJSONObject("subsonic-response")
                     ?: return@withContext SubsonicResult.Failure(
-                        "That address answered, but not like a music server.",
+                        resources.getString(R.string.service_subsonic_not_a_music_server),
                     )
                 if (body.optString("status") != "ok") {
                     val error = body.optJSONObject("error")
@@ -206,11 +211,11 @@ class SubsonicClient(private val config: SubsonicConfig) {
                     // passed through as the server worded them.
                     return@withContext SubsonicResult.Failure(
                         when (error?.optInt("code")) {
-                            40 -> "That username and password were not accepted."
-                            50 -> "That account is not allowed to read the library."
+                            40 -> resources.getString(R.string.service_subsonic_login_refused)
+                            50 -> resources.getString(R.string.service_subsonic_not_allowed)
                             else -> error?.optString("message")
                                 ?.takeIf { it.isNotBlank() }
-                                ?: "The server refused the request."
+                                ?: resources.getString(R.string.service_subsonic_refused)
                         },
                     )
                 }
@@ -218,7 +223,7 @@ class SubsonicClient(private val config: SubsonicConfig) {
             }
         } catch (e: Exception) {
             android.util.Log.w("SubsonicClient", "$method failed", e)
-            SubsonicResult.Failure("The server could not be reached.")
+            SubsonicResult.Failure(resources.getString(R.string.service_subsonic_unreachable))
         }
     }
 

@@ -25,11 +25,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.wanderwildwood.jimeikin.PlaylistsViewModel
+import com.wanderwildwood.jimeikin.R
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.checkbox.CheckboxMMD
@@ -67,6 +69,8 @@ fun PlaylistDetailsScreen(
     val selectedState = remember { mutableStateMapOf<String, Boolean>() }
 
     val songsRefreshTrigger by playlistsViewModel.songsRefreshTrigger.collectAsState()
+    val loadFailedText = stringResource(R.string.player_playlist_load_failed)
+    val saveOrderFailedText = stringResource(R.string.player_playlist_save_order_failed)
 
     LaunchedEffect(playlistId, songsRefreshTrigger) {
         if (playlistId == null) {
@@ -78,7 +82,7 @@ fun PlaylistDetailsScreen(
         try {
             songs = playlistsViewModel.getPlaylistSongs(playlistId)
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Failed to load playlist songs"
+            errorMessage = e.message ?: loadFailedText
         } finally {
             isLoading = false
         }
@@ -103,7 +107,7 @@ fun PlaylistDetailsScreen(
                 try {
                     playlistsViewModel.updatePlaylistOrder(playlistId, currentList)
                 } catch (e: Exception) {
-                    errorMessage = "Failed to save order"
+                    errorMessage = saveOrderFailedText
                 }
             }
         }
@@ -118,7 +122,7 @@ fun PlaylistDetailsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Loading playlist...")
+                    TextMMD(text = stringResource(R.string.player_playlist_loading))
                 }
             }
 
@@ -142,7 +146,7 @@ fun PlaylistDetailsScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         TextMMD(
-                            text = "No songs in this playlist",
+                            text = stringResource(R.string.player_playlist_empty),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                         )
@@ -150,7 +154,7 @@ fun PlaylistDetailsScreen(
                         ButtonMMD(
                             onClick = onAddSongsClick,
                         ) {
-                            TextMMD(text = "Add songs")
+                            TextMMD(text = stringResource(R.string.player_playlist_add_songs))
                         }
                     }
                 }
@@ -222,7 +226,7 @@ fun PlaylistDetailsScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Shuffle,
-                        contentDescription = "Shuffle playlist",
+                        contentDescription = stringResource(R.string.player_playlist_shuffle),
                     )
                 }
 
@@ -231,7 +235,7 @@ fun PlaylistDetailsScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Plus,
-                        contentDescription = "Add songs",
+                        contentDescription = stringResource(R.string.player_playlist_add_songs),
                     )
                 }
 
@@ -246,7 +250,7 @@ fun PlaylistDetailsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Download,
-                            contentDescription = "Keep the playlist on this phone",
+                            contentDescription = stringResource(R.string.player_playlist_keep_on_phone),
                         )
                     }
                 }
@@ -332,7 +336,7 @@ private fun EditablePlaylistSongItem(
                 if (canMoveUp) {
                     Icon(
                         imageVector = Icons.ArrowUp,
-                        contentDescription = "Move up",
+                        contentDescription = stringResource(R.string.player_playlist_move_up),
                         modifier = Modifier
                             .size(24.dp)
                             .padding(4.dp)
@@ -342,7 +346,7 @@ private fun EditablePlaylistSongItem(
                 if (canMoveDown) {
                     Icon(
                         imageVector = Icons.ArrowDown,
-                        contentDescription = "Move down",
+                        contentDescription = stringResource(R.string.player_playlist_move_down),
                         modifier = Modifier
                             .size(24.dp)
                             .padding(4.dp)

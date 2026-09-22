@@ -2,6 +2,7 @@ package com.wanderwildwood.jimeikin.data
 
 import android.content.Context
 import android.os.Environment
+import com.wanderwildwood.jimeikin.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -46,7 +47,7 @@ object SubsonicDownloader {
         onProgress: (Float) -> Unit = {},
     ): SubsonicResult<File> = withContext(Dispatchers.IO) {
         val target = fileFor(context, song.id)
-            ?: return@withContext SubsonicResult.Failure("There is nowhere on this phone to put it.")
+            ?: return@withContext SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_no_storage))
         if (target.exists() && target.length() > 0) return@withContext SubsonicResult.Success(target)
 
         val partial = File(target.absolutePath + ".part")
@@ -57,10 +58,10 @@ object SubsonicDownloader {
             val request = Request.Builder().url(song.audioUri).build()
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    return@withContext SubsonicResult.Failure("The server answered ${response.code}.")
+                    return@withContext SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_server_answered, response.code))
                 }
                 val body = response.body
-                    ?: return@withContext SubsonicResult.Failure("The server sent nothing.")
+                    ?: return@withContext SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_empty))
                 val total = body.contentLength()
                 var written = 0L
                 var lastPercent = -1
@@ -86,14 +87,14 @@ object SubsonicDownloader {
             }
             if (!partial.renameTo(target)) {
                 partial.delete()
-                return@withContext SubsonicResult.Failure("The download could not be saved.")
+                return@withContext SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_not_saved))
             }
             onProgress(1f)
             SubsonicResult.Success(target)
         } catch (e: Exception) {
             partial.delete()
             android.util.Log.w("SubsonicDownloader", "download failed for ${song.id}", e)
-            SubsonicResult.Failure("That song did not finish downloading.")
+            SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_unfinished))
         }
     }
 

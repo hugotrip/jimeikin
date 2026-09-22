@@ -29,12 +29,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.text_field.TextFieldMMD
+import com.wanderwildwood.jimeikin.R
 import com.wanderwildwood.jimeikin.data.ArtistNames
 import com.wanderwildwood.jimeikin.data.RadioChannel
 import com.wanderwildwood.jimeikin.data.RadioGarden
@@ -150,7 +153,7 @@ fun RadioScreen(
 
     if (loading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            TextMMD("Reading the list…", style = MaterialTheme.typography.titleSmall)
+            TextMMD(stringResource(R.string.player_radio_reading_list), style = MaterialTheme.typography.titleSmall)
         }
         return
     }
@@ -214,7 +217,7 @@ fun RadioScreen(
             heading = browsingCountry!!,
             query = query,
             onQueryChange = { query = it },
-            hint = "Find a town",
+            hint = stringResource(R.string.player_radio_find_town),
             rows = placesHere
                 .filter { it.title.matches(query) }
                 .map { place ->
@@ -233,10 +236,10 @@ fun RadioScreen(
                     .take(40)
             }
             RowList(
-                heading = "Everywhere",
+                heading = stringResource(R.string.player_radio_everywhere),
                 query = query,
                 onQueryChange = { query = it },
-                hint = "Find a country or a town",
+                hint = stringResource(R.string.player_radio_find_country_or_town),
                 rows = matchingCountries.map { (country, stations) ->
                     Row3(country, plural(stations)) { browsingCountry = country }
                 } + matchingTowns.map { place ->
@@ -295,13 +298,14 @@ private fun StationRow(
         TextMMD(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 2)
         if (subtitle != null) TextMMD(subtitle, style = MaterialTheme.typography.labelSmall, maxLines = 1)
         TextMMD(
-            text = if (isFavourite) "A favorite — hold to remove" else "Hold to add to favorites",
+            text = if (isFavourite) stringResource(R.string.player_radio_favorite_hold_to_remove) else stringResource(R.string.player_radio_hold_to_add),
             style = MaterialTheme.typography.labelSmall,
         )
     }
 }
 
-private fun plural(count: Int) = if (count == 1) "1 station" else "$count stations"
+@Composable
+private fun plural(count: Int) = pluralStringResource(R.plurals.player_radio_station_count, count, count)
 
 private data class Row3(val title: String, val subtitle: String?, val onClick: () -> Unit)
 
@@ -339,7 +343,7 @@ private fun RowList(
             item {
                 Spacer(Modifier.height(24.dp))
                 TextMMD(
-                    text = "Nothing by that name",
+                    text = stringResource(R.string.player_radio_nothing_by_that_name),
                     style = MaterialTheme.typography.titleSmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
@@ -374,7 +378,7 @@ private fun ChannelList(
 ) {
     if (channels.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            TextMMD("No stations here", style = MaterialTheme.typography.titleSmall)
+            TextMMD(stringResource(R.string.player_radio_no_stations_here), style = MaterialTheme.typography.titleSmall)
         }
         return
     }
@@ -423,8 +427,8 @@ private fun RadioHome(
                     .clickable { onBrowse() }
                     .padding(vertical = 10.dp),
             ) {
-                TextMMD("Stations by place", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                TextMMD("Somewhere else, on the air now", style = MaterialTheme.typography.labelSmall)
+                TextMMD(stringResource(R.string.player_radio_by_place), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                TextMMD(stringResource(R.string.player_radio_by_place_subtitle), style = MaterialTheme.typography.labelSmall)
             }
             if (hasTuner) {
                 HorizontalDividerMMD(thickness = 1.dp)
@@ -434,22 +438,22 @@ private fun RadioHome(
                         .clickable { onOpenTuner() }
                         .padding(vertical = 10.dp),
                 ) {
-                    TextMMD("FM radio", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                    TextMMD("Opens the phone's tuner. Needs headphones.", style = MaterialTheme.typography.labelSmall)
+                    TextMMD(stringResource(R.string.player_radio_fm), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    TextMMD(stringResource(R.string.player_radio_fm_subtitle), style = MaterialTheme.typography.labelSmall)
                 }
             }
             Spacer(Modifier.height(16.dp))
             HorizontalDividerMMD(thickness = 2.dp)
             Spacer(Modifier.height(12.dp))
             TextMMD(
-                text = if (keptStations.isEmpty()) "No favorite stations yet" else "Favorite stations",
+                text = if (keptStations.isEmpty()) stringResource(R.string.player_radio_no_favorites) else stringResource(R.string.player_radio_favorites),
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
             if (keptStations.isEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 TextMMD(
-                    text = "Hold a station anywhere in this app to put it here.",
+                    text = stringResource(R.string.player_radio_favorites_hint),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -518,7 +522,7 @@ private fun RadioSearch(
                 modifier = Modifier.fillMaxWidth(),
                 value = query,
                 onValueChange = onQueryChange,
-                label = { TextMMD(text = "Station, town or postcode") },
+                label = { TextMMD(text = stringResource(R.string.player_radio_search_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
@@ -528,7 +532,7 @@ private fun RadioSearch(
 
         if (searching) {
             item {
-                TextMMD("Looking…", style = MaterialTheme.typography.titleSmall)
+                TextMMD(stringResource(R.string.player_radio_searching), style = MaterialTheme.typography.titleSmall)
             }
             return@PagedColumnMMD
         }
@@ -536,7 +540,7 @@ private fun RadioSearch(
         if (nearby.isNotEmpty()) {
             item {
                 TextMMD(
-                    text = "Near $searchedFor",
+                    text = stringResource(R.string.player_radio_near, searchedFor),
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
@@ -563,7 +567,7 @@ private fun RadioSearch(
 
         if (results.channels.isNotEmpty()) {
             item {
-                TextMMD("Stations", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
+                TextMMD(stringResource(R.string.player_radio_stations), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
             }
             items(results.channels.size) { index ->
                 val channel = results.channels[index]
@@ -572,7 +576,7 @@ private fun RadioSearch(
                     subtitle = listOf(channel.place, channel.country)
                         .filter { it.isNotBlank() }
                         .joinToString(" • ")
-                        .ifBlank { "Somewhere" },
+                        .ifBlank { stringResource(R.string.player_radio_somewhere) },
                     isFavourite = channel.id in keptIds,
                     onPlay = { onPlay(channel) },
                     onToggleFavourite = { onToggleFavourite(channel) },
@@ -584,7 +588,7 @@ private fun RadioSearch(
         if (results.places.isNotEmpty()) {
             item {
                 Spacer(Modifier.height(8.dp))
-                TextMMD("Places", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
+                TextMMD(stringResource(R.string.player_radio_places), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
             }
             items(results.places.size) { index ->
                 val place = results.places[index]
@@ -605,7 +609,7 @@ private fun RadioSearch(
             item {
                 Spacer(Modifier.height(24.dp))
                 TextMMD(
-                    text = "Nothing for \"$searchedFor\"",
+                    text = stringResource(R.string.player_radio_nothing_for, searchedFor),
                     style = MaterialTheme.typography.titleSmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),

@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
@@ -26,6 +27,7 @@ import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +54,7 @@ fun AlbumDetailsScreen(
     val currentSongId = playbackState.currentSongId
 
     val refreshTrigger by viewModel.libraryRefreshTrigger.collectAsState()
+    val loadFailedText = stringResource(R.string.library_album_load_failed)
 
     LaunchedEffect(album?.id, album?.sourceType, refreshTrigger) {
         if (album == null) {
@@ -63,7 +66,7 @@ fun AlbumDetailsScreen(
         try {
             songs = viewModel.getAlbumSongsForDetails(album)
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Failed to load album songs"
+            errorMessage = e.message ?: loadFailedText
         } finally {
             isLoading = false
         }
@@ -84,7 +87,7 @@ fun AlbumDetailsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Loading album...")
+                    TextMMD(text = stringResource(R.string.library_album_loading))
                 }
             }
 
@@ -102,7 +105,7 @@ fun AlbumDetailsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "No songs in this album")
+                    TextMMD(text = stringResource(R.string.library_album_no_songs))
                 }
             }
 
@@ -116,7 +119,7 @@ fun AlbumDetailsScreen(
                                     onClick = { selectedDiscIndex = index },
                                     text = {
                                         TextMMD(
-                                            text = "Disc $disc",
+                                            text = stringResource(R.string.library_album_disc, disc),
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = if (selectedDiscIndex == index) FontWeight.Bold else FontWeight.Normal,
                                         )
@@ -180,7 +183,7 @@ fun AlbumDetailsScreen(
                 FloatingActionButtonMMD(onClick = { onShuffleClick(songs) }) {
                     Icon(
                         imageVector = Icons.Shuffle,
-                        contentDescription = "Shuffle album",
+                        contentDescription = stringResource(R.string.library_album_shuffle),
                     )
                 }
 
@@ -189,7 +192,7 @@ fun AlbumDetailsScreen(
                 FloatingActionButtonMMD(onClick = { onAddAllToPlaylistClick(songs) }) {
                     Icon(
                         imageVector = Icons.PlaylistAdd,
-                        contentDescription = "Add the album to a playlist",
+                        contentDescription = stringResource(R.string.library_album_add_to_playlist),
                     )
                 }
 
@@ -199,7 +202,7 @@ fun AlbumDetailsScreen(
                     FloatingActionButtonMMD(onClick = { onKeepAllClick(songs) }) {
                         Icon(
                             imageVector = Icons.Download,
-                            contentDescription = "Keep the album on this phone",
+                            contentDescription = stringResource(R.string.library_album_keep_on_phone),
                         )
                     }
                 }

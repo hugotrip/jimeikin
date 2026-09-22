@@ -14,8 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.wanderwildwood.jimeikin.R
 import com.wanderwildwood.jimeikin.YouTubeDownloadStatus
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
@@ -38,7 +40,7 @@ fun DownloadsScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 TextMMD(
-                    text = "No recent downloads",
+                    text = stringResource(R.string.player_downloads_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -88,7 +90,7 @@ private fun DownloadItem(
                 IconButton(onClick = onCancel) {
                     Icon(
                         imageVector = Icons.Close,
-                        contentDescription = "Cancel",
+                        contentDescription = stringResource(R.string.player_downloads_cancel),
                     )
                 }
             }
@@ -100,19 +102,19 @@ private fun DownloadItem(
             // No bars. The panel redraws in full, so a sweeping indicator is a smear and a
             // battery cost, and the percentage below it already said the same thing.
             YouTubeDownloadStatus.State.PENDING -> {
-                TextMMD(text = "Waiting", style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = stringResource(R.string.player_downloads_waiting), style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.IN_PROGRESS -> {
-                TextMMD(text = "${(status.progress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = stringResource(R.string.player_downloads_percent, (status.progress * 100).toInt()), style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.COMPLETED -> {
-                TextMMD(text = "Downloaded", style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = stringResource(R.string.player_downloads_done), style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.FAILED -> {
-                TextMMD(text = "This one did not download", style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = stringResource(R.string.player_downloads_failed), style = MaterialTheme.typography.labelSmall)
             }
             YouTubeDownloadStatus.State.CANCELED -> {
-                TextMMD(text = "Canceled", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextMMD(text = stringResource(R.string.player_downloads_canceled), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 

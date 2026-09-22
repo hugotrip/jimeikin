@@ -12,6 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -19,6 +20,7 @@ import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 /** Lightweight UI model for a YouTube Music artist search result. */
 data class YoutubeArtistUiModel(
@@ -54,7 +56,7 @@ fun SearchScreen(
                 onClick = { onSelectedTabChange(0) },
                 text = {
                     TextMMD(
-                        text = "Songs",
+                        text = stringResource(R.string.library_search_tab_songs),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
                     )
@@ -65,7 +67,7 @@ fun SearchScreen(
                 onClick = { onSelectedTabChange(1) },
                 text = {
                     TextMMD(
-                        text = "Albums",
+                        text = stringResource(R.string.library_search_tab_albums),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
                     )
@@ -76,7 +78,7 @@ fun SearchScreen(
                 onClick = { onSelectedTabChange(2) },
                 text = {
                     TextMMD(
-                        text = "Artists",
+                        text = stringResource(R.string.library_search_tab_artists),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal,
                     )
@@ -87,14 +89,14 @@ fun SearchScreen(
         PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
             if (isSearching) {
                 item {
-                    TextMMD(text = "Searching...")
+                    TextMMD(text = stringResource(R.string.library_search_searching))
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
             if (errorMessage != null) {
                 item {
-                    TextMMD(text = "The search did not reach YouTube")
+                    TextMMD(text = stringResource(R.string.library_search_failed))
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -126,7 +128,7 @@ fun SearchScreen(
                         songs.isEmpty()
                     ) {
                         item {
-                            TextMMD(text = "No songs. Try a different search.")
+                            TextMMD(text = stringResource(R.string.library_search_no_songs))
                         }
                     }
                 }
@@ -149,7 +151,7 @@ fun SearchScreen(
                         albums.isEmpty()
                     ) {
                         item {
-                            TextMMD(text = "No albums. Try a different search.")
+                            TextMMD(text = stringResource(R.string.library_search_no_albums))
                         }
                     }
                 }
@@ -172,7 +174,7 @@ fun SearchScreen(
                         artists.isEmpty()
                     ) {
                         item {
-                            TextMMD(text = "No artists. Try a different search.")
+                            TextMMD(text = stringResource(R.string.library_search_no_artists))
                         }
                     }
                 }
@@ -204,7 +206,7 @@ private fun SearchArtistItem(
 
         Spacer(modifier = Modifier.height(4.dp))
         TextMMD(
-            text = "Artist",
+            text = stringResource(R.string.library_search_result_artist),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Normal,
             maxLines = 1,

@@ -10,9 +10,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.text.TextMMD
+import com.wanderwildwood.jimeikin.R
 
 data class SongUiModel(
     val id: String,
@@ -54,7 +56,7 @@ fun SongsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Loading songs...")
+                    TextMMD(text = stringResource(R.string.library_songs_loading))
                 }
             }
 
@@ -70,7 +72,7 @@ fun SongsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "The songs could not be read")
+                    TextMMD(text = stringResource(R.string.library_songs_error))
                 }
             }
 
@@ -79,7 +81,7 @@ fun SongsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    TextMMD(text = "Music sync is in progress…")
+                    TextMMD(text = stringResource(R.string.library_sync_in_progress))
                 }
             }
 
@@ -89,8 +91,8 @@ fun SongsScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     LibraryOnboardingEmptyState(
-                        title = "No songs yet",
-                        body = "Nothing has been added yet.",
+                        title = stringResource(R.string.library_songs_empty_title),
+                        body = stringResource(R.string.library_nothing_added_yet),
                         onOpenStreamingSettingsClick = onOpenStreamingSettingsClick,
                         onOpenLocalSettingsClick = onOpenLocalSettingsClick,
                     )
@@ -139,7 +141,7 @@ fun SongsScreen(
             ) {
                 Icon(
                     imageVector = Icons.Shuffle,
-                    contentDescription = "Shuffle songs",
+                    contentDescription = stringResource(R.string.library_songs_shuffle),
                 )
             }
         }
