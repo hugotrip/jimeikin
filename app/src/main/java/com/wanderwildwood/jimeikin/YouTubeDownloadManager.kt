@@ -8,6 +8,7 @@ import androidx.media3.common.util.UnstableApi
 import com.wanderwildwood.jimeikin.data.AlbumEntity
 import com.wanderwildwood.jimeikin.data.ArtistEntity
 import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
+import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.LocalMusicScanner
 import com.wanderwildwood.jimeikin.data.SongEntity
 import kotlinx.coroutines.CoroutineScope
@@ -410,6 +411,7 @@ internal suspend fun performYouTubeDownloadInternal(
                 if (localSongEntity.id != videoId) {
                     songDao.deleteByIds(listOf(videoId))
                 }
+                database.dropOrphanedYouTubeRows()
             } catch (e: Exception) {
                 e.printStackTrace()
             }

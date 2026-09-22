@@ -17,6 +17,7 @@ import com.wanderwildwood.jimeikin.data.AlbumEntity
 import com.wanderwildwood.jimeikin.data.ArtistEntity
 import com.wanderwildwood.jimeikin.data.ArtistWithCounts
 import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
+import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.CalmMusicSettingsManager
 import com.wanderwildwood.jimeikin.data.LibraryRepository
 import com.wanderwildwood.jimeikin.data.NowPlayingSnapshot
@@ -468,9 +469,14 @@ class CalmMusicViewModel(
                 .flatMap { id -> songDao.getSongsByArtistId(id) }
                 .distinctBy { it.id }
 
-            val albumEntities = relatedArtistIds
-                .flatMap { id -> albumDao.getAlbumsByArtistId(id) }
-                .distinctBy { it.id }
+            // An album filed under someone else still belongs here if one of these songs is on
+            // it - a guest on a record no tag named the artist of. The Artists tab counts it.
+            val songAlbumIds = songEntities.mapNotNull { it.albumId }.toSet()
+            val albumEntities = (
+                relatedArtistIds.flatMap { id -> albumDao.getAlbumsByArtistId(id) } +
+                    if (songAlbumIds.isEmpty()) emptyList()
+                    else albumDao.getAllAlbums().filter { it.id in songAlbumIds }
+                ).distinctBy { it.id }
 
             val songs = songEntities.map { entity ->
                 SongUiModel(
@@ -1390,6 +1396,7 @@ class CalmMusicViewModel(
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 songDao.deleteByIds(listOf(song.id))
+                database.dropOrphanedYouTubeRows()
             }
             refreshLibraryFromDatabase()
         }
@@ -1445,6 +1452,7 @@ class CalmMusicViewModel(
                 // Remove from all playlists and from the songs table.
                 playlistDao.deleteTracksForSongId(song.id)
                 songDao.deleteByIds(listOf(song.id))
+                database.dropOrphanedYouTubeRows()
             }
 
             refreshLibraryFromDatabase()

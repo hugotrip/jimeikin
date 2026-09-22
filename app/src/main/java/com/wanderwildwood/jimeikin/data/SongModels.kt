@@ -118,6 +118,16 @@ interface AlbumDao {
 
     @Query("DELETE FROM albums WHERE sourceType = :sourceType")
     suspend fun deleteBySourceType(sourceType: String)
+
+    /**
+     * Albums of these source types that no song is on any more. Only for the kinds nothing
+     * rebuilds - a scan or a server sync owns its own rows and says when they are gone.
+     */
+    @Query(
+        "DELETE FROM albums WHERE sourceType IN (:sourceTypes) AND id NOT IN " +
+                "(SELECT DISTINCT albumId FROM songs WHERE albumId IS NOT NULL)"
+    )
+    suspend fun deleteOrphaned(sourceTypes: List<String>)
 }
 
 @Dao
@@ -146,4 +156,23 @@ interface ArtistDao {
 
     @Query("DELETE FROM artists WHERE sourceType = :sourceType")
     suspend fun deleteBySourceType(sourceType: String)
+
+    /** Artists of these source types that no song or album names any more. */
+    @Query(
+        "DELETE FROM artists WHERE sourceType IN (:sourceTypes) " +
+                "AND id NOT IN (SELECT DISTINCT artistId FROM songs WHERE artistId IS NOT NULL) " +
+                "AND id NOT IN (SELECT DISTINCT artistId FROM albums WHERE artistId IS NOT NULL)"
+    )
+    suspend fun deleteOrphaned(sourceTypes: List<String>)
+}
+
+/**
+ * Drop the album and artist rows a YouTube song leaves behind when it goes - replaced by its
+ * download, taken out of the library, or deleted. Albums first, since an album names its
+ * artist. (From upstream CalmMusic's feature/full-cleanup, narrowed to the YouTube kinds.)
+ */
+suspend fun CalmMusicDatabase.dropOrphanedYouTubeRows() {
+    val kinds = listOf("YOUTUBE", "YOUTUBE_DOWNLOAD")
+    albumDao().deleteOrphaned(kinds)
+    artistDao().deleteOrphaned(kinds)
 }

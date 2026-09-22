@@ -59,6 +59,7 @@ object LocalMusicScanner {
         folderUris: Set<String>,
         existingSongsByUri: Map<String, SongEntity> = emptyMap(),
         lastScanMillis: Long = 0L,
+        rereadTags: Boolean = false,
         onProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> },
     ): LocalScanResult {
         val result = mutableListOf<ScannedLocalAudio>()
@@ -229,7 +230,7 @@ object LocalMusicScanner {
 
         val (unchanged, changed) = candidates.partition { candidate ->
             val existing = candidate.existing
-            existing != null &&
+            !rereadTags && existing != null &&
                     existing.sourceType == "LOCAL_FILE" &&
                     existing.localLastModifiedMillis == candidate.lastModified &&
                     existing.localFileSizeBytes == candidate.fileSize
@@ -258,7 +259,7 @@ object LocalMusicScanner {
 
         for (candidate in orderedCandidates) {
             val existing = candidate.existing
-            if (existing != null &&
+            if (!rereadTags && existing != null &&
                 existing.sourceType == "LOCAL_FILE" &&
                 existing.localLastModifiedMillis == candidate.lastModified &&
                 existing.localFileSizeBytes == candidate.fileSize
@@ -316,15 +317,22 @@ object LocalMusicScanner {
 
         val artistId = trackArtistIdComponent?.let { "LOCAL_FILE:$it" } ?: existingArtistId
 
-        val effectiveAlbumArtist = explicitAlbumArtist ?: trackArtistDisplay
-        val albumArtistIdComponent = effectiveAlbumArtist.takeIf { it.isNotBlank() }?.normalizeForIdComponent()
+        val albumArtistIdComponent = explicitAlbumArtist?.normalizeForIdComponent()
 
         val albumNameDisplay = meta.album?.trim()?.takeIf { it.isNotBlank() } ?: existingAlbum
         val albumNameIdComponent = albumNameDisplay?.normalizeForIdComponent()
 
-        val albumId = if (albumNameIdComponent != null && albumArtistIdComponent != null) {
-            "LOCAL_FILE:${albumArtistIdComponent}:${albumNameIdComponent}"
-        } else existingAlbumId
+        // An album tagged with who it is by is keyed by that. One that is not used to be keyed
+        // by each track's own artist, so a record with a guest on two songs became three
+        // albums. Without the tag, the album is the name in its folder - the name alone would
+        // fold every untagged "Greatest Hits" on the card into one. (From upstream CalmMusic's
+        // feature/full-cleanup, which keys by the name alone.) The empty artist, "LOCAL_FILE::",
+        // is how a later scan knows no tag named the album's artist.
+        val albumId = when {
+            albumNameIdComponent == null -> existingAlbumId
+            albumArtistIdComponent != null -> "LOCAL_FILE:${albumArtistIdComponent}:${albumNameIdComponent}"
+            else -> "$UNTAGGED_ALBUM_PREFIX${folderOf(uri)}:${albumNameIdComponent}"
+        }
 
         val uriString = uri.toString()
         val song = SongEntity(
@@ -478,3 +486,16 @@ private fun String.fixCommonTagMojibake(): String {
  * album for the same reasons.
  */
 private fun String.normalizeForIdComponent(): String = ArtistNames.key(this)
+
+/** An album id with no artist in it: no tag said who the album is by. */
+const val UNTAGGED_ALBUM_PREFIX = "LOCAL_FILE::"
+
+/** The folder a file sits in, as the document provider names it, or its path's parent. */
+private fun folderOf(uri: Uri): String {
+    val path = try {
+        DocumentsContract.getDocumentId(uri)
+    } catch (_: Exception) {
+        uri.path
+    } ?: return ""
+    return path.substringBeforeLast('/', "").lowercase()
+}

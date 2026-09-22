@@ -75,6 +75,12 @@ class CalmMusicSettingsManager(context: Context) {
         prefs.edit { putLong(KEY_LAST_LOCAL_LIBRARY_SCAN_MILLIS, value) }
     }
 
+    fun getLocalAlbumKeyVersion(): Int = prefs.getInt(KEY_LOCAL_ALBUM_KEY_VERSION, 1)
+
+    fun setLocalAlbumKeyVersion(value: Int) {
+        prefs.edit { putInt(KEY_LOCAL_ALBUM_KEY_VERSION, value) }
+    }
+
     fun setIncludeLocalMusic(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_INCLUDE_LOCAL_MUSIC, enabled) }
         _includeLocalMusic.value = enabled
@@ -172,6 +178,7 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_INCLUDE_LOCAL_MUSIC = "include_local_music"
         private const val KEY_LOCAL_MUSIC_FOLDERS = "local_music_folders"
         private const val KEY_LAST_LOCAL_LIBRARY_SCAN_MILLIS = "last_local_library_scan_millis"
+        private const val KEY_LOCAL_ALBUM_KEY_VERSION = "local_album_key_version"
         private const val KEY_STREAMING_PROVIDER = "streaming_provider"
         private const val KEY_COMPLETE_ALBUMS_WITH_YOUTUBE = "complete_albums_with_youtube"
         private const val KEY_YOUTUBE_ACCOUNT_COOKIE = "youtube_account_cookie"

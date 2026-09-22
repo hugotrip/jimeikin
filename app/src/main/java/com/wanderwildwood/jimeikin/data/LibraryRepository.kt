@@ -10,6 +10,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
+ * How local albums are keyed. 2: an album with no Album Artist tag is its name in its folder,
+ * where it used to be split by each track's artist.
+ */
+private const val LOCAL_ALBUM_KEY_VERSION = 2
+
+/**
  * Repository responsible for performing library-related data work against the
  * local Room database and filesystem scanners.
  */
@@ -49,6 +55,9 @@ class LibraryRepository(
                 if (folders.isNotEmpty()) {
                     try {
                         val lastScanMillis = app.settingsManager.getLastLocalLibraryScanMillis()
+                        // Albums already in the library were keyed the old way, and a file the
+                        // scanner has seen before is not read again - so once, every file is.
+                        val rereadTags = app.settingsManager.getLocalAlbumKeyVersion() < LOCAL_ALBUM_KEY_VERSION
 
                         val existingAlbumsMap = withContext(Dispatchers.IO) {
                             albumDao.getAllAlbums()
@@ -64,6 +73,7 @@ class LibraryRepository(
                                 folderUris = folders,
                                 existingSongsByUri = existingByUri,
                                 lastScanMillis = lastScanMillis,
+                                rereadTags = rereadTags,
                             ) { processed, total ->
                                 val progress = if (total > 0) {
                                     (processed.toFloat() / total.toFloat()).coerceIn(0f, 1f)
@@ -100,9 +110,14 @@ class LibraryRepository(
                                 val entity = wrapper.song
                                 val explicit = wrapper.albumArtist
 
-                                // If explicit is missing (unchanged file), check our preserved map
+                                // If explicit is missing (unchanged file), check our preserved map.
+                                // Not for an untagged album: the name on its row was worked out
+                                // from its tracks, and taking it for a tag would cost every guest
+                                // on the record their own row.
                                 val effectiveAlbumArtist = explicit?.takeIf { it.isNotBlank() }
-                                    ?: entity.albumId?.let { existingAlbumsMap[it]?.artist }
+                                    ?: entity.albumId
+                                        ?.takeUnless { it.startsWith(UNTAGGED_ALBUM_PREFIX) }
+                                        ?.let { existingAlbumsMap[it]?.artist }
 
                                 if (!effectiveAlbumArtist.isNullOrBlank()) {
                                     val id = "LOCAL_FILE:" + effectiveAlbumArtist.normalize()
@@ -132,6 +147,14 @@ class LibraryRepository(
 
                             onIngestProgress(0.1f)
 
+                            // An album no tag names is shown under whoever is on most of it.
+                            val mostCommonArtistByAlbumId = normalizedLocalEntities
+                                .filter { it.albumId?.startsWith(UNTAGGED_ALBUM_PREFIX) == true && it.artist.isNotBlank() }
+                                .groupBy { it.albumId!! }
+                                .mapValues { (_, songs) ->
+                                    songs.groupingBy { it.artist }.eachCount().maxBy { it.value }.key
+                                }
+
                             val albumEntities: List<AlbumEntity> = scannedAudio.audio
                                 .mapNotNull { wrapper ->
                                     val entity = wrapper.song
@@ -139,6 +162,7 @@ class LibraryRepository(
                                     val name = entity.album ?: return@mapNotNull null
 
                                     val artistName = wrapper.albumArtist?.takeIf { it.isNotBlank() }
+                                        ?: mostCommonArtistByAlbumId[id]
                                         ?: existingAlbumsMap[id]?.artist
                                         ?: entity.artist
 
@@ -244,6 +268,12 @@ class LibraryRepository(
                                 reportWriteProgress()
                             }
 
+                            // Stamped once the rows are written. Every file under a folder that
+                            // could not be read kept its old key, so that waits for the next scan.
+                            if (rereadTags && !hadUnreadableFolder) {
+                                app.settingsManager.setLocalAlbumKeyVersion(LOCAL_ALBUM_KEY_VERSION)
+                            }
+
                             onIngestProgress(1f)
                         }
                     } catch (e: Exception) {
@@ -285,6 +315,15 @@ class LibraryRepository(
             val existingByUri = existingDownloads.associateBy { it.audioUri }
 
             val toInsert = mutableListOf<SongEntity>()
+            val artistsToUpsert = mutableListOf<ArtistEntity>()
+            val albumsToUpsert = mutableListOf<AlbumEntity>()
+
+            // The ids the download itself gave these rows (YouTubeDownloadManager), rebuilt from
+            // the file's tags. Only the song used to come back, so after a reinstall a download
+            // was in Songs and on no album and under no artist. (From upstream CalmMusic's
+            // feature/full-cleanup.)
+            fun String.toIdComponent(): String =
+                trim().replace(Regex("\\s+"), " ").lowercase()
 
             for (file in files) {
                 val uri = Uri.fromFile(file)
@@ -299,11 +338,51 @@ class LibraryRepository(
                     fileSize = file.length(),
                     existing = null,
                 )
-                toInsert += scanned.song.copy(sourceType = "YOUTUBE_DOWNLOAD")
+                val trackArtist = scanned.song.artist.takeIf { it.isNotBlank() }
+                val albumName = scanned.song.album?.takeIf { it.isNotBlank() }
+                if (trackArtist == null) {
+                    toInsert += scanned.song.copy(sourceType = "YOUTUBE_DOWNLOAD")
+                    continue
+                }
+
+                val albumArtist = scanned.albumArtist?.takeIf { it.isNotBlank() } ?: trackArtist
+                val albumArtistKey = albumArtist.toIdComponent()
+                val albumId = albumName?.let { "YOUTUBE_DOWNLOAD:$albumArtistKey:${it.toIdComponent()}" }
+                val artistId = if (albumId != null) {
+                    "YOUTUBE_DOWNLOAD:$albumArtistKey"
+                } else {
+                    "YOUTUBE_DOWNLOAD:${trackArtist.toIdComponent()}"
+                }
+
+                toInsert += scanned.song.copy(
+                    sourceType = "YOUTUBE_DOWNLOAD",
+                    artistId = artistId,
+                    albumId = albumId,
+                )
+                artistsToUpsert += ArtistEntity(
+                    id = artistId,
+                    name = if (albumId != null) albumArtist else trackArtist,
+                    sourceType = "YOUTUBE_DOWNLOAD",
+                )
+                if (albumId != null) {
+                    albumsToUpsert += AlbumEntity(
+                        id = albumId,
+                        name = albumName,
+                        artist = albumArtist,
+                        sourceType = "YOUTUBE_DOWNLOAD",
+                        artistId = artistId,
+                    )
+                }
             }
 
             if (toInsert.isNotEmpty()) {
                 songDao.upsertAll(toInsert)
+            }
+            if (artistsToUpsert.isNotEmpty()) {
+                artistDao.upsertAll(artistsToUpsert.distinctBy { it.id })
+            }
+            if (albumsToUpsert.isNotEmpty()) {
+                albumDao.upsertAll(albumsToUpsert.distinctBy { it.id })
             }
 
             toInsert.size
