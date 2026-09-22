@@ -65,6 +65,8 @@ fun NowPlayingScreen(
     onRepeatClick: () -> Unit,
     onAddToPlaylistClick: () -> Unit,
     onBackClick: () -> Unit = {},
+    onArtistClick: (() -> Unit)? = null,
+    onAlbumClick: (() -> Unit)? = null,
     isVideo: Boolean = false,
     isLive: Boolean = false,
     player: Player? = null,
@@ -253,9 +255,13 @@ fun NowPlayingScreen(
             // title between them, so it reads as a name over a work rather than as three
             // lines of one weight. Artist and album are one size, as author and chapter are
             // there - 24sp lands on the ascender, 23 falls a pixel short.
+            //
+            // The artist and the album lead to their pages; the title leads nowhere, because
+            // the song it names is the one already open.
             if (!isVideo) {
                 TextMMD(
                     text = artist,
+                    modifier = if (onArtistClick != null) Modifier.clickable(onClick = onArtistClick) else Modifier,
                     style = MaterialTheme.typography.titleLarge,
                     lineHeight = 29.5.sp,
                     fontWeight = FontWeight.Bold,
@@ -282,6 +288,7 @@ fun NowPlayingScreen(
 
                     TextMMD(
                         text = album!!,
+                        modifier = if (onAlbumClick != null) Modifier.clickable(onClick = onAlbumClick) else Modifier,
                         style = MaterialTheme.typography.titleLarge,
                         lineHeight = 29.5.sp,
                         fontWeight = FontWeight.Normal,

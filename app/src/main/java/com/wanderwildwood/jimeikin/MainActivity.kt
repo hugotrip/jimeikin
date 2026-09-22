@@ -1846,6 +1846,50 @@ fun CalmMusic(app: CalmMusic) {
                     showAddToPlaylistDialog = true
                 },
                 onBackClick = { showNowPlaying = false },
+                // A station has no artist or album of its own - those lines carry what the
+                // stream says is playing - so they lead nowhere on the radio.
+                onArtistClick = if (song.sourceType == "RADIO") null else {
+                    {
+                        libraryScope.launch {
+                            when (val page = viewModel.artistPageFor(song)) {
+                                is CalmMusicViewModel.ArtistPage.Library -> {
+                                    selectedArtist = page.artist.name
+                                    selectedArtistId = page.artist.id
+                                    showNowPlaying = false
+                                    navController.navigate(Screen.ArtistDetails.route) { launchSingleTop = true }
+                                }
+                                is CalmMusicViewModel.ArtistPage.YouTube -> {
+                                    selectedYoutubeArtist = page.artist
+                                    showNowPlaying = false
+                                    navController.navigate(Screen.YoutubeArtistDetails.route) { launchSingleTop = true }
+                                }
+                                null -> snackbarHostState.showSnackbar(
+                                    message = "No page for this artist",
+                                    withDismissAction = false,
+                                    duration = SnackbarDurationMMD.Short,
+                                )
+                            }
+                        }
+                    }
+                },
+                onAlbumClick = if (song.sourceType == "RADIO") null else {
+                    {
+                        libraryScope.launch {
+                            val album = viewModel.albumPageFor(song)
+                            if (album != null) {
+                                selectedAlbum = album
+                                showNowPlaying = false
+                                navController.navigate(Screen.AlbumDetails.route) { launchSingleTop = true }
+                            } else {
+                                snackbarHostState.showSnackbar(
+                                    message = "No page for this album",
+                                    withDismissAction = false,
+                                    duration = SnackbarDurationMMD.Short,
+                                )
+                            }
+                        }
+                    }
+                },
                 isVideo = isLocalVideo,
                 isLive = song.sourceType == "RADIO",
                 player = if (isLocalVideo) localMediaController else null,

@@ -76,6 +76,9 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE albumId = :albumId ORDER BY discNumber, trackNumber, title")
     suspend fun getSongsByAlbumId(albumId: String): List<SongEntity>
 
+    @Query("SELECT * FROM songs WHERE id = :id LIMIT 1")
+    suspend fun getSongById(id: String): SongEntity?
+
     @Query(
         "SELECT s.* FROM songs s " +
                 "LEFT JOIN albums a ON s.albumId = a.id " +

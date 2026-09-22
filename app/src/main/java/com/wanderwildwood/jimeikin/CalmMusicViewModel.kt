@@ -29,6 +29,7 @@ import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
 import com.wanderwildwood.jimeikin.ui.RepeatMode
 import com.wanderwildwood.jimeikin.ui.SongUiModel
+import com.wanderwildwood.jimeikin.ui.YoutubeArtistUiModel
 import com.wanderwildwood.jimeikin.data.ArtistNames
 import com.wanderwildwood.jimeikin.data.SubsonicDownloader
 import com.wanderwildwood.jimeikin.data.SubsonicSync
@@ -353,6 +354,100 @@ class CalmMusicViewModel(
         val songs: List<SongUiModel>,
         val albums: List<AlbumUiModel>
     )
+
+    /** Where the artist line on Now playing leads: a page in the library, or one on YouTube. */
+    sealed interface ArtistPage {
+        data class Library(val artist: ArtistUiModel) : ArtistPage
+        data class YouTube(val artist: YoutubeArtistUiModel) : ArtistPage
+    }
+
+    /**
+     * The artist page for the song that is playing, found the way the Artists tab groups them.
+     *
+     * The song's own row names its artist by id, and that name is folded with [ArtistNames.key]
+     * to find the one entry the tab shows for every spelling of it. A song streamed from YouTube
+     * and never saved has no row, so YouTube is asked instead, and only a name that folds to the
+     * same key is taken - a page for someone else is worse than no page.
+     */
+    suspend fun artistPageFor(song: SongUiModel): ArtistPage? {
+        val names = withContext(Dispatchers.IO) {
+            val entity = songDao.getSongById(song.id)
+            val artistIds = buildList {
+                entity?.artistId?.let(::add)
+                entity?.albumId?.let { albumId ->
+                    albumDao.getAllAlbums().firstOrNull { it.id == albumId }?.artistId?.let(::add)
+                }
+            }
+            val byId = if (artistIds.isEmpty()) emptyList() else {
+                val artists = artistDao.getAllArtists()
+                artistIds.mapNotNull { id -> artists.firstOrNull { it.id == id }?.name }
+            }
+            (byId + listOfNotNull(entity?.artist, song.artist)).filter { it.isNotBlank() }.distinct()
+        }
+
+        val libraryArtists = _libraryArtists.value
+        for (name in names) {
+            val key = ArtistNames.key(name)
+            libraryArtists.firstOrNull { ArtistNames.key(it.name) == key }?.let {
+                return ArtistPage.Library(it)
+            }
+        }
+
+        if (song.sourceType != "YOUTUBE" || song.artist.isBlank()) return null
+
+        // "A, B" and "A & B" are how YouTube credits two people; the page is the first one's.
+        // The whole name is tried first, so a band called "Iron & Wine" is still found whole.
+        val first = song.artist.split(", ", " & ").first().trim()
+        return withContext(Dispatchers.IO) {
+            listOf(song.artist, first).distinct().firstNotNullOfOrNull { name ->
+                val key = ArtistNames.key(name)
+                runCatching { app.youTubeInnertubeClient.searchArtists(name, limit = 5) }
+                    .getOrDefault(emptyList())
+                    .firstOrNull { ArtistNames.key(it.name) == key }
+                    ?.let { ArtistPage.YouTube(YoutubeArtistUiModel(browseId = it.browseId, name = it.name)) }
+            }
+        }
+    }
+
+    /**
+     * The album the song that is playing comes from, as the Albums tab shows it.
+     *
+     * That tab folds the same record held twice - on the card and on a server - into one entry,
+     * so the song's own album row is found first and then the entry it was folded into. A song
+     * streamed from YouTube and never saved is given the album YouTube names, which the album
+     * page already knows how to fill.
+     */
+    suspend fun albumPageFor(song: SongUiModel): AlbumUiModel? {
+        fun key(name: String, artist: String?) = name.lowercase().trim() to (artist?.lowercase()?.trim() ?: "")
+
+        val albumEntity = withContext(Dispatchers.IO) {
+            songDao.getSongById(song.id)?.albumId?.let { albumId ->
+                albumDao.getAllAlbums().firstOrNull { it.id == albumId }
+            }
+        }
+
+        val libraryAlbums = _libraryAlbums.value
+        if (albumEntity != null) {
+            val wanted = key(albumEntity.name, albumEntity.artist)
+            libraryAlbums.firstOrNull { it.id == albumEntity.id || key(it.title, it.artist) == wanted }
+                ?.let { return it }
+        }
+
+        val title = song.album?.takeIf { it.isNotBlank() } ?: return null
+        val artistKey = ArtistNames.key(song.artist)
+        libraryAlbums.firstOrNull {
+            it.title.trim().equals(title.trim(), ignoreCase = true) &&
+                    (it.artist == null || ArtistNames.key(it.artist) == artistKey)
+        }?.let { return it }
+
+        if (song.sourceType != "YOUTUBE") return null
+        return AlbumUiModel(
+            id = "",
+            title = title,
+            artist = song.artist,
+            sourceType = "YOUTUBE",
+        )
+    }
 
     suspend fun getArtistContent(artistId: String): ArtistContent {
         return withContext(Dispatchers.IO) {
