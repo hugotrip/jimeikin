@@ -1243,7 +1243,14 @@ fun CalmMusic(app: CalmMusic) {
                         onSearchQueryChange = { searchQuery = it },
                         onPerformSearchClick = { performSearch() },
                         selectedAlbum = selectedAlbum,
-                        selectedArtistName = selectedArtist ?: selectedYoutubeArtist?.name,
+                        // Each page is named by its own artist. Preferring the library's here
+                        // titled a YouTube artist's page with whichever library artist was
+                        // opened last.
+                        selectedArtistName = if (currentDestination?.route == Screen.YoutubeArtistDetails.route) {
+                            selectedYoutubeArtist?.name
+                        } else {
+                            selectedArtist
+                        },
                         selectedPlaylist = selectedPlaylist,
                         isPlaylistsEditMode = isPlaylistsEditMode,
                         isPlaylistDetailsEditMode = isPlaylistDetailsEditMode,
