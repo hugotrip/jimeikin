@@ -61,7 +61,7 @@ class PlaybackStateManager {
     fun updateFromQueueIndex(index: Int) {
         if (index in currentQueue.indices) {
             val song = currentQueue[index]
-                updateState(
+            updateState(
                 songId = song.id,
                 title = song.title,
                 artist = song.artist,
