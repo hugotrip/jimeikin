@@ -65,7 +65,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         )
 
         Spacer(Modifier.height(14.dp))
-        TextMMD(text = "github.com/wanderwildwood/jimeikin", style = MaterialTheme.typography.labelSmall)
+        TextMMD(text = "wanderthe.dev", style = MaterialTheme.typography.labelSmall)
 
         Spacer(Modifier.height(14.dp))
         Llama()
