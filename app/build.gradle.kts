@@ -15,8 +15,8 @@ android {
         applicationId = "com.wanderwildwood.jimeikin"
         minSdk = 28
         targetSdk = 36
-        versionCode = 39
-        versionName = "2.8.18"
+        versionCode = 40
+        versionName = "2.8.19"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
