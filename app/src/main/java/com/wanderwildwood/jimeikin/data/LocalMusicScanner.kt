@@ -32,6 +32,9 @@ data class ScannedPlaylistFile(
     /** The folder it sits in, relative to the chosen folder; "" at the root. */
     val directoryPath: String,
     val relativePath: String,
+    /** What the file was when read -- see [M3uImporter] for why it is kept. */
+    val lastModified: Long = 0,
+    val size: Long = 0,
 )
 
 data class ScannedLocalAudio(
@@ -198,6 +201,8 @@ object LocalMusicScanner {
                                 name = name,
                                 directoryPath = dirPath,
                                 relativePath = if (dirPath.isEmpty()) name else "$dirPath/$name",
+                                lastModified = child.lastModified,
+                                size = child.size,
                             ),
                         )
                     }

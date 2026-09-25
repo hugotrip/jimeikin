@@ -174,12 +174,12 @@ internal suspend fun performYouTubeDownloadInternal(
 
         val safeTitle = (song.title.ifBlank { videoId })
             .replace(Regex("""[\\\\/:*?\"<>|]"""), "_")
-        val fileName = "$safeTitle.m4a"
-        val targetFile = File(targetDir, fileName)
-
-        if (targetFile.exists()) {
-            targetFile.delete()
-        }
+        // ⚠ Never deleted up front, which is what this did: the file was named from the title
+        // alone and whatever already had that name was removed before the download began. A
+        // second song called "Intro" erased the first -- its file, and through the row keyed on
+        // the file, the song itself, so its playlist entries played the new one -- and a
+        // re-download that then failed had already thrown away the good copy.
+        val targetFile = withContext(Dispatchers.IO) { chooseTarget(targetDir, safeTitle, song.artist, song.title) }
 
         tmpFile = withContext(Dispatchers.IO) {
             File.createTempFile("yt-$videoId-", ".m4a", context.cacheDir)
@@ -281,10 +281,17 @@ internal suspend fun performYouTubeDownloadInternal(
         if (!downloadSuccess) return false
 
         withContext(Dispatchers.IO) {
+            // Written beside it and renamed over it, so an existing copy is only replaced by a
+            // whole one: a kill or a full card part way through leaves the old file as it was.
+            val part = File(targetFile.parentFile, targetFile.name + ".part")
             FileInputStream(tmpFile).use { input ->
-                FileOutputStream(targetFile).use { output ->
+                FileOutputStream(part).use { output ->
                     input.copyTo(output)
                 }
+            }
+            if (!part.renameTo(targetFile)) {
+                part.delete()
+                throw java.io.IOException("could not put ${targetFile.name} in place")
             }
         }
 
@@ -421,4 +428,26 @@ internal suspend fun performYouTubeDownloadInternal(
     } finally {
         tmpFile?.delete()
     }
+
 }
+
+/**
+ * Where a download goes: its title, or the title numbered, "Intro (2)", when another song
+ * already has it. A file with the same title *and* artist is taken to be this song and is
+ * the one case replaced -- and only once the new copy is whole; see the rename above.
+ */
+private fun chooseTarget(dir: File, base: String, artist: String?, title: String): File {
+    var n = 1
+    while (true) {
+        val name = if (n == 1) "$base.m4a" else "$base ($n).m4a"
+        val candidate = File(dir, name)
+        if (!candidate.exists() || isSameSong(candidate, artist, title)) return candidate
+        n++
+    }
+}
+
+private fun isSameSong(file: File, artist: String?, title: String): Boolean = runCatching {
+    TagOptionSingleton.getInstance().isAndroid = true
+    val tag = AudioFileIO.read(file).tag ?: return false
+    tag.getFirst(FieldKey.TITLE) == title && tag.getFirst(FieldKey.ARTIST) == artist.orEmpty()
+}.getOrDefault(false)

@@ -1394,12 +1394,35 @@ class CalmMusicViewModel(
 
     fun removeSongFromLibrary(song: SongUiModel) {
         viewModelScope.launch {
+            // A song this app downloaded or kept is its file: taking it out of the library and
+            // leaving the file meant a download came straight back at the next launch, and a
+            // kept server song left its copy in a folder nothing would ever clear.
+            when (song.sourceType) {
+                "YOUTUBE_DOWNLOAD" -> { deleteLocalMediaSong(song); return@launch }
+                com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
+                    withContext(Dispatchers.IO) {
+                        songDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
+                    }
+                }
+            }
             withContext(Dispatchers.IO) {
                 songDao.deleteByIds(listOf(song.id))
                 database.dropOrphanedYouTubeRows()
             }
             refreshLibraryFromDatabase()
         }
+    }
+
+    /** A kept server song, taken off the phone and back to streaming. See [SubsonicDownloader.unkeep]. */
+    suspend fun unkeepServerSong(song: SongUiModel): Boolean {
+        val done = withContext(Dispatchers.IO) {
+            val row = songDao.getSongById(song.id) ?: return@withContext false
+            val restored = com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, row)
+            if (restored != null) songDao.upsertAll(listOf(restored)) else songDao.deleteByIds(listOf(row.id))
+            true
+        }
+        refreshLibraryFromDatabase()
+        return done
     }
 
     /**

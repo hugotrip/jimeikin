@@ -890,6 +890,15 @@ fun CalmMusic(app: CalmMusic) {
                     }
                 }
 
+                com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
+                    val success = runCatching { viewModel.unkeepServerSong(song) }.getOrDefault(false)
+                    snackbarHostState.showSnackbar(
+                        message = if (success) context.getString(R.string.main_deleted_file) else context.getString(R.string.main_could_not_delete_file),
+                        withDismissAction = false,
+                        duration = SnackbarDurationMMD.Short,
+                    )
+                }
+
                 "LOCAL_FILE", "YOUTUBE_DOWNLOAD" -> {
                     val success = try {
                         viewModel.deleteLocalMediaSong(song)

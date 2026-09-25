@@ -48,6 +48,12 @@ object SubsonicDownloader {
     ): SubsonicResult<File> = withContext(Dispatchers.IO) {
         val target = fileFor(context, song.id)
             ?: return@withContext SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_no_storage))
+        // Where the song streams from, kept beside its copy so removing the copy can put the
+        // song back as it was. Keeping rewrites the row to point at the file, and nothing else
+        // remembers the address.
+        if (song.sourceType == SubsonicSync.SOURCE_TYPE) {
+            runCatching { File(target.path + STREAM_SUFFIX).writeText(song.audioUri) }
+        }
         if (target.exists() && target.length() > 0) return@withContext SubsonicResult.Success(target)
 
         val partial = File(target.absolutePath + ".part")
@@ -101,4 +107,25 @@ object SubsonicDownloader {
     /** Removes the kept copy. The song stays in the library, as a pointer to the server again. */
     fun remove(context: Context, songRowId: String): Boolean =
         fileFor(context, songRowId)?.takeIf { it.exists() }?.delete() ?: false
+
+    /**
+     * Takes a kept song off the phone: its copy goes, and the row it becomes -- streamed from
+     * the server again, as it was before it was kept -- comes back. Null when the address it
+     * streamed from was never written down (a song kept before that was done), in which case
+     * the next sync adds it back.
+     *
+     * ⚠ This did not exist to be called. A kept song fell through to "streamed, nothing to
+     * delete", so the server folder only ever grew.
+     */
+    fun unkeep(context: Context, row: SongEntity): SongEntity? {
+        val file = fileFor(context, row.id)
+        file?.takeIf { it.exists() }?.delete()
+        val stream = file?.let { File(it.path + STREAM_SUFFIX) }
+        val url = stream?.takeIf { it.exists() }?.let { runCatching { it.readText() }.getOrNull() }
+        stream?.delete()
+        return url?.takeIf { it.isNotBlank() }?.let { row.copy(sourceType = SubsonicSync.SOURCE_TYPE, audioUri = it) }
+    }
+
+    private const val STREAM_SUFFIX = ".stream"
+
 }

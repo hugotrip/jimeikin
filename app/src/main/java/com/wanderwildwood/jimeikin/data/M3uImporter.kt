@@ -38,7 +38,23 @@ object M3uImporter {
                 .add(songId)
         }
 
+        // ⚠ Only a file that has changed since it was last read. Rewriting every playlist on
+        // every scan, which is what this did, undid whatever was done to it on the phone --
+        // renamed, reordered, songs added -- and brought back one that had been deleted, every
+        // time the library was scanned. The file still wins when it changes: edited on a
+        // computer and rescanned, it says what the file says.
+        val seen = context.getSharedPreferences(IMPORTED_PREFS, Context.MODE_PRIVATE)
+        val existing = playlistDao.getAllPlaylistsWithSongCount().map { it.id }.toSet()
         for (file in playlistFiles) {
+            val stamp = "${file.lastModified}:${file.size}"
+            val id = playlistIdFor(file.relativePath)
+            if (file.lastModified > 0 && seen.getString(id, null) == stamp) continue
+            // First scan since this was kept: a playlist already here is taken as it stands,
+            // so updating does not undo edits one last time.
+            if (seen.getString(id, null) == null && id in existing) {
+                seen.edit().putString(id, stamp).apply()
+                continue
+            }
             val entries = readEntries(context, file) ?: continue
             val songIds = mutableListOf<String>()
             for (entry in entries) {
@@ -47,7 +63,6 @@ object M3uImporter {
             }
             if (songIds.isEmpty()) continue
 
-            val id = playlistIdFor(file.relativePath)
             playlistDao.upsertPlaylist(
                 PlaylistEntity(
                     id = id,
@@ -62,8 +77,12 @@ object M3uImporter {
                     PlaylistTrackEntity(playlistId = id, songId = songId, position = index)
                 },
             )
+            seen.edit().putString(id, stamp).apply()
         }
     }
+
+    /** Which version of each .m3u was last read in, as "lastModified:size" by playlist id. */
+    private const val IMPORTED_PREFS = "m3u_imported"
 
     private fun readEntries(context: Context, file: ScannedPlaylistFile): List<String>? {
         return try {

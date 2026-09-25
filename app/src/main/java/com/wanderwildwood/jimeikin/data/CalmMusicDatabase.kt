@@ -72,7 +72,11 @@ abstract class CalmMusicDatabase : RoomDatabase() {
                     "calmmusic.db",
                 )
                     .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
-                    .fallbackToDestructiveMigration()
+                    // Only a database from before the migrations began may be rebuilt. The
+                    // blanket fallback this was would also have erased every playlist the first
+                    // time a version went out without its migration; now that refuses to open,
+                    // loudly, instead.
+                    .fallbackToDestructiveMigrationFrom(true, 1, 2, 3, 4, 5)
                     .build()
                 INSTANCE = instance
                 instance
