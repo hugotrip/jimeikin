@@ -46,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
@@ -69,8 +71,6 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.wanderwildwood.jimeikin.MainActivity
 import com.wanderwildwood.jimeikin.PlaybackService
 import com.wanderwildwood.jimeikin.R
-import com.wanderwildwood.jimeikin.ui.Icons
-import com.wanderwildwood.jimeikin.ui.PlayerIcons
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,12 +78,16 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Music Box's controls on the Kompakt's lock screen. Optional, and off until the reader turns
+ * This app's controls on the Kompakt's lock screen. Optional, and off until the reader turns
  * this service on in Android's Accessibility settings.
  *
+ * The same file is in Music Box and in Audio Reading, differing only in its package, the app
+ * it follows and the words; the strip is meant to look alike in both, and alike to the one
+ * inkOS draws at the foot of its home screen.
+ *
  * The Kompakt's own lock screen has a music widget, but it is wired to Mudita's player by name
- * and shows nothing for any other. This draws one in the same place and size, for what Music
- * Box is playing and nothing else. It has to be an accessibility service because only one may
+ * and shows nothing for any other. This draws one for what this app is playing and nothing
+ * else. It has to be an accessibility service because only one may
  * put a window above the lock screen; it listens to the system UI alone - which is the lock
  * screen - and reads one thing there, whether the PIN field is focused, so the controls can
  * stand aside for it. It reads no other app and needs no notification access: the player it
@@ -380,7 +384,7 @@ private fun ControlsPanel(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.MusicNote,
+                        imageVector = StripGlyphs.MusicNote,
                         contentDescription = label,
                         tint = ink,
                         modifier = Modifier.size(24.dp),
@@ -388,14 +392,14 @@ private fun ControlsPanel(
                 }
             }
         }
-        Control(PlayerIcons.Previous, R.string.lockscreen_previous, ink, 32, onPrevious)
+        Control(StripGlyphs.Previous, R.string.lockscreen_previous, ink, 32, onPrevious)
         Control(
-            if (isPlaying) PlayerIcons.Pause else PlayerIcons.Play,
+            if (isPlaying) StripGlyphs.Pause else StripGlyphs.Play,
             R.string.lockscreen_play_pause, ink, 42, onPlayPause,
         )
-        Control(PlayerIcons.Next, R.string.lockscreen_next, ink, 32, onNext)
+        Control(StripGlyphs.Next, R.string.lockscreen_next, ink, 32, onNext)
         Box(modifier = Modifier.padding(end = 8.dp)) {
-            Control(PlayerIcons.Stop, R.string.lockscreen_stop, ink, 32, onStop)
+            Control(StripGlyphs.Stop, R.string.lockscreen_stop, ink, 32, onStop)
         }
     }
 }
@@ -408,4 +412,33 @@ private fun Control(icon: ImageVector, description: Int, ink: Color, sizeDp: Int
         tint = ink,
         modifier = Modifier.size(sizeDp.dp).clickable(onClick = onClick),
     )
+}
+
+/**
+ * The strip's own glyphs, Material Symbols (Apache-2.0) in their filled cut, carried here so the
+ * strip is drawn the same in every app that has this file.
+ */
+private object StripGlyphs {
+    private fun symbol(name: String, pathData: String): ImageVector =
+        ImageVector.Builder(
+            name = name,
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f,
+        )
+            .addGroup(name = name, translationY = 960f)
+            .addPath(
+                pathData = PathParser().parsePathString(pathData).toNodes(),
+                fill = SolidColor(Color.Black),
+            )
+            .clearGroup()
+            .build()
+
+    val Previous = symbol("Previous", "M220-240v-480h80v480h-80Zm520 0L380-480l360-240v480Z")
+    val Play = symbol("Play", "M320-200v-560l440 280-440 280Z")
+    val Pause = symbol("Pause", "M560-200v-560h160v560H560Zm-320 0v-560h160v560H240Z")
+    val Next = symbol("Next", "M660-240v-480h80v480h-80Zm-440 0v-480l360 240-360 240Z")
+    val Stop = symbol("Stop", "M240-240v-480h480v480H240Z")
+    val MusicNote = symbol("MusicNote", "M400 -440Q423 -440 442.5 -434.5Q462 -429 480 -418V-840H720V-680H560V-280Q560 -214 513 -167Q466 -120 400 -120Q334 -120 287 -167Q240 -214 240 -280Q240 -346 287 -393Q334 -440 400 -440Z")
 }
