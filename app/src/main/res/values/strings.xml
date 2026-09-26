@@ -286,6 +286,9 @@
 
     <!-- Adding songs to a playlist -->
     <string name="player_add_songs_empty">No songs available to add</string>
+    <!-- Search field above the list of songs to add to a playlist -->
+    <string name="player_add_songs_find">Find a song</string>
+    <string name="player_add_songs_no_match">No songs match.</string>
 
     <!-- Naming a playlist -->
     <string name="player_playlist_name">Playlist name</string>

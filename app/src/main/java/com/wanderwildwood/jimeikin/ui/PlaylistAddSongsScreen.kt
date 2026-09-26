@@ -1,5 +1,9 @@
 package com.wanderwildwood.jimeikin.ui
 
+import com.wanderwildwood.jimeikin.data.ArtistNames
+import com.mudita.mmd.components.text_field.TextFieldMMD
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -41,23 +45,64 @@ fun PlaylistAddSongsScreen(
         selectedIds = initialSelectedSongIds
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        if (songs.isEmpty()) {
-            Box(
+    // Scrolling a whole library a page at a time to find three songs was the complaint (Mudita
+    // forum, 2026-09-26). What is ticked stays ticked while the list is narrowed, so a
+    // playlist can be built from several searches in a row.
+    var filter by remember { mutableStateOf("") }
+    val shown = remember(songs, filter) {
+        val key = ArtistNames.key(filter)
+        if (filter.isBlank()) {
+            songs
+        } else {
+            songs.filter { song ->
+                listOfNotNull(song.title, song.artist, song.album).any {
+                    it.contains(filter.trim(), ignoreCase = true) || (key.isNotEmpty() && ArtistNames.key(it).contains(key))
+                }
+            }
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (songs.isNotEmpty()) {
+            TextFieldMMD(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                value = filter,
+                onValueChange = { filter = it },
+                label = { TextMMD(text = stringResource(R.string.player_add_songs_find)) },
+                singleLine = true,
+                trailingIcon = if (filter.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { filter = "" }) {
+                            Icon(imageVector = Icons.Close, contentDescription = stringResource(R.string.main_cd_clear_search))
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
+        }
+
+        when {
+            songs.isEmpty() -> Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 TextMMD(text = stringResource(R.string.player_add_songs_empty))
             }
-        } else {
-            PagedColumnMMD(
+
+            shown.isEmpty() -> TextMMD(
+                text = stringResource(R.string.player_add_songs_no_match),
+                modifier = Modifier.padding(16.dp),
+            )
+
+            else -> PagedColumnMMD(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
             ) {
-                items(songs.size) { index ->
-                    val song = songs[index]
+                items(shown.size) { index ->
+                    val song = shown[index]
                     val isSelected = selectedIds.contains(song.id)
 
                     SelectableSongItem(
@@ -73,7 +118,7 @@ fun PlaylistAddSongsScreen(
                             selectedIds = newSelection
                             onSelectionChanged(newSelection)
                         },
-                        showDivider = song != songs.lastOrNull(),
+                        showDivider = index < shown.lastIndex,
                     )
                 }
             }
