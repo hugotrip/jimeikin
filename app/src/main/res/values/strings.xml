@@ -410,11 +410,10 @@
     <!-- About dialog. Keep the names of the app, people, projects and licences as they are -->
     <!-- Heading. %1$s is the version number, e.g. 2.8.14 -->
     <string name="about_title">Music Box %1$s</string>
-    <string name="about_privacy">Your library and your settings stay on the phone. Searching, streaming and downloading talk to YouTube; connecting an account stores its cookie here until you disconnect it. A music server you point this at is asked for its library and its songs; its password is kept on this phone, because each request is signed with it rather than carrying it. That password and the YouTube cookie are sealed with a key held in this phone\'s keystore and are left out of Android\'s backups, so neither leaves with one. Radio stations come from radio.garden, which is asked what is on the air in a place; a station you keep is stored as its own address and plays without asking anything further. The FM row opens the phone\'s own tuner and does nothing else. This app does not read your notifications and does not ask for an accessibility service. There are no ads, no analytics and nothing is counted.</string>
+    <string name="about_privacy">Your library and settings stay on this phone. YouTube, radio.garden and your music server are contacted only when you use them. Passwords are sealed in the phone\'s keystore. No ads, no analytics.</string>
     <!-- The name of the app's licence -->
     <string name="about_licence">GNU General Public License v3</string>
-    <string name="about_built_on">Built on CalmMusic by David Ray Wilson, same licence</string>
-    <string name="about_subsonic">Music servers are reached over the Subsonic API, which Navidrome, Airsonic and Gonic all speak.</string>
+    <string name="about_built_on">Built on CalmMusic by David Ray Wilson</string>
     <!-- The donation link label, beside a drawing of a llama. A fixed phrase: a verb and an object, so the reader knows what pressing it does -->
     <string name="about_feed_the_llamas">feed the llamas</string>
     <!-- Toast when the donation link cannot be opened -->

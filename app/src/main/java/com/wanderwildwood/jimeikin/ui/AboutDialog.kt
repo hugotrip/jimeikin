@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,17 +24,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.BuildConfig
 import com.wanderwildwood.jimeikin.R
 
 /**
- * What this is, what it sends, what it is made of, and where the source lives.
- *
- * The sending line is here because a reader could not guess the answer: most of the app is
- * a local music player that touches nothing, and then one part of it talks to YouTube and
- * can hold a signed-in account. An app that only read the card would owe nobody this.
+ * What this is, what it talks to, and what it is made of - short enough to fit the panel
+ * without paging. The long account of where each password lives is in the README.
  */
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
@@ -47,39 +42,15 @@ fun AboutDialog(onDismiss: () -> Unit) {
         )
 
         Spacer(Modifier.height(14.dp))
-        // Paged, not scrolled, one block at a time. At 480x800 this runs taller than the panel
-        // and used to run off the bottom with Close underneath it. MMD's list steps four items a
-        // swipe, and four of these blocks are more than a screen.
-        LazyColumnMMD(
-            modifier = Modifier.heightIn(max = 400.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            scrollStep = 1,
-        ) {
-            item {
-                TextMMD(
-                    text = stringResource(R.string.about_privacy),
-                    style = MaterialTheme.typography.labelSmall,
-                )
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            TextMMD(text = stringResource(R.string.about_privacy), style = MaterialTheme.typography.labelSmall)
+            Column {
+                TextMMD(text = stringResource(R.string.about_licence), style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = stringResource(R.string.about_built_on), style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = "NewPipeExtractor, GPL-3.0", style = MaterialTheme.typography.labelSmall)
+                TextMMD(text = "MMD by Mudita, Apache 2.0", style = MaterialTheme.typography.labelSmall)
             }
-            item {
-                Column {
-                    TextMMD(text = stringResource(R.string.about_licence), style = MaterialTheme.typography.labelSmall)
-                    TextMMD(
-                        text = stringResource(R.string.about_built_on),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                    TextMMD(
-                        text = "NewPipeExtractor 0.26.5 — TeamNewPipe, GPL-3.0",
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                    TextMMD(text = "MMD — Mudita, Apache 2.0", style = MaterialTheme.typography.labelSmall)
-                    TextMMD(
-                        text = stringResource(R.string.about_subsonic),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            }
-            item { Llama() }
+            Llama()
         }
 
         Spacer(Modifier.height(18.dp))
