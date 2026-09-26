@@ -7,12 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
 
@@ -132,17 +132,16 @@ fun SongsScreen(
             }
         }
 
-        if (!isLoading && errorMessage == null && songs.isNotEmpty()) {
-            FloatingActionButtonMMD(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                onClick = onShuffleClick,
-            ) {
-                Icon(
-                    imageVector = Icons.Shuffle,
-                    contentDescription = stringResource(R.string.library_songs_shuffle),
-                )
+        TopBarActions {
+            if (!isLoading && errorMessage == null && songs.isNotEmpty()) {
+                IconButton(
+                    onClick = onShuffleClick,
+                ) {
+                    Icon(
+                        imageVector = Icons.Shuffle,
+                        contentDescription = stringResource(R.string.library_songs_shuffle),
+                    )
+                }
             }
         }
     }

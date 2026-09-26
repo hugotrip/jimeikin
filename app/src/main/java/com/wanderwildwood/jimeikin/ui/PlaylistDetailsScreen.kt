@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +34,6 @@ import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.wanderwildwood.jimeikin.PlaylistsViewModel
 import com.wanderwildwood.jimeikin.R
 import com.mudita.mmd.components.buttons.ButtonMMD
-import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.checkbox.CheckboxMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
@@ -213,15 +213,9 @@ fun PlaylistDetailsScreen(
             }
         }
 
-        if (!isLoading && errorMessage == null && songs.isNotEmpty() && !isInEditMode) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.End,
-            ) {
-                FloatingActionButtonMMD(
+        TopBarActions {
+            if (!isLoading && errorMessage == null && songs.isNotEmpty() && !isInEditMode) {
+                IconButton(
                     onClick = { onShuffleClick(songs) },
                 ) {
                     Icon(
@@ -230,14 +224,8 @@ fun PlaylistDetailsScreen(
                     )
                 }
 
-                FloatingActionButtonMMD(
-                    onClick = onAddSongsClick,
-                ) {
-                    Icon(
-                        imageVector = Icons.Plus,
-                        contentDescription = stringResource(R.string.player_playlist_add_songs),
-                    )
-                }
+                // Add songs is not here: it is already in the ⋮ menu beside these,
+                // and the title needs the room.
 
                 // A playlist is the thing a reader most wants off the server before
                 // leaving the house, and it was the one list that could not be kept:
@@ -245,7 +233,7 @@ fun PlaylistDetailsScreen(
                 // something is still on the server, so it never offers work with
                 // nothing behind it.
                 if (songs.any { it.sourceType == "SUBSONIC" }) {
-                    FloatingActionButtonMMD(
+                    IconButton(
                         onClick = { onKeepAllClick(songs) },
                     ) {
                         Icon(

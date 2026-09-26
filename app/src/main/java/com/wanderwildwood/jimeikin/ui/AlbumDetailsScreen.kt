@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,7 +24,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
-import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
@@ -172,15 +172,9 @@ fun AlbumDetailsScreen(
             }
         }
 
-        if (!isLoading && errorMessage == null && songs.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.End,
-            ) {
-                FloatingActionButtonMMD(onClick = { onShuffleClick(songs) }) {
+        TopBarActions {
+            if (!isLoading && errorMessage == null && songs.isNotEmpty()) {
+                IconButton(onClick = { onShuffleClick(songs) }) {
                     Icon(
                         imageVector = Icons.Shuffle,
                         contentDescription = stringResource(R.string.library_album_shuffle),
@@ -189,7 +183,7 @@ fun AlbumDetailsScreen(
 
                 // Adding a whole album a song at a time was the thing the review thread
                 // asked for; the write underneath it was already here and unused.
-                FloatingActionButtonMMD(onClick = { onAddAllToPlaylistClick(songs) }) {
+                IconButton(onClick = { onAddAllToPlaylistClick(songs) }) {
                     Icon(
                         imageVector = Icons.PlaylistAdd,
                         contentDescription = stringResource(R.string.library_album_add_to_playlist),
@@ -199,7 +193,7 @@ fun AlbumDetailsScreen(
                 // Only where there is something to keep: a record already on the phone
                 // needs nothing, and this button would then be a button that does nothing.
                 if (songs.any { it.sourceType == "SUBSONIC" }) {
-                    FloatingActionButtonMMD(onClick = { onKeepAllClick(songs) }) {
+                    IconButton(onClick = { onKeepAllClick(songs) }) {
                         Icon(
                             imageVector = Icons.Download,
                             contentDescription = stringResource(R.string.library_album_keep_on_phone),

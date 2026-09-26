@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
-import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
@@ -230,17 +230,16 @@ fun YouTubeArtistDetailsScreen(
             }
         }
 
-        if (!isLoading && errorMessage == null && songs.isNotEmpty()) {
-            FloatingActionButtonMMD(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                onClick = { onShuffleSongsClick(songs) },
-            ) {
-                Icon(
-                    imageVector = Icons.Shuffle,
-                    contentDescription = stringResource(R.string.library_artist_shuffle),
-                )
+        TopBarActions {
+            if (!isLoading && errorMessage == null && songs.isNotEmpty()) {
+                IconButton(
+                    onClick = { onShuffleSongsClick(songs) },
+                ) {
+                    Icon(
+                        imageVector = Icons.Shuffle,
+                        contentDescription = stringResource(R.string.library_artist_shuffle),
+                    )
+                }
             }
         }
     }

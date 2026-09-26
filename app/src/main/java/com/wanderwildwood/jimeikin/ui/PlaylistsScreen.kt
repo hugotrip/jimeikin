@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,7 +21,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.ButtonMMD
-import com.mudita.mmd.components.buttons.FloatingActionButtonMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
 
@@ -115,17 +115,16 @@ fun PlaylistsScreen(
             }
         }
 
-        if (playlists.isNotEmpty() && !isInEditMode) {
-            FloatingActionButtonMMD(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                onClick = onAddPlaylistClick,
-            ) {
-                Icon(
-                    imageVector = Icons.Plus,
-                    contentDescription = stringResource(R.string.player_playlists_new),
-                )
+        TopBarActions {
+            if (playlists.isNotEmpty() && !isInEditMode) {
+                IconButton(
+                    onClick = onAddPlaylistClick,
+                ) {
+                    Icon(
+                        imageVector = Icons.Plus,
+                        contentDescription = stringResource(R.string.player_playlists_new),
+                    )
+                }
             }
         }
     }

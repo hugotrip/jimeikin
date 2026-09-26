@@ -38,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,6 +80,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wanderwildwood.jimeikin.data.StreamingProvider
 import com.wanderwildwood.jimeikin.ui.AboutDialog
+import com.wanderwildwood.jimeikin.ui.LocalTopBarActions
+import com.wanderwildwood.jimeikin.ui.TopBarActionsSlot
 import com.wanderwildwood.jimeikin.ui.Icons
 import com.wanderwildwood.jimeikin.ui.MusicServerScreen
 import com.wanderwildwood.jimeikin.ui.AlbumDetailsScreen
@@ -130,7 +133,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ThemeMMD(colorScheme = monochrome) {
-                CalmMusic(app)
+                CompositionLocalProvider(LocalTopBarActions provides remember { TopBarActionsSlot() }) {
+                    CalmMusic(app)
+                }
             }
         }
     }

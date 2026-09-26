@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.wanderwildwood.jimeikin.ui.AlbumUiModel
 import com.wanderwildwood.jimeikin.ui.Icons
+import com.wanderwildwood.jimeikin.ui.LocalTopBarActions
 import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
@@ -405,6 +406,9 @@ private fun CalmMusicTopAppBarActions(
             )
         }
     }
+
+    // The screen's own buttons - shuffle, add, keep - sit next to the headphones.
+    LocalTopBarActions.current.content?.invoke()
 
     if (
         hasNowPlaying &&
