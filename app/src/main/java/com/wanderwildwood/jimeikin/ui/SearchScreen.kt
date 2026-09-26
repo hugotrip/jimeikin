@@ -205,13 +205,7 @@ private fun SearchArtistItem(
         )
 
         Spacer(modifier = Modifier.height(4.dp))
-        TextMMD(
-            text = stringResource(R.string.library_search_result_artist),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        SubtitleLine(text = stringResource(R.string.library_search_result_artist), source = StreamSource.YOUTUBE)
 
         Spacer(modifier = Modifier.height(12.dp))
 

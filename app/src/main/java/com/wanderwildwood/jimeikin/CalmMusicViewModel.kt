@@ -26,6 +26,7 @@ import com.wanderwildwood.jimeikin.data.NowPlayingStorage
 import com.wanderwildwood.jimeikin.data.NowPlayingRepeatModeKeys
 import com.wanderwildwood.jimeikin.data.SongEntity
 import com.wanderwildwood.jimeikin.playback.PlaybackCoordinator
+import com.wanderwildwood.jimeikin.ui.streamSourceOf
 import com.wanderwildwood.jimeikin.ui.AlbumUiModel
 import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
@@ -507,6 +508,12 @@ class CalmMusicViewModel(
                     years.filterNotNull().maxOrNull()
                 }
 
+            // Worked out from the songs, not the album row: a server album kept on the
+            // phone is still a server album by its row, and plays offline all the same.
+            val songSourcesByAlbumId = songEntities
+                .filter { it.albumId != null }
+                .groupBy({ it.albumId!! }, { it.sourceType })
+
             val mergedAlbums = albumEntities
                 .groupBy {
                     (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
@@ -520,6 +527,7 @@ class CalmMusicViewModel(
                         artist = primary.artist,
                         sourceType = primary.sourceType,
                         releaseYear = albumIdToYear[primary.id],
+                        streamsFrom = streamSourceOf(songSourcesByAlbumId[primary.id].orEmpty()),
                     )
                 }
                 .sortedWith(
@@ -1614,6 +1622,12 @@ class CalmMusicViewModel(
 
             // An album whose songs have all gone is not an album any more. Nothing is
             // deleted here; the row simply stops being offered until a scan finds it again.
+            // Worked out from the songs, not the album row: a server album kept on the
+            // phone is still a server album by its row, and plays offline all the same.
+            val songSourcesByAlbumId = allSongs
+                .filter { it.albumId != null }
+                .groupBy({ it.albumId!! }, { it.sourceType })
+
             val mergedAlbums = allAlbums
                 .filter { albumIdToYear.containsKey(it.id) }
                 .groupBy {
@@ -1628,6 +1642,7 @@ class CalmMusicViewModel(
                         artist = primary.artist,
                         sourceType = primary.sourceType,
                         releaseYear = albumIdToYear[primary.id],
+                        streamsFrom = streamSourceOf(songSourcesByAlbumId[primary.id].orEmpty()),
                     )
                 }
 
@@ -1694,6 +1709,7 @@ class CalmMusicViewModel(
                     name = primary.name,
                     songCount = totalSongCount,
                     albumCount = totalAlbumCount,
+                    streamsFrom = streamSourceOf(theirSongs.map { it.sourceType }),
                 )
             }
             .sortedBy { it.name.lowercase() }
@@ -1754,6 +1770,12 @@ class CalmMusicViewModel(
                     years.filterNotNull().maxOrNull()
                 }
 
+            // Worked out from the songs, not the album row: a server album kept on the
+            // phone is still a server album by its row, and plays offline all the same.
+            val songSourcesByAlbumId = allSongs
+                .filter { it.albumId != null }
+                .groupBy({ it.albumId!! }, { it.sourceType })
+
             val mergedAlbums = allAlbums
                 .groupBy {
                     (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
@@ -1767,6 +1789,7 @@ class CalmMusicViewModel(
                         artist = primary.artist,
                         sourceType = primary.sourceType,
                         releaseYear = albumIdToYear[primary.id],
+                        streamsFrom = streamSourceOf(songSourcesByAlbumId[primary.id].orEmpty()),
                     )
                 }
 

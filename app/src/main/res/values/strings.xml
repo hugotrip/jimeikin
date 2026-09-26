@@ -252,7 +252,6 @@
     <string name="player_song_local_file">Local file</string>
     <!-- Song row: icon description on the row of the song that is playing -->
     <string name="player_song_now_playing">Now playing</string>
-    <string name="player_song_in_library">In the library</string>
     <string name="player_song_close_menu">Close menu</string>
     <string name="player_song_play_next">Play next</string>
     <string name="player_song_add_to_queue">Add to queue</string>
@@ -420,6 +419,10 @@
     <string name="about_no_browser">There is no browser on this phone to open that with.</string>
     <!-- Button that closes the About dialog -->
     <string name="about_close">Close</string>
+
+    <!-- Read aloud for the small mark on a row that streams rather than plays from the phone -->
+    <string name="stream_source_server">On your music server</string>
+    <string name="stream_source_youtube">On YouTube</string>
 
     <!-- Editing a song's or an album's tags -->
     <string name="main_title_edit_details">Edit details</string>

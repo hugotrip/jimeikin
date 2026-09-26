@@ -141,13 +141,7 @@ private fun SelectableSongItem(
                 } else {
                     if (baseArtist.isNotBlank()) "$prefix$baseArtist" else if (prefix.isNotBlank()) prefix.trimEnd(' ', '•') else ""
                 }
-                TextMMD(
-                    text = subtitle,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                SubtitleLine(text = subtitle, source = streamSourceOf(song.sourceType))
             }
         }
 

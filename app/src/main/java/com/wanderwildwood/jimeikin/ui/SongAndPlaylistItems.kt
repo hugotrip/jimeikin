@@ -205,27 +205,10 @@ fun SongItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (!isLocal && isInLibrary) {
-                        Icon(
-                            imageVector = Icons.LibraryAddCheck,
-                            contentDescription = stringResource(R.string.player_song_in_library),
-                            modifier = Modifier.size(16.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    TextMMD(
-                        text = subtitle,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                // Where it plays from, when that is not the phone. This replaced a ticked box
+                // on streamed songs in the library, and a dotted rule under every streamed
+                // row: two marks for one fact, and neither said from where.
+                SubtitleLine(text = subtitle, source = streamSourceOf(song.sourceType))
             }
 
             if (showMenu) {
@@ -351,12 +334,7 @@ fun SongItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (showDivider) {
-            // Dotted means provisional: this one is not on the phone and needs the network.
-            if (isLocal) {
-                HorizontalDividerMMD(thickness = 1.dp)
-            } else {
-                DashedDivider(thickness = 1.dp)
-            }
+            HorizontalDividerMMD(thickness = 1.dp)
         }
     }
 }

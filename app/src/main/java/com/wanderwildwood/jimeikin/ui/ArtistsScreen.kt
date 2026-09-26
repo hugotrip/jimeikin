@@ -29,6 +29,8 @@ data class ArtistUiModel(
     val name: String,
     val songCount: Int,
     val albumCount: Int,
+    /** Where their songs stream from, if any of them are not on the phone. */
+    val streamsFrom: StreamSource? = null,
 )
 
 @Composable
@@ -134,13 +136,7 @@ fun ArtistItem(
         val subtitle = stringResource(R.string.library_artist_songs_and_albums, songLabel, albumLabel)
 
         Spacer(modifier = Modifier.height(4.dp))
-        TextMMD(
-            text = subtitle,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        SubtitleLine(text = subtitle, source = artist.streamsFrom)
 
         Spacer(modifier = Modifier.height(12.dp))
 
