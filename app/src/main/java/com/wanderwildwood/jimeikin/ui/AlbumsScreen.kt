@@ -44,6 +44,7 @@ fun AlbumsScreen(
     hasAnySongs: Boolean,
     onOpenStreamingSettingsClick: () -> Unit,
     onOpenLocalSettingsClick: () -> Unit,
+    onOpenMusicServerClick: () -> Unit = {},
     onAlbumClick: (AlbumUiModel) -> Unit = {},
 ) {
     Box(
@@ -88,6 +89,7 @@ fun AlbumsScreen(
                             body = stringResource(R.string.library_nothing_added_yet),
                             onOpenStreamingSettingsClick = onOpenStreamingSettingsClick,
                             onOpenLocalSettingsClick = onOpenLocalSettingsClick,
+                            onOpenMusicServerClick = onOpenMusicServerClick,
                         )
                     } else {
                         TextMMD(text = stringResource(R.string.library_albums_no_album_info))

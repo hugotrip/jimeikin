@@ -46,6 +46,7 @@ fun SongsScreen(
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
     onOpenStreamingSettingsClick: () -> Unit,
     onOpenLocalSettingsClick: () -> Unit,
+    onOpenMusicServerClick: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -95,6 +96,7 @@ fun SongsScreen(
                         body = stringResource(R.string.library_nothing_added_yet),
                         onOpenStreamingSettingsClick = onOpenStreamingSettingsClick,
                         onOpenLocalSettingsClick = onOpenLocalSettingsClick,
+                        onOpenMusicServerClick = onOpenMusicServerClick,
                     )
                 }
             }

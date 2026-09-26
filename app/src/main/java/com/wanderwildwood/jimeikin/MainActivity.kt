@@ -1102,6 +1102,10 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
+    val openMusicServer: () -> Unit = {
+        navController.navigate(Screen.MusicServer.route) { launchSingleTop = true }
+    }
+
     fun NavGraphBuilder.playlistsNavGraph() {
         composable(Screen.Playlists.route) {
             PlaylistsScreen(
@@ -1480,6 +1484,7 @@ fun CalmMusic(app: CalmMusic) {
                         hasAnySongs = hasAnySongs,
                         onOpenStreamingSettingsClick = openStreamingSettings,
                         onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenMusicServerClick = openMusicServer,
                         onArtistClick = { artist ->
                             val artistName = artist.name
                             selectedArtist = artistName
@@ -1513,6 +1518,7 @@ fun CalmMusic(app: CalmMusic) {
                         onKeepOnPhoneClick = onKeepOnPhone,
                         onOpenStreamingSettingsClick = openStreamingSettings,
                         onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenMusicServerClick = openMusicServer,
                     )
                 }
                 composable(Screen.Albums.route) {
@@ -1524,6 +1530,7 @@ fun CalmMusic(app: CalmMusic) {
                         hasAnySongs = hasAnySongs,
                         onOpenStreamingSettingsClick = openStreamingSettings,
                         onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenMusicServerClick = openMusicServer,
                         onAlbumClick = { album ->
                             selectedAlbum = album
                             navController.navigate(Screen.AlbumDetails.route) {

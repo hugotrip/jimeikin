@@ -27,6 +27,7 @@ fun LibraryOnboardingEmptyState(
     body: String,
     onOpenStreamingSettingsClick: () -> Unit,
     onOpenLocalSettingsClick: () -> Unit,
+    onOpenMusicServerClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -53,13 +54,15 @@ fun LibraryOnboardingEmptyState(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // In the order a copy is worth having in, which is also the order search lists them:
+        // the phone, then a server at home, then YouTube.
         ButtonMMD(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(12.dp),
-            onClick = onOpenStreamingSettingsClick,
+            onClick = onOpenLocalSettingsClick,
         ) {
             TextMMD(
-                text = stringResource(R.string.library_empty_set_up_youtube),
+                text = stringResource(R.string.library_empty_choose_folder),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -70,10 +73,24 @@ fun LibraryOnboardingEmptyState(
         OutlinedButtonMMD(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(12.dp),
-            onClick = onOpenLocalSettingsClick,
+            onClick = onOpenMusicServerClick,
         ) {
             TextMMD(
-                text = stringResource(R.string.library_empty_choose_folder),
+                text = stringResource(R.string.library_empty_music_server),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButtonMMD(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(12.dp),
+            onClick = onOpenStreamingSettingsClick,
+        ) {
+            TextMMD(
+                text = stringResource(R.string.library_empty_set_up_youtube),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )

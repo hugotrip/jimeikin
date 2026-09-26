@@ -506,6 +506,8 @@
     <string name="library_empty_set_up_youtube">Set up YouTube</string>
     <!-- Empty library: button that opens the folder settings -->
     <string name="library_empty_choose_folder">Choose a folder</string>
+    <!-- Empty library: button that opens the music server screen (Navidrome and the like) -->
+    <string name="library_empty_music_server">Connect a music server</string>
 
     <!-- Albums list -->
     <string name="library_albums_loading">Loading albums...</string>

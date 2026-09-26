@@ -42,6 +42,7 @@ fun ArtistsScreen(
     hasAnySongs: Boolean,
     onOpenStreamingSettingsClick: () -> Unit,
     onOpenLocalSettingsClick: () -> Unit,
+    onOpenMusicServerClick: () -> Unit = {},
     onArtistClick: (ArtistUiModel) -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -84,6 +85,7 @@ fun ArtistsScreen(
                             body = stringResource(R.string.library_nothing_added_yet),
                             onOpenStreamingSettingsClick = onOpenStreamingSettingsClick,
                             onOpenLocalSettingsClick = onOpenLocalSettingsClick,
+                            onOpenMusicServerClick = onOpenMusicServerClick,
                         )
                     } else {
                         TextMMD(text = stringResource(R.string.library_artists_no_artist_info))
