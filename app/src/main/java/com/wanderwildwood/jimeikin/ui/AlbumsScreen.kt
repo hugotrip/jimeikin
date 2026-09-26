@@ -32,7 +32,7 @@ data class AlbumUiModel(
     /** Optional release year for display when available. */
     val releaseYear: Int? = null,
     /** Where it streams from, if not the phone. The library works this out from its songs. */
-    val streamsFrom: StreamSource? = streamSourceOf(sourceType),
+    val origin: Origin? = originOf(sourceType),
 )
 
 @Composable
@@ -120,6 +120,8 @@ fun AlbumItem(
     album: AlbumUiModel,
     onClick: () -> Unit,
     showDivider: Boolean = true,
+    /** "Album", where albums share a list with songs and artists and need telling apart. */
+    kindLabel: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -138,16 +140,17 @@ fun AlbumItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val subtitle = when {
+            val details = when {
                 !album.artist.isNullOrBlank() && album.releaseYear != null ->
                     stringResource(R.string.library_album_artist_and_year, album.artist, album.releaseYear)
                 !album.artist.isNullOrBlank() -> album.artist
                 album.releaseYear != null -> album.releaseYear.toString()
                 else -> ""
             }
-            if (subtitle.isNotBlank() || album.streamsFrom != null) {
+            val subtitle = listOfNotNull(kindLabel, details.takeIf { it.isNotBlank() }).joinToString(" • ")
+            if (subtitle.isNotBlank() || album.origin != null) {
                 Spacer(modifier = Modifier.height(4.dp))
-                SubtitleLine(text = subtitle, source = album.streamsFrom)
+                SubtitleLine(text = subtitle, origin = album.origin)
             }
         }
 

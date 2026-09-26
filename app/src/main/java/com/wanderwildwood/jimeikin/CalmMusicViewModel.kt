@@ -26,7 +26,7 @@ import com.wanderwildwood.jimeikin.data.NowPlayingStorage
 import com.wanderwildwood.jimeikin.data.NowPlayingRepeatModeKeys
 import com.wanderwildwood.jimeikin.data.SongEntity
 import com.wanderwildwood.jimeikin.playback.PlaybackCoordinator
-import com.wanderwildwood.jimeikin.ui.streamSourceOf
+import com.wanderwildwood.jimeikin.ui.originOf
 import com.wanderwildwood.jimeikin.ui.AlbumUiModel
 import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
@@ -527,7 +527,7 @@ class CalmMusicViewModel(
                         artist = primary.artist,
                         sourceType = primary.sourceType,
                         releaseYear = albumIdToYear[primary.id],
-                        streamsFrom = streamSourceOf(songSourcesByAlbumId[primary.id].orEmpty()),
+                        origin = originOf(songSourcesByAlbumId[primary.id].orEmpty()),
                     )
                 }
                 .sortedWith(
@@ -1642,7 +1642,7 @@ class CalmMusicViewModel(
                         artist = primary.artist,
                         sourceType = primary.sourceType,
                         releaseYear = albumIdToYear[primary.id],
-                        streamsFrom = streamSourceOf(songSourcesByAlbumId[primary.id].orEmpty()),
+                        origin = originOf(songSourcesByAlbumId[primary.id].orEmpty()),
                     )
                 }
 
@@ -1709,7 +1709,7 @@ class CalmMusicViewModel(
                     name = primary.name,
                     songCount = totalSongCount,
                     albumCount = totalAlbumCount,
-                    streamsFrom = streamSourceOf(theirSongs.map { it.sourceType }),
+                    origin = originOf(theirSongs.map { it.sourceType }),
                 )
             }
             .sortedBy { it.name.lowercase() }
@@ -1789,7 +1789,7 @@ class CalmMusicViewModel(
                         artist = primary.artist,
                         sourceType = primary.sourceType,
                         releaseYear = albumIdToYear[primary.id],
-                        streamsFrom = streamSourceOf(songSourcesByAlbumId[primary.id].orEmpty()),
+                        origin = originOf(songSourcesByAlbumId[primary.id].orEmpty()),
                     )
                 }
 

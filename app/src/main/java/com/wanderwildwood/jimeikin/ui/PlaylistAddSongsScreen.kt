@@ -141,7 +141,7 @@ private fun SelectableSongItem(
                 } else {
                     if (baseArtist.isNotBlank()) "$prefix$baseArtist" else if (prefix.isNotBlank()) prefix.trimEnd(' ', '•') else ""
                 }
-                SubtitleLine(text = subtitle, source = streamSourceOf(song.sourceType))
+                SubtitleLine(text = subtitle, origin = originOf(song.sourceType))
             }
         }
 

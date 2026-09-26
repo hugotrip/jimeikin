@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -17,8 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
-import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
 
@@ -28,17 +25,16 @@ data class YoutubeArtistUiModel(
     val name: String,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * One list: songs, albums and artists together, the phone's first, then the server's, then
+ * YouTube's - see [buildSearchResults]. The library's part is there as soon as the search is
+ * made, and with no signal; YouTube's joins it when it comes.
+ */
 @Composable
 fun SearchScreen(
     isSearching: Boolean,
     errorMessage: String?,
-    songs: List<SongUiModel>,
-    albums: List<AlbumUiModel>,
-    libraryArtists: List<ArtistUiModel>,
-    artists: List<YoutubeArtistUiModel>,
-    selectedTab: Int,
-    onSelectedTabChange: (Int) -> Unit,
+    results: List<SearchResult>,
     onPlaySongClick: (SongUiModel) -> Unit,
     onAlbumClick: (AlbumUiModel) -> Unit,
     onLibraryArtistClick: (ArtistUiModel) -> Unit,
@@ -51,43 +47,8 @@ fun SearchScreen(
     onDeleteClick: (SongUiModel) -> Unit = {},
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
 ) {
+    val albumKind = stringResource(R.string.library_search_kind_album)
     Column(modifier = Modifier.fillMaxSize()) {
-        PrimaryTabRowMMD(selectedTabIndex = selectedTab) {
-            TabMMD(
-                selected = selectedTab == 0,
-                onClick = { onSelectedTabChange(0) },
-                text = {
-                    TextMMD(
-                        text = stringResource(R.string.library_search_tab_songs),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                    )
-                },
-            )
-            TabMMD(
-                selected = selectedTab == 1,
-                onClick = { onSelectedTabChange(1) },
-                text = {
-                    TextMMD(
-                        text = stringResource(R.string.library_search_tab_albums),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                    )
-                },
-            )
-            TabMMD(
-                selected = selectedTab == 2,
-                onClick = { onSelectedTabChange(2) },
-                text = {
-                    TextMMD(
-                        text = stringResource(R.string.library_search_tab_artists),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal,
-                    )
-                },
-            )
-        }
-
         PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
             if (isSearching) {
                 item {
@@ -103,95 +64,48 @@ fun SearchScreen(
                 }
             }
 
-            when (selectedTab) {
-                0 -> {
-                    if (songs.isNotEmpty()) {
-                        items(songs.size) { index ->
-                            val song = songs[index]
-                            SongItem(
-                                song = song,
-                                isCurrentlyPlaying = false,
-                                onClick = { onPlaySongClick(song) },
-                                onAddToPlaylist = { onAddToPlaylistClick(song) },
-                                onPlayNext = { onPlayNextClick(song) },
-                                onAddToQueue = { onAddToQueueClick(song) },
-                                onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
-                                onDelete = { onDeleteClick(song) },
-                                        onKeepOnPhone = { onKeepOnPhoneClick(song) },
-                                showDivider = song != songs.lastOrNull(),
-                                isInLibrary = librarySongIds.contains(song.id),
-                            )
-                        }
-                    }
-
-                    if (
-                        !isSearching &&
-                        errorMessage == null &&
-                        songs.isEmpty()
-                    ) {
-                        item {
-                            TextMMD(text = stringResource(R.string.library_search_no_songs))
-                        }
-                    }
-                }
-
-                1 -> {
-                    if (albums.isNotEmpty()) {
-                        items(albums.size) { index ->
-                            val album = albums[index]
-                            AlbumItem(
-                                album = album,
-                                onClick = { onAlbumClick(album) },
-                                showDivider = album != albums.lastOrNull(),
-                            )
-                        }
-                    }
-
-                    if (
-                        !isSearching &&
-                        errorMessage == null &&
-                        albums.isEmpty()
-                    ) {
-                        item {
-                            TextMMD(text = stringResource(R.string.library_search_no_albums))
-                        }
-                    }
-                }
-
-                2 -> {
-                    // The library's artists, then YouTube's: two kinds of row with two kinds
-                    // of page behind them, in the same order as the other tabs.
-                    items(libraryArtists.size) { index ->
-                        val artist = libraryArtists[index]
-                        ArtistItem(
-                            artist = artist,
-                            onClick = { onLibraryArtistClick(artist) },
-                            showDivider = index < libraryArtists.lastIndex || artists.isNotEmpty(),
+            items(results.size) { index ->
+                val showDivider = index < results.lastIndex
+                when (val result = results[index]) {
+                    is SearchResult.Song -> {
+                        val song = result.song
+                        SongItem(
+                            song = song,
+                            isCurrentlyPlaying = false,
+                            onClick = { onPlaySongClick(song) },
+                            onAddToPlaylist = { onAddToPlaylistClick(song) },
+                            onPlayNext = { onPlayNextClick(song) },
+                            onAddToQueue = { onAddToQueueClick(song) },
+                            onRemoveFromLibrary = { onRemoveFromLibraryClick(song) },
+                            onDelete = { onDeleteClick(song) },
+                            onKeepOnPhone = { onKeepOnPhoneClick(song) },
+                            showDivider = showDivider,
+                            isInLibrary = librarySongIds.contains(song.id),
                         )
                     }
-                    if (artists.isNotEmpty()) {
-                        items(artists.size) { index ->
-                            val artist = artists[index]
-                            SearchArtistItem(
-                                artist = artist,
-                                onClick = { onArtistClick(artist) },
-                                showDivider = artist != artists.lastOrNull(),
-                            )
-                        }
-                    }
-
-                    if (
-                        !isSearching &&
-                        errorMessage == null &&
-                        artists.isEmpty() &&
-                        libraryArtists.isEmpty()
-                    ) {
-                        item {
-                            TextMMD(text = stringResource(R.string.library_search_no_artists))
-                        }
-                    }
+                    is SearchResult.Album -> AlbumItem(
+                        album = result.album,
+                        onClick = { onAlbumClick(result.album) },
+                        showDivider = showDivider,
+                        kindLabel = albumKind,
+                    )
+                    is SearchResult.LibraryArtist -> ArtistItem(
+                        artist = result.artist,
+                        onClick = { onLibraryArtistClick(result.artist) },
+                        showDivider = showDivider,
+                    )
+                    is SearchResult.YouTubeArtist -> SearchArtistItem(
+                        artist = result.artist,
+                        onClick = { onArtistClick(result.artist) },
+                        showDivider = showDivider,
+                    )
                 }
+            }
 
+            if (!isSearching && errorMessage == null && results.isEmpty()) {
+                item {
+                    TextMMD(text = stringResource(R.string.library_search_nothing))
+                }
             }
         }
     }
@@ -218,7 +132,7 @@ private fun SearchArtistItem(
         )
 
         Spacer(modifier = Modifier.height(4.dp))
-        SubtitleLine(text = stringResource(R.string.library_search_result_artist), source = StreamSource.YOUTUBE)
+        SubtitleLine(text = stringResource(R.string.library_search_result_artist), origin = Origin.YOUTUBE)
 
         Spacer(modifier = Modifier.height(12.dp))
 

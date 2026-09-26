@@ -208,7 +208,7 @@ fun SongItem(
                 // Where it plays from, when that is not the phone. This replaced a ticked box
                 // on streamed songs in the library, and a dotted rule under every streamed
                 // row: two marks for one fact, and neither said from where.
-                SubtitleLine(text = subtitle, source = streamSourceOf(song.sourceType))
+                SubtitleLine(text = subtitle, origin = originOf(song.sourceType))
             }
 
             if (showMenu) {
@@ -283,13 +283,20 @@ fun SongItem(
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
                                 text = {
+                                    // A download is removed, not deleted: a kept server song goes
+                                    // back to streaming, and a YouTube one can be fetched again.
+                                    // Only a file the reader put on the phone is erased for good.
+                                    val isDownload = isDownloaded ||
+                                        song.sourceType == "YOUTUBE_DOWNLOAD" ||
+                                        song.sourceType == "SUBSONIC_DOWNLOAD"
                                     TextMMD(
                                         text = when {
+                                            isDownload && !armedDelete ->
+                                                stringResource(R.string.player_song_remove_download)
+                                            isDownload ->
+                                                stringResource(R.string.player_song_remove_download_confirm)
                                             !armedDelete -> stringResource(R.string.player_song_delete)
-                                            isLocal ->
-                                                stringResource(R.string.player_song_delete_file_confirm)
-                                            else ->
-                                                stringResource(R.string.player_song_delete_download_confirm)
+                                            else -> stringResource(R.string.player_song_delete_file_confirm)
                                         },
                                     )
                                 },

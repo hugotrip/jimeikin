@@ -160,6 +160,8 @@
     <string name="main_deleting_download">Deleting download...</string>
     <string name="main_deleted_file">Deleted file</string>
     <string name="main_could_not_delete_file">Couldn\'t delete file</string>
+    <string name="main_removed_download">Removed the download</string>
+    <string name="main_could_not_remove_download">Couldn\'t remove the download</string>
     <string name="main_streamed_nothing_to_delete">This one is streamed, so there is nothing on the phone to delete</string>
 
     <!-- Keeping server songs on the phone (snackbars) -->
@@ -259,7 +261,9 @@
     <!-- Song row menu: "Delete" is a verb; tapping it once arms it -->
     <string name="player_song_delete">Delete</string>
     <string name="player_song_delete_file_confirm">Delete — this erases the file; tap again</string>
-    <string name="player_song_delete_download_confirm">Delete the download — tap again</string>
+    <!-- Song menu, on a song downloaded from the music server or YouTube. Removing it leaves a server song streaming again -->
+    <string name="player_song_remove_download">Remove download</string>
+    <string name="player_song_remove_download_confirm">Remove the download — tap again</string>
     <string name="player_song_remove_from_library_confirm">Remove from library — tap again</string>
     <string name="player_song_remove_from_library">Remove from library</string>
     <!-- Playlist row: how many songs a playlist holds -->
@@ -420,9 +424,11 @@
     <!-- Button that closes the About dialog -->
     <string name="about_close">Close</string>
 
-    <!-- Read aloud for the small mark on a row that streams rather than plays from the phone -->
-    <string name="stream_source_server">On your music server</string>
-    <string name="stream_source_youtube">On YouTube</string>
+    <!-- Read aloud for the small mark on a row that came from the music server or YouTube -->
+    <string name="origin_server">Streams from your music server</string>
+    <string name="origin_youtube">Streams from YouTube</string>
+    <string name="origin_server_download">Downloaded from your music server</string>
+    <string name="origin_youtube_download">Downloaded from YouTube</string>
 
     <!-- Editing a song's or an album's tags -->
     <string name="main_title_edit_details">Edit details</string>
@@ -466,17 +472,11 @@
     <string name="library_youtube_login_retry">Retry</string>
 
     <!-- Search screen -->
-    <!-- Tab over the search results -->
-    <string name="library_search_tab_songs">Songs</string>
-    <!-- Tab over the search results -->
-    <string name="library_search_tab_albums">Albums</string>
-    <!-- Tab over the search results -->
-    <string name="library_search_tab_artists">Artists</string>
     <string name="library_search_searching">Searching YouTube…</string>
+    <string name="library_search_nothing">Nothing found. Try a different search.</string>
+    <!-- Before an album's artist in the search results, where albums sit among songs and artists -->
+    <string name="library_search_kind_album">Album</string>
     <string name="library_search_failed">The search did not reach YouTube</string>
-    <string name="library_search_no_songs">No songs. Try a different search.</string>
-    <string name="library_search_no_albums">No albums. Try a different search.</string>
-    <string name="library_search_no_artists">No artists. Try a different search.</string>
     <!-- Second line under an artist's name in the search results, saying the result is an artist -->
     <string name="library_search_result_artist">Artist</string>
 
