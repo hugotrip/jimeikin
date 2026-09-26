@@ -1231,8 +1231,17 @@ fun CalmMusic(app: CalmMusic) {
                             selectedPlaylist = targetPlaylist
                             navigatedToDetails = true
 
+                            // The name screen gives way to the playlist, whatever it was
+                            // opened from. This used to pop back to the Playlists tab, which
+                            // is not on the stack when the playlist was made from a song's
+                            // menu on another tab - so back from the new playlist landed on
+                            // the name screen again. A rename also drops the page it was
+                            // opened from, so back does not show the playlist twice.
+                            navController.popBackStack(Screen.PlaylistEdit.route, inclusive = true)
+                            if (navController.currentDestination.isPlaylistDetails()) {
+                                navController.popBackStack()
+                            }
                             navController.navigate("${Screen.PlaylistDetails.route}/$finalPlaylistId") {
-                                popUpTo(Screen.Playlists.route) { saveState = true }
                                 launchSingleTop = true
                             }
                         } catch (_: Exception) {
