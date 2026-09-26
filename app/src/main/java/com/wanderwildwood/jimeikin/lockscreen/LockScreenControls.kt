@@ -233,10 +233,10 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
             type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
             format = PixelFormat.TRANSLUCENT
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-            width = (WIDTH_DP * density).toInt()
+            width = resources.displayMetrics.widthPixels - (2 * SIDE_MARGIN_DP * density).toInt()
             height = WindowManager.LayoutParams.WRAP_CONTENT
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = (TOP_DP * density).toInt()
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            y = (BOTTOM_MARGIN_DP * density).toInt()
         }
         try {
             getSystemService(WindowManager::class.java).addView(view, params)
@@ -302,10 +302,11 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
     companion object {
         private const val KATAPULT = "com.gezimos.katapult"
 
-        // Where Mudita's own widget sits: 332dp wide, its top 220dp down. Two dp wider so no
-        // edge of it shows if both are ever drawn.
-        private const val WIDTH_DP = 334f
-        private const val TOP_DP = 220f
+        // Where inkOS keeps its music strip on the home screen, so the lock screen and the
+        // home screen show the same thing in the same place: the width of the screen less
+        // 32dp a side, 32dp up from the bottom.
+        private const val SIDE_MARGIN_DP = 32f
+        private const val BOTTOM_MARGIN_DP = 32f
         private const val RECHECK_MS = 120L
 
         /** Whether the reader has turned this on in Android's Accessibility settings. */
@@ -323,6 +324,12 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
     }
 }
 
+/**
+ * The same strip inkOS draws at the foot of its home screen while something plays: one row,
+ * a 2dp rule with 8dp corners, the cover, then previous, play or pause, next and stop, spread
+ * evenly. Filled in, where inkOS leaves it clear over the wallpaper, so it reads over the lock
+ * screen.
+ */
 @Composable
 private fun ControlsPanel(
     title: String,
@@ -337,87 +344,58 @@ private fun ControlsPanel(
     onNext: () -> Unit,
     onStop: () -> Unit,
 ) {
-    val corner = 14.dp
-    val stroke = 2.5.dp
-    val shape = RoundedCornerShape(corner)
+    val shape = RoundedCornerShape(8.dp)
     val bitmap = remember(art) {
         art?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
     }
     val label = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" - ")
+        .ifEmpty { stringResource(R.string.lockscreen_nothing_named) }
 
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(90.dp)
-            .clip(shape)
-            .background(surface)
-            .border(stroke, ink, shape),
+            .background(surface, shape)
+            .border(2.dp, ink, shape)
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1.4f)
-                .padding(horizontal = 12.dp)
+                .size(36.dp)
+                .clip(shape)
                 .clickable(onClick = onOpen),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = label.ifEmpty { stringResource(R.string.lockscreen_nothing_named) },
-                fontSize = 18.sp,
-                color = ink,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Box(Modifier.fillMaxWidth().height(stroke).background(ink))
-        Row(
-            modifier = Modifier.fillMaxWidth().weight(2f),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(bottomStart = corner))
-                    .background(if (bitmap != null) ink else surface)
-                    .clickable(onClick = onOpen)
-                    .padding(bottom = 3.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = stringResource(R.string.lockscreen_open_app),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = label,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(36.dp).clip(shape),
+                )
+            } else {
+                Box(
+                    modifier = Modifier.size(36.dp).border(2.dp, ink, shape),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
                         imageVector = Icons.MusicNote,
-                        contentDescription = stringResource(R.string.lockscreen_open_app),
+                        contentDescription = label,
                         tint = ink,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
-            Box(Modifier.fillMaxHeight().width(stroke).background(ink))
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(horizontal = 8.dp)
-                    .padding(bottom = 3.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Control(PlayerIcons.Previous, R.string.lockscreen_previous, ink, 32, onPrevious)
-                Control(
-                    if (isPlaying) PlayerIcons.Pause else PlayerIcons.Play,
-                    R.string.lockscreen_play_pause, ink, 42, onPlayPause,
-                )
-                Control(PlayerIcons.Next, R.string.lockscreen_next, ink, 32, onNext)
-                Control(PlayerIcons.Stop, R.string.lockscreen_stop, ink, 28, onStop)
-            }
+        }
+        Control(PlayerIcons.Previous, R.string.lockscreen_previous, ink, 32, onPrevious)
+        Control(
+            if (isPlaying) PlayerIcons.Pause else PlayerIcons.Play,
+            R.string.lockscreen_play_pause, ink, 42, onPlayPause,
+        )
+        Control(PlayerIcons.Next, R.string.lockscreen_next, ink, 32, onNext)
+        Box(modifier = Modifier.padding(end = 8.dp)) {
+            Control(PlayerIcons.Stop, R.string.lockscreen_stop, ink, 32, onStop)
         }
     }
 }
