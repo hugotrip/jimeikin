@@ -80,6 +80,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wanderwildwood.jimeikin.data.StreamingProvider
 import com.wanderwildwood.jimeikin.ui.AboutDialog
+import com.wanderwildwood.jimeikin.ui.EditDetailsScreen
+import com.wanderwildwood.jimeikin.ui.LocalEditDetails
+import com.wanderwildwood.jimeikin.data.TagEditor
 import com.wanderwildwood.jimeikin.ui.LocalTopBarActions
 import com.wanderwildwood.jimeikin.ui.TopBarActionsSlot
 import com.wanderwildwood.jimeikin.ui.Icons
@@ -318,6 +321,11 @@ fun CalmMusic(app: CalmMusic) {
     var localScanDeletedMissing by remember { mutableStateOf<Int?>(null) }
     var localScanUnreadableFolders by remember { mutableStateOf<Int?>(null) }
     var showAbout by remember { mutableStateOf(false) }
+    var editingSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
+    var editInitial by remember { mutableStateOf<TagEditor.Fields?>(null) }
+    var isSavingEdit by remember { mutableStateOf(false) }
+    var editProgressText by remember { mutableStateOf<String?>(null) }
+    var editErrorText by remember { mutableStateOf<String?>(null) }
     val subsonicConfig by settingsManager.subsonicConfig.collectAsState()
     var isServerBusy by remember { mutableStateOf(false) }
     var serverStatus by remember { mutableStateOf<String?>(null) }
@@ -1245,7 +1253,15 @@ fun CalmMusic(app: CalmMusic) {
         }
     }
 
+    val openEditor: (List<SongUiModel>) -> Unit = { songs ->
+        editingSongs = songs
+        editInitial = null
+        editErrorText = null
+        navController.navigate(Screen.EditDetails.route) { launchSingleTop = true }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalEditDetails provides openEditor) {
         Scaffold(
             topBar = {
                 Column {
@@ -1762,6 +1778,61 @@ fun CalmMusic(app: CalmMusic) {
                     )
                 }
 
+                composable(Screen.EditDetails.route) {
+                    val songs = editingSongs
+                    LaunchedEffect(songs) {
+                        if (songs.isNotEmpty()) editInitial = viewModel.readTagsForEditing(songs)
+                    }
+                    EditDetailsScreen(
+                        songCount = songs.size,
+                        initial = editInitial,
+                        isSaving = isSavingEdit,
+                        progressText = editProgressText,
+                        errorText = editErrorText,
+                        onCancel = { navController.navigateUp() },
+                        onSave = { fields ->
+                            libraryScope.launch {
+                                isSavingEdit = true
+                                editErrorText = null
+                                val (written, failure) = try {
+                                    viewModel.writeTags(songs, fields) { done, total ->
+                                        editProgressText = if (total > 1) {
+                                            context.getString(R.string.edit_details_progress, done, total)
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                } finally {
+                                    isSavingEdit = false
+                                    editProgressText = null
+                                }
+                                if (written > 0) {
+                                    // A scan already under way may have walked past the file.
+                                    while (isRescanningLocal) delay(200L)
+                                    resyncLocalLibrary(localMusicFolders)
+                                }
+                                editErrorText = when {
+                                    failure == null -> null
+                                    songs.size > 1 ->
+                                        context.getString(R.string.edit_details_some_failed, songs.size - written, songs.size)
+                                    failure == TagEditor.Result.Unsupported ->
+                                        context.getString(R.string.edit_details_unsupported)
+                                    else -> context.getString(R.string.edit_details_failed)
+                                }
+                                if (failure == null) {
+                                    // An album renamed, or given who it is by, is a different
+                                    // album to the library, and the page it was edited from
+                                    // would show none of its songs. Back to the list, where
+                                    // the album is under its new name.
+                                    val leftAlbum = songs.size > 1 &&
+                                        navController.popBackStack(Screen.AlbumDetails.route, inclusive = true)
+                                    if (!leftAlbum) navController.navigateUp()
+                                }
+                            }
+                        },
+                    )
+                }
+
                 composable(Screen.YouTubeLogin.route) {
                     YouTubeLoginScreen(
                         onLoginSuccess = { cookie ->
@@ -1772,6 +1843,7 @@ fun CalmMusic(app: CalmMusic) {
                     )
                 }
             }
+        }
         }
 
         if (showAbout) {
@@ -2329,6 +2401,7 @@ fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boole
         currentDestination?.route == Screen.Settings.route -> stringResource(R.string.main_title_settings)
         currentDestination?.route == Screen.MusicServer.route -> stringResource(R.string.main_title_music_server)
         currentDestination?.route == Screen.YouTubeLogin.route -> stringResource(R.string.main_title_connect_youtube)
+        currentDestination?.route == Screen.EditDetails.route -> stringResource(R.string.main_title_edit_details)
         currentDestination?.route == Screen.PlaylistEdit.route -> if (isEditingPlaylist) stringResource(R.string.main_title_rename_playlist) else stringResource(R.string.main_title_new_playlist)
         currentDestination?.route == Screen.PlaylistAddSongs.route -> stringResource(R.string.main_title_add_songs)
         currentDestination.isPlaylistDetails() -> stringResource(R.string.main_title_playlist)

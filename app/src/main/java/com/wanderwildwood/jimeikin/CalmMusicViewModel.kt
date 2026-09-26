@@ -13,6 +13,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import com.wanderwildwood.jimeikin.data.TagEditor
 import com.wanderwildwood.jimeikin.data.AlbumEntity
 import com.wanderwildwood.jimeikin.data.ArtistEntity
 import com.wanderwildwood.jimeikin.data.ArtistWithCounts
@@ -1430,6 +1431,54 @@ class CalmMusicViewModel(
      * underlying file and any playlist memberships. Returns true if the
      * database was updated successfully (file deletion best-effort).
      */
+    /** What the editor needs to start from: the file's own tags, or the list's if unreadable. */
+    suspend fun readTagsForEditing(songs: List<SongUiModel>): TagEditor.Fields {
+        val first = songs.first()
+        val read = withContext(Dispatchers.IO) {
+            runCatching { TagEditor.read(app, Uri.parse(first.audioUri ?: first.id)) }.getOrNull()
+        }
+        return read ?: TagEditor.Fields(
+            title = first.title,
+            artist = first.artist,
+            album = first.album,
+            albumArtist = null,
+            trackNumber = first.trackNumber?.toString(),
+        )
+    }
+
+    /**
+     * Writes [fields] into each song's file, one after another. Returns how many were written
+     * and what went wrong with the first that was not. The library is not touched here: a
+     * rescan afterwards re-reads the changed files and regroups albums and artists.
+     */
+    suspend fun writeTags(
+        songs: List<SongUiModel>,
+        fields: TagEditor.Fields,
+        onProgress: (done: Int, total: Int) -> Unit,
+    ): Pair<Int, TagEditor.Result?> = withContext(Dispatchers.IO) {
+        var written = 0
+        var firstFailure: TagEditor.Result? = null
+        songs.forEachIndexed { index, song ->
+            withContext(Dispatchers.Main) { onProgress(index + 1, songs.size) }
+            val uri = Uri.parse(song.audioUri ?: song.id)
+            when (val result = TagEditor.write(app, uri, fields)) {
+                is TagEditor.Result.Written -> {
+                    written++
+                    // On the phone's own storage a file keeps its address through the swap;
+                    // on a provider that does not, its playlists follow it.
+                    if (result.uri.toString() != song.id) {
+                        playlistDao.updateSongIdForAllPlaylists(song.id, result.uri.toString())
+                    }
+                }
+                // The edited copy is whole under its pending name, and the rescan that
+                // follows gives it the file's name back.
+                TagEditor.Result.LeftPending -> written++
+                else -> if (firstFailure == null) firstFailure = result
+            }
+        }
+        written to firstFailure
+    }
+
     suspend fun deleteLocalMediaSong(song: SongUiModel): Boolean {
         if (song.sourceType != "LOCAL_FILE" && song.sourceType != "YOUTUBE_DOWNLOAD") return false
 

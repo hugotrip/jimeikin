@@ -284,6 +284,18 @@ fun SongItem(
                             )
                         }
 
+                        val editDetails = LocalEditDetails.current
+                        if (editDetails != null && song.isEditable()) {
+                            HorizontalDividerMMD(thickness = 1.dp)
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = stringResource(R.string.player_song_edit_details)) },
+                                onClick = {
+                                    showMenu = false
+                                    editDetails(listOf(song))
+                                }
+                            )
+                        }
+
                         if (isDownloaded || isLocal) {
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(

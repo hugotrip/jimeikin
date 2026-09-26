@@ -174,7 +174,17 @@ object LocalMusicScanner {
                 // would otherwise get every one of them in the Songs list.
                 if (children.any { it.name == ".nomedia" }) continue
 
-                for (child in children) {
+                // A tag edit that was interrupted leaves its copy under a pending name; see
+                // TagEditor. It is settled here, before anything is indexed.
+                val siblingNames = children.mapTo(HashSet()) { it.name }
+                val entries = children.mapNotNull { child ->
+                    if (!child.name.endsWith(TagEditor.PENDING_SUFFIX)) return@mapNotNull child
+                    if (TagEditor.isWriting) return@mapNotNull null
+                    TagEditor.recoverPending(context, treeUri, child.id, child.name, siblingNames)
+                        ?.let { child.copy(id = it, name = child.name.removeSuffix(TagEditor.PENDING_SUFFIX)) }
+                }
+
+                for (child in entries) {
                     // A name beginning with a dot is not for reading. macOS leaves a "._"
                     // sidecar beside every file it touches on a non-Mac disk, carrying the
                     // same extension as the real thing - a library copied through a Mac has

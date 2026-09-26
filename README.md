@@ -32,6 +32,13 @@ Any `.m3u` or `.m3u8` file inside a chosen folder becomes a playlist, in file or
 naming files that are not on the phone are skipped. Editing the file on a computer and
 scanning again rewrites that playlist rather than making a second one.
 
+A song's tags can be changed from its long-press menu → **Edit details** (title, artist,
+album, album artist, track number), and a whole album's name and album artist from the
+pencil on its page. The change is written into the file itself. The tags go into a copy
+first, the copy is read back to check them, and only then does it replace the original, so a
+phone that dies partway leaves the old file or the new one, never half of either. Server
+songs are the server's to change, and YouTube downloads cannot be tagged.
+
 A folder that cannot be read — a card that has not mounted yet, a folder that has gone away —
 is reported as unread, and nothing under it leaves the library.
 

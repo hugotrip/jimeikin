@@ -22,6 +22,7 @@ sealed class Screen(val route: String, @StringRes val labelRes: Int, val icon: I
     object Downloads : Screen("downloads", R.string.main_title_downloads, Icons.Download)
     object Settings : Screen("settings", R.string.main_title_settings, Icons.Settings)
     object MusicServer : Screen("musicServer", R.string.main_title_music_server, Icons.Settings)
+    object EditDetails : Screen("editDetails", R.string.main_title_edit_details, Icons.Edit)
     object YouTubeLogin : Screen("youtubeLogin", R.string.main_title_connect_youtube, Icons.Person)
 }
 

@@ -421,6 +421,26 @@
     <!-- Button that closes the About dialog -->
     <string name="about_close">Close</string>
 
+    <!-- Editing a song's or an album's tags -->
+    <string name="main_title_edit_details">Edit details</string>
+    <!-- Song long-press menu item -->
+    <string name="player_song_edit_details">Edit details</string>
+    <string name="library_album_edit">Edit album</string>
+    <string name="edit_details_title">Title</string>
+    <string name="edit_details_artist">Artist</string>
+    <string name="edit_details_album">Album</string>
+    <string name="edit_details_album_artist">Album artist</string>
+    <string name="edit_details_track">Track number</string>
+    <!-- %1$d is how many songs on the phone the change is written to -->
+    <string name="edit_details_album_note">Written to all %1$d songs of this album on the phone.</string>
+    <string name="edit_details_reading">Reading the file…</string>
+    <!-- Shown while saving. %1$d is the song being written, %2$d how many there are -->
+    <string name="edit_details_progress">Saving %1$d of %2$d…</string>
+    <string name="edit_details_unsupported">This file\'s format cannot be edited. It is unchanged.</string>
+    <string name="edit_details_failed">Could not save. The file is unchanged.</string>
+    <!-- %1$d songs could not be saved, of %2$d -->
+    <string name="edit_details_some_failed">%1$d of %2$d songs could not be saved and are unchanged.</string>
+
     <!-- Music server screen: where a Navidrome or other Subsonic server is entered -->
     <!-- Text field label: the server's address -->
     <string name="library_server_address">Address</string>

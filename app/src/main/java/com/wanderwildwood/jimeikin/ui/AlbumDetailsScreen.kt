@@ -190,6 +190,17 @@ fun AlbumDetailsScreen(
                     )
                 }
 
+                val editDetails = LocalEditDetails.current
+                val editable = songs.filter { it.isEditable() }
+                if (editDetails != null && editable.isNotEmpty()) {
+                    IconButton(onClick = { editDetails(editable) }) {
+                        Icon(
+                            imageVector = Icons.Edit,
+                            contentDescription = stringResource(R.string.library_album_edit),
+                        )
+                    }
+                }
+
                 // Only where there is something to keep: a record already on the phone
                 // needs nothing, and this button would then be a button that does nothing.
                 if (songs.any { it.sourceType == "SUBSONIC" }) {
