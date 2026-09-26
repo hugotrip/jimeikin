@@ -79,6 +79,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wanderwildwood.jimeikin.data.StreamingProvider
+import com.wanderwildwood.jimeikin.ui.searchLibrarySongs
+import com.wanderwildwood.jimeikin.ui.searchLibraryAlbums
+import com.wanderwildwood.jimeikin.ui.searchLibraryArtists
+import com.wanderwildwood.jimeikin.ui.libraryThenYouTube
+import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.AboutDialog
 import com.wanderwildwood.jimeikin.ui.EditDetailsScreen
 import com.wanderwildwood.jimeikin.ui.LocalEditDetails
@@ -306,7 +311,9 @@ fun CalmMusic(app: CalmMusic) {
     var searchSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
     var searchAlbums by remember { mutableStateOf<List<AlbumUiModel>>(emptyList()) }
     var searchArtists by remember { mutableStateOf<List<YoutubeArtistUiModel>>(emptyList()) }
-    var searchLocalSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
+    var searchLibrarySongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
+    var searchLibraryAlbums by remember { mutableStateOf<List<AlbumUiModel>>(emptyList()) }
+    var searchLibraryArtists by remember { mutableStateOf<List<ArtistUiModel>>(emptyList()) }
     var searchSelectedTab by remember { mutableStateOf(0) }
     var isSearching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
@@ -341,12 +348,12 @@ fun CalmMusic(app: CalmMusic) {
     fun performSearch() {
         if (searchQuery.isBlank()) return
 
+        // The library answers at once and without a signal; YouTube's results join below it
+        // when they come.
         val query = searchQuery.trim()
-        searchLocalSongs = librarySongs.filter { song ->
-            song.title.contains(query, ignoreCase = true) ||
-                    song.artist.contains(query, ignoreCase = true) ||
-                    (song.album?.contains(query, ignoreCase = true) == true)
-        }
+        searchLibrarySongs = searchLibrarySongs(librarySongs, query)
+        searchLibraryAlbums = searchLibraryAlbums(libraryAlbums, query)
+        searchLibraryArtists = searchLibraryArtists(libraryArtists, query)
 
         if (isSearching) return
 
@@ -354,6 +361,11 @@ fun CalmMusic(app: CalmMusic) {
             isSearching = true
             searchError = null
             searchSelectedTab = 0
+            // The last search's YouTube results would otherwise sit under this one's library
+            // matches until the new ones arrived.
+            searchSongs = emptyList()
+            searchAlbums = emptyList()
+            searchArtists = emptyList()
             try {
                 val songResults = app.youTubeInnertubeClient.searchSongs(
                     query = searchQuery,
@@ -1525,16 +1537,19 @@ fun CalmMusic(app: CalmMusic) {
                     SearchScreen(
                         isSearching = isSearching,
                         errorMessage = searchError,
-                        songs = searchSongs,
-                        albums = searchAlbums,
+                        songs = libraryThenYouTube(searchLibrarySongs, searchSongs) { it.id },
+                        albums = libraryThenYouTube(searchLibraryAlbums, searchAlbums) { it.id },
+                        libraryArtists = searchLibraryArtists,
                         artists = searchArtists,
                         selectedTab = searchSelectedTab,
                         onSelectedTabChange = { searchSelectedTab = it },
                         onPlaySongClick = { song: SongUiModel ->
-                            if (song.sourceType == "LOCAL_FILE") {
-                                val index = searchLocalSongs.indexOfFirst { it.id == song.id }
-                                val startIndex = if (index >= 0) index else 0
-                                startPlaybackFromQueue(searchLocalSongs, startIndex)
+                            // A library match plays on through the library's matches, a
+                            // YouTube result through YouTube's - as before, when the two were
+                            // separate lists.
+                            val libraryIndex = searchLibrarySongs.indexOfFirst { it.id == song.id }
+                            if (libraryIndex >= 0) {
+                                startPlaybackFromQueue(searchLibrarySongs, libraryIndex)
                             } else {
                                 val songs = searchSongs
                                 val index = songs.indexOfFirst { it.id == song.id }
@@ -1545,6 +1560,13 @@ fun CalmMusic(app: CalmMusic) {
                         onAlbumClick = { album: AlbumUiModel ->
                             selectedAlbum = album
                             navController.navigate(Screen.AlbumDetails.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onLibraryArtistClick = { artist: ArtistUiModel ->
+                            selectedArtist = artist.name
+                            selectedArtistId = artist.id
+                            navController.navigate(Screen.ArtistDetails.route) {
                                 launchSingleTop = true
                             }
                         },

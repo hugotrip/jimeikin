@@ -35,11 +35,13 @@ fun SearchScreen(
     errorMessage: String?,
     songs: List<SongUiModel>,
     albums: List<AlbumUiModel>,
+    libraryArtists: List<ArtistUiModel>,
     artists: List<YoutubeArtistUiModel>,
     selectedTab: Int,
     onSelectedTabChange: (Int) -> Unit,
     onPlaySongClick: (SongUiModel) -> Unit,
     onAlbumClick: (AlbumUiModel) -> Unit,
+    onLibraryArtistClick: (ArtistUiModel) -> Unit,
     onArtistClick: (YoutubeArtistUiModel) -> Unit,
     librarySongIds: Set<String> = emptySet(),
     onAddToPlaylistClick: (SongUiModel) -> Unit = {},
@@ -157,6 +159,16 @@ fun SearchScreen(
                 }
 
                 2 -> {
+                    // The library's artists, then YouTube's: two kinds of row with two kinds
+                    // of page behind them, in the same order as the other tabs.
+                    items(libraryArtists.size) { index ->
+                        val artist = libraryArtists[index]
+                        ArtistItem(
+                            artist = artist,
+                            onClick = { onLibraryArtistClick(artist) },
+                            showDivider = index < libraryArtists.lastIndex || artists.isNotEmpty(),
+                        )
+                    }
                     if (artists.isNotEmpty()) {
                         items(artists.size) { index ->
                             val artist = artists[index]
@@ -171,7 +183,8 @@ fun SearchScreen(
                     if (
                         !isSearching &&
                         errorMessage == null &&
-                        artists.isEmpty()
+                        artists.isEmpty() &&
+                        libraryArtists.isEmpty()
                     ) {
                         item {
                             TextMMD(text = stringResource(R.string.library_search_no_artists))

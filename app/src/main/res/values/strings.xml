@@ -472,7 +472,7 @@
     <string name="library_search_tab_albums">Albums</string>
     <!-- Tab over the search results -->
     <string name="library_search_tab_artists">Artists</string>
-    <string name="library_search_searching">Searching...</string>
+    <string name="library_search_searching">Searching YouTube…</string>
     <string name="library_search_failed">The search did not reach YouTube</string>
     <string name="library_search_no_songs">No songs. Try a different search.</string>
     <string name="library_search_no_albums">No albums. Try a different search.</string>
