@@ -303,7 +303,7 @@ object LocalMusicScanner {
         fileSize: Long,
         existing: SongEntity? = null,
     ): ScannedLocalAudio {
-        val meta = extractMetadata(context, uri)
+        val meta = extractMetadata(context, uri, name)
         val titleFromName = name.substringBeforeLast('.', name)
 
         val existingArtist = existing?.artist?.takeIf { it.isNotBlank() }
@@ -371,7 +371,7 @@ object LocalMusicScanner {
         val year: Int?,
     )
 
-    private fun extractMetadata(context: Context, uri: Uri): LocalMetadata {
+    private fun extractMetadata(context: Context, uri: Uri, name: String): LocalMetadata {
         val retriever = MediaMetadataRetriever()
         var meta = try {
             retriever.setDataSource(context, uri)
@@ -405,8 +405,10 @@ object LocalMusicScanner {
             }
         }
 
-        if (meta.albumArtist.isNullOrBlank()) {
-            val tempFile = copyUriToTempFile(context, uri)
+        if (meta.albumArtist.isNullOrBlank() &&
+            name.substringAfterLast('.', "").lowercase() in DEEP_READ_EXTENSIONS
+        ) {
+            val tempFile = copyUriToTempFile(context, uri, name)
             if (tempFile != null) {
                 try {
                     TagOptionSingleton.getInstance().isAndroid = true
@@ -438,9 +440,13 @@ object LocalMusicScanner {
         return meta
     }
 
-    private fun copyUriToTempFile(context: Context, uri: Uri): File? {
+    // jaudiotagger picks its reader by extension. This copy used to be named .tmp, which it
+    // refuses outright, so the deep read never once succeeded and no FLAC or Ogg file's album
+    // artist was ever read from its tags.
+    private fun copyUriToTempFile(context: Context, uri: Uri, name: String): File? {
+        val ext = name.substringAfterLast('.', "tmp").lowercase()
         val tempFile = try {
-            File.createTempFile("scanner_probe", ".tmp", context.cacheDir)
+            File.createTempFile("scanner_probe", ".$ext", context.cacheDir)
         } catch (e: Exception) {
             return null
         }
