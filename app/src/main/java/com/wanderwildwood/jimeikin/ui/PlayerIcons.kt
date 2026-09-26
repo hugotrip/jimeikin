@@ -46,4 +46,5 @@ object PlayerIcons {
     val Pause: ImageVector = symbol("Pause", "M560-200v-560h160v560H560Zm-320 0v-560h160v560H240Z")
     val Forward: ImageVector = symbol("Forward", "M100-240v-480l360 240-360 240Zm400 0v-480l360 240-360 240Z")
     val Next: ImageVector = symbol("Next", "M660-240v-480h80v480h-80Zm-440 0v-480l360 240-360 240Z")
+    val Stop: ImageVector = symbol("Stop", "M240-240v-480h480v480H240Z")
 }

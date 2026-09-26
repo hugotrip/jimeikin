@@ -1,5 +1,12 @@
 package com.wanderwildwood.jimeikin.ui
 
+import com.wanderwildwood.jimeikin.lockscreen.LockScreenControls
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import android.provider.Settings
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -215,6 +222,39 @@ fun SettingsScreen(
                 },
                 onClick = onRequestBatteryOptimizationExemption,
                 enabled = !hasBatteryOptimizationExemption,
+            )
+        }
+
+        item {
+            // Off until the reader turns the service on in Android's own settings, which is
+            // the only place it can be turned on; this row says which it is and goes there.
+            val context = LocalContext.current
+            val lifecycleOwner = LocalLifecycleOwner.current
+            var lockScreenControlsOn by remember { mutableStateOf(LockScreenControls.isEnabled(context)) }
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        lockScreenControlsOn = LockScreenControls.isEnabled(context)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
+            ValueRow(
+                label = stringResource(R.string.settings_lockscreen_controls),
+                value = if (lockScreenControlsOn) {
+                    stringResource(R.string.settings_lockscreen_controls_on)
+                } else {
+                    stringResource(R.string.settings_lockscreen_controls_off)
+                },
+                onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                },
+                enabled = true,
             )
         }
 

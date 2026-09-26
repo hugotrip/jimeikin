@@ -128,11 +128,18 @@ notification for playback, and an exemption from battery optimisation so the sys
 likely to stop it. It does not ask for storage — folders are reached through the system
 picker, which grants this app that folder and nothing else.
 
-**That is all of them.** It asks for no accessibility service — it used to, to press play
-inside the phone's FM tuner, which is a great deal of trust for a small convenience. And it no
-longer reads other apps' notifications: that existed to show controls for whatever else was
-playing, which meant this app putting a panel over its own screen about somebody else's
-audiobook. Both services are gone from the app, not merely unused.
+**That is all of them**, and one optional service besides. **Lock-screen controls** are an
+accessibility service, off until you turn it on in Android's Accessibility settings (Settings →
+Lock-screen controls goes there). The Kompakt's own lock-screen music widget is wired to
+Mudita's player and shows nothing else, and only an accessibility service may draw above the
+lock screen, so that is what this has to be. It draws Music Box's controls where Mudita's widget
+sits, listens only to the system lock screen, and reads one thing there — whether the PIN field
+is showing, so the controls can make way for it. It reads no other app, and it stands aside
+when gezimos's Katapult launcher, whose lock-screen widget this follows, is drawing its own.
+
+It does not read other apps' notifications: that existed once to show controls for whatever
+else was playing, which meant this app putting a panel over its own screen about somebody
+else's audiobook. It is gone from the app, not merely unused.
 
 ## For developers
 

@@ -1,5 +1,7 @@
 package com.wanderwildwood.jimeikin
 
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -47,6 +49,13 @@ class PlaybackService : MediaSessionService() {
         private const val NEWPIPE_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
 
         private const val BYPASS_COOKIES = "SOCS=CAI; VISITOR_INFO1_LIVE=i7Sm6Qgj0lE; CONSENT=YES+cb.20210328-17-p0.en+FX+475"
+
+        /**
+         * The session while the service is alive, for the lock-screen controls, which run in
+         * this same process and follow the player directly rather than binding to it.
+         */
+        private val _activeSession = MutableStateFlow<MediaSession?>(null)
+        val activeSession: StateFlow<MediaSession?> = _activeSession
 
         fun registerErrorCallback(callback: ((PlaybackException) -> Unit)?) {
             errorCallback = callback
@@ -144,6 +153,7 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, sessionPlayer)
             .setSessionActivity(sessionActivityPendingIntent)
             .build()
+        _activeSession.value = mediaSession
 
         val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
             .setChannelId(CHANNEL_ID)
@@ -287,6 +297,7 @@ class PlaybackService : MediaSessionService() {
         mediaSession
 
     override fun onDestroy() {
+        _activeSession.value = null
         mediaSession?.run {
             player.release()
             release()
