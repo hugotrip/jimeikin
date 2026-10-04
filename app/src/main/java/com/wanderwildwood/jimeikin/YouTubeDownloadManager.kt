@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -54,6 +56,11 @@ class YouTubeDownloadManager(
 
     private val jobsById = mutableMapOf<String, Job>()
 
+    // One song at a time. A whole playlist asked for at once would otherwise open every
+    // stream together, and each would crawl; in turn, the first ones are playable while
+    // the rest wait their place in Downloads.
+    private val oneAtATime = Mutex()
+
     fun enqueueDownload(song: com.wanderwildwood.jimeikin.ui.SongUiModel, albumArtist: String? = null) {
         val id = UUID.randomUUID().toString()
         val initial = YouTubeDownloadStatus(
@@ -67,47 +74,54 @@ class YouTubeDownloadManager(
         _downloads.value = _downloads.value + initial
 
         val job = appScope.launch {
-            val context = app.applicationContext
-            val musicDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
-
-            if (musicDir == null) {
-                updateDownload(id) { it.copy(state = YouTubeDownloadStatus.State.FAILED, errorMessage = "Storage inaccessible") }
-                return@launch
-            }
-
-            if (!musicDir.exists()) musicDir.mkdirs()
-
-            updateDownload(id) { it.copy(state = YouTubeDownloadStatus.State.IN_PROGRESS) }
-
-            var errorMessage: String? = null
-            val ok = try {
-                performYouTubeDownloadInternal(
-                    app = app,
-                    song = song,
-                    albumArtist = albumArtist,
-                    targetDir = musicDir,
-                    context = context,
-                    client = client,
-                    onProgress = { progress ->
-                        updateDownload(id) { status -> status.copy(progress = progress.coerceIn(0f, 1f)) }
-                    },
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-                errorMessage = e.message ?: e.javaClass.simpleName ?: "Unknown error"
-                false
-            }
-
-            updateDownload(id) { status ->
-                status.copy(
-                    progress = if (ok) 1f else status.progress,
-                    state = if (ok) YouTubeDownloadStatus.State.COMPLETED else YouTubeDownloadStatus.State.FAILED,
-                    errorMessage = if (ok) null else (errorMessage ?: status.errorMessage ?: "Unknown error"),
-                )
-            }
+            oneAtATime.withLock { runDownload(id, song, albumArtist) }
         }
 
         jobsById[id] = job
+    }
+
+    private suspend fun runDownload(id: String, song: com.wanderwildwood.jimeikin.ui.SongUiModel, albumArtist: String?) {
+        val context = app.applicationContext
+        val musicDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+
+        if (musicDir == null) {
+            updateDownload(id) { it.copy(state = YouTubeDownloadStatus.State.FAILED, errorMessage = "Storage inaccessible") }
+            return
+        }
+
+        if (!musicDir.exists()) musicDir.mkdirs()
+
+        updateDownload(id) { it.copy(state = YouTubeDownloadStatus.State.IN_PROGRESS) }
+
+        var errorMessage: String? = null
+        val ok = try {
+            performYouTubeDownloadInternal(
+                app = app,
+                song = song,
+                albumArtist = albumArtist,
+                targetDir = musicDir,
+                context = context,
+                client = client,
+                onProgress = { progress ->
+                    updateDownload(id) { status -> status.copy(progress = progress.coerceIn(0f, 1f)) }
+                },
+            )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Cancelled from Downloads: the row already says so, and must not turn to failed.
+            throw e
+        } catch (e: Exception) {
+            e.printStackTrace()
+            errorMessage = e.message ?: e.javaClass.simpleName ?: "Unknown error"
+            false
+        }
+
+        updateDownload(id) { status ->
+            status.copy(
+                progress = if (ok) 1f else status.progress,
+                state = if (ok) YouTubeDownloadStatus.State.COMPLETED else YouTubeDownloadStatus.State.FAILED,
+                errorMessage = if (ok) null else (errorMessage ?: status.errorMessage ?: "Unknown error"),
+            )
+        }
     }
 
     fun cancelDownload(id: String) {

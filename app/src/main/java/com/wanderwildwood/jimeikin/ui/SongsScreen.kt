@@ -29,6 +29,14 @@ data class SongUiModel(
     val album: String? = null,
 )
 
+/**
+ * Whether a keep-it-all button has anything behind it: a song still on a music server, or a
+ * YouTube song where YouTube downloads are on. Songs already on the phone need nothing.
+ */
+fun List<SongUiModel>.hasSongsToKeep(canKeepYouTube: Boolean): Boolean = any {
+    it.sourceType == "SUBSONIC" || (canKeepYouTube && it.sourceType == "YOUTUBE")
+}
+
 @Composable
 fun SongsScreen(
     songs: List<SongUiModel>,

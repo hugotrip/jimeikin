@@ -175,6 +175,7 @@ fun CalmMusic(app: CalmMusic) {
     val viewModel: CalmMusicViewModel = viewModel(factory = CalmMusicViewModel.factory(app))
     val playbackState by viewModel.playbackState.collectAsState()
     val downloadStatuses by app.youTubeDownloadManager.downloads.collectAsState()
+    val playlistsViewModel: PlaylistsViewModel = viewModel(factory = PlaylistsViewModel.factory(app))
 
     var localMediaController by remember { mutableStateOf<MediaController?>(null) }
     var lastCompletedDownloadUUIDs by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -189,6 +190,7 @@ fun CalmMusic(app: CalmMusic) {
 
         if (newCompletedUUIDs.isNotEmpty()) {
             viewModel.refreshLibraryFromDatabase()
+            playlistsViewModel.refreshSongs()
 
             val newSongIds = currentCompletedDownloads
                 .filter { it.id in newCompletedUUIDs }
@@ -243,7 +245,6 @@ fun CalmMusic(app: CalmMusic) {
     }
 
 
-    val playlistsViewModel: PlaylistsViewModel = viewModel(factory = PlaylistsViewModel.factory(app))
 
     val overlayState by app.playbackStateManager.state.collectAsState()
     val addToPlaylistSheetState: SheetStateMMD = rememberModalBottomSheetMMDState(
@@ -731,23 +732,46 @@ fun CalmMusic(app: CalmMusic) {
      * nothing from six downloads competing, and doing them in sequence means the list fills
      * from the top, which is legible while it happens. Songs already here are skipped, so
      * pressing it twice costs nothing and finishes what a first press did not.
+     *
+     * YouTube songs in the list go to Downloads, which also takes them one at a time; one
+     * already waiting or underway there is not asked for twice.
      */
     val onKeepAllOnPhone: (List<SongUiModel>) -> Unit = { songs ->
+        val underway = downloadStatuses
+            .filter { it.state == YouTubeDownloadStatus.State.PENDING || it.state == YouTubeDownloadStatus.State.IN_PROGRESS }
+            .map { it.songId }
+            .toSet()
+        val fromYouTube = if (streamingProvider == StreamingProvider.YOUTUBE) {
+            songs.filter { it.sourceType == "YOUTUBE" && it.id !in underway }
+        } else {
+            emptyList()
+        }
         libraryScope.launch {
             val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
             val wanted = songs.filter { it.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE }
-            if (wanted.isEmpty()) {
+            if (wanted.isEmpty() && fromYouTube.isEmpty()) {
                 snackbarHostState.showSnackbar(
                     message = context.getString(R.string.main_all_on_phone_already),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
             } else {
+                // Filed under the album's artist when the library already has the album,
+                // as the one-song download in Now Playing does.
+                fromYouTube.forEach { song ->
+                    val albumArtist = song.album?.let { title ->
+                        libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist
+                    }
+                    app.youTubeDownloadManager.enqueueDownload(song, albumArtist)
+                }
+                val total = wanted.size + fromYouTube.size
                 snackbarHostState.showSnackbar(
-                    message = context.resources.getQuantityString(R.plurals.main_keeping_songs, wanted.size, wanted.size),
+                    message = context.resources.getQuantityString(R.plurals.main_keeping_songs, total, total),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
+                // The YouTube songs report themselves in Downloads as they land.
+                if (wanted.isEmpty()) return@launch
                 var kept = 0
                 var failed = 0
                 val rows = withContext(Dispatchers.IO) { database.songDao().getAllSongs() }
@@ -771,6 +795,7 @@ fun CalmMusic(app: CalmMusic) {
                             // Refreshed as they land, so the rules turn solid one by one
                             // rather than the whole list changing at the end.
                             viewModel.refreshLibraryFromDatabase()
+                            playlistsViewModel.refreshSongs()
                         }
                     }
                 }
@@ -1183,6 +1208,7 @@ fun CalmMusic(app: CalmMusic) {
                 onDeleteClick = onDelete,
                 onKeepOnPhoneClick = onKeepOnPhone,
                 onKeepAllClick = onKeepAllOnPhone,
+                canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
             )
         }
         composable(Screen.PlaylistAddSongs.route) {
@@ -1612,6 +1638,7 @@ fun CalmMusic(app: CalmMusic) {
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
                         onKeepAllClick = onKeepAllOnPhone,
+                        canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                     )
                 }
@@ -1638,6 +1665,7 @@ fun CalmMusic(app: CalmMusic) {
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
                         onKeepAllClick = onKeepAllOnPhone,
+                        canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                     )
                 }

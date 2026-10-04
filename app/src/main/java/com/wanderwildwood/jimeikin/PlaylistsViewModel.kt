@@ -45,6 +45,11 @@ class PlaylistsViewModel(
     private val _songsRefreshTrigger = MutableStateFlow(0)
     val songsRefreshTrigger: StateFlow<Int> = _songsRefreshTrigger
 
+    /** An open playlist reads its songs again: a download has changed where some of them live. */
+    fun refreshSongs() {
+        _songsRefreshTrigger.value += 1
+    }
+
     private suspend fun loadPlaylistsFromDb(): List<PlaylistUiModel> {
         val allPlaylistsWithCounts = playlistDao.getAllPlaylistsWithSongCount()
         return allPlaylistsWithCounts.map { playlist ->

@@ -44,6 +44,7 @@ fun AlbumDetailsScreen(
     onDeleteClick: (SongUiModel) -> Unit = {},
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
     onKeepAllClick: (List<SongUiModel>) -> Unit = {},
+    canKeepYouTube: Boolean = false,
     onAddAllToPlaylistClick: (List<SongUiModel>) -> Unit = {},
 ) {
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
@@ -203,7 +204,7 @@ fun AlbumDetailsScreen(
 
                 // Only where there is something to keep: a record already on the phone
                 // needs nothing, and this button would then be a button that does nothing.
-                if (songs.any { it.sourceType == "SUBSONIC" }) {
+                if (songs.hasSongsToKeep(canKeepYouTube)) {
                     IconButton(onClick = { onKeepAllClick(songs) }) {
                         Icon(
                             imageVector = Icons.Download,

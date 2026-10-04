@@ -57,10 +57,12 @@ fun PlaylistDetailsScreen(
     onDeleteClick: (SongUiModel) -> Unit,
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
     onKeepAllClick: (List<SongUiModel>) -> Unit = {},
+    canKeepYouTube: Boolean = false,
 ) {
     // Local State
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var loadedPlaylistId by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
@@ -77,10 +79,13 @@ fun PlaylistDetailsScreen(
             isLoading = false
             return@LaunchedEffect
         }
-        isLoading = true
+        // A reload of the list already showing, after a download, swaps the rows in place
+        // rather than blanking the page for a moment on every song that lands.
+        if (playlistId != loadedPlaylistId) isLoading = true
         errorMessage = null
         try {
             songs = playlistsViewModel.getPlaylistSongs(playlistId)
+            loadedPlaylistId = playlistId
         } catch (e: Exception) {
             errorMessage = e.message ?: loadFailedText
         } finally {
@@ -227,12 +232,10 @@ fun PlaylistDetailsScreen(
                 // Add songs is not here: it is already in the ⋮ menu beside these,
                 // and the title needs the room.
 
-                // A playlist is the thing a reader most wants off the server before
-                // leaving the house, and it was the one list that could not be kept:
-                // an album and an artist each had this button already. Shown only where
-                // something is still on the server, so it never offers work with
-                // nothing behind it.
-                if (songs.any { it.sourceType == "SUBSONIC" }) {
+                // A playlist is the thing a reader most wants on the phone before
+                // leaving the house. Shown only where something is still on a server
+                // or YouTube, so it never offers work with nothing behind it.
+                if (songs.hasSongsToKeep(canKeepYouTube)) {
                     IconButton(
                         onClick = { onKeepAllClick(songs) },
                     ) {
