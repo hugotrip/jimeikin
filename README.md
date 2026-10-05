@@ -114,9 +114,10 @@ Reading.
 
 ## On Glance's lock screen
 
-With [Glance](https://github.com/wanderwildwood/hitome) installed, the song playing or paused
-shows on its lock-screen panel as "Song — Artist", and nothing once playback stops. Settings →
-**Show what is playing in Glance** turns it off.
+With [Glance](https://github.com/wanderwildwood/hitome) installed, and Settings → **Show what is
+playing in Glance** turned on, the song playing or paused shows on its lock-screen panel as
+"Song — Artist", and nothing once playback stops. It is off to begin with, since the app's own
+strip on the lock screen already shows the song.
 
 ## Installing
 

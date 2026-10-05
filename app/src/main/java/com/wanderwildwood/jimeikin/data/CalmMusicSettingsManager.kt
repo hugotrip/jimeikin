@@ -142,9 +142,9 @@ class CalmMusicSettingsManager(context: Context) {
         _keepPlayingSimilar.value = enabled
     }
 
-    /** On unless turned off: what is playing, handed to Glance for its lock-screen panel. */
+    /** Off unless turned on: what is playing, handed to Glance for its lock-screen panel. The app draws its own strip on the lock screen, so the two would otherwise say it twice. */
     fun getPlayingOnLockScreenSync(): Boolean {
-        return prefs.getBoolean(KEY_PLAYING_ON_LOCK_SCREEN, true)
+        return prefs.getBoolean(KEY_PLAYING_ON_LOCK_SCREEN, false)
     }
 
     fun setPlayingOnLockScreen(enabled: Boolean) {
