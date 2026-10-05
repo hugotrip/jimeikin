@@ -24,6 +24,9 @@ class CalmMusicSettingsManager(context: Context) {
     private val _completeAlbumsWithYouTube = MutableStateFlow(getCompleteAlbumsWithYouTubeSync())
     val completeAlbumsWithYouTube: StateFlow<Boolean> = _completeAlbumsWithYouTube.asStateFlow()
 
+    private val _keepPlayingSimilar = MutableStateFlow(getKeepPlayingSimilarSync())
+    val keepPlayingSimilar: StateFlow<Boolean> = _keepPlayingSimilar.asStateFlow()
+
     private val _youtubeAccountCookie = MutableStateFlow(getYouTubeAccountCookieSync())
     val youtubeAccountCookie: StateFlow<String?> = _youtubeAccountCookie.asStateFlow()
 
@@ -129,6 +132,16 @@ class CalmMusicSettingsManager(context: Context) {
         _completeAlbumsWithYouTube.value = enabled
     }
 
+    /** Off unless chosen: when a YouTube song is the last in the queue, add what YouTube plays after it. */
+    fun getKeepPlayingSimilarSync(): Boolean {
+        return prefs.getBoolean(KEY_KEEP_PLAYING_SIMILAR, false)
+    }
+
+    fun setKeepPlayingSimilar(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_KEEP_PLAYING_SIMILAR, enabled) }
+        _keepPlayingSimilar.value = enabled
+    }
+
     private fun getYouTubeAccountCookieSync(): String? {
         // A signed-in cookie is a credential like any other, and is sealed the same way.
         val stored = prefs.getString(KEY_YOUTUBE_ACCOUNT_COOKIE, null) ?: return null
@@ -181,6 +194,7 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_LOCAL_ALBUM_KEY_VERSION = "local_album_key_version"
         private const val KEY_STREAMING_PROVIDER = "streaming_provider"
         private const val KEY_COMPLETE_ALBUMS_WITH_YOUTUBE = "complete_albums_with_youtube"
+        private const val KEY_KEEP_PLAYING_SIMILAR = "keep_playing_similar"
         private const val KEY_YOUTUBE_ACCOUNT_COOKIE = "youtube_account_cookie"
         private const val KEY_LAST_LIBRARY_TAB = "last_library_tab"
     }

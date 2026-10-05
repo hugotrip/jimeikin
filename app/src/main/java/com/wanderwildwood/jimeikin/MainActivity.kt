@@ -207,6 +207,7 @@ fun CalmMusic(app: CalmMusic) {
     val localMusicFolders = localMusicFoldersState.value
     val completeAlbumsWithYouTubeState = settingsManager.completeAlbumsWithYouTube.collectAsState()
     val completeAlbumsWithYouTube = completeAlbumsWithYouTubeState.value
+    val keepPlayingSimilar by settingsManager.keepPlayingSimilar.collectAsState()
     val youtubeAccountCookieState = settingsManager.youtubeAccountCookie.collectAsState()
     val isYoutubeAccountConnected = youtubeAccountCookieState.value != null
     var hasBatteryOptimizationExemption by rememberSaveable { mutableStateOf(false) }
@@ -1789,6 +1790,10 @@ fun CalmMusic(app: CalmMusic) {
                         completeAlbumsWithYouTube = completeAlbumsWithYouTube,
                         onCompleteAlbumsWithYouTubeChange = { enabled ->
                             settingsManager.setCompleteAlbumsWithYouTube(enabled)
+                        },
+                        keepPlayingSimilar = keepPlayingSimilar,
+                        onKeepPlayingSimilarChange = { enabled ->
+                            settingsManager.setKeepPlayingSimilar(enabled)
                         },
                         localFolders = localMusicFolders.toList(),
                         isYoutubeAccountConnected = isYoutubeAccountConnected,

@@ -23,6 +23,9 @@ interface YouTubeMusicInnertubeClient {
 
     suspend fun getArtistPage(browseId: String): InnertubeArtistPage
 
+    /** What YouTube Music itself would play after [videoId]: its own radio for that song. */
+    suspend fun getUpNext(videoId: String): List<InnertubeSongResult>
+
     suspend fun getBestAudioUrl(videoId: String): String
 }
 
@@ -71,6 +74,8 @@ private val VISITOR_DATA_REGEX: Regex = Regex("\"visitorData\":\"([^\"]+)\"")
 private const val PARAMS_SONGS: String = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D"
 private const val PARAMS_ALBUMS: String = "EgWKAQIYAWoKEAkQChAFEAMQBA%3D%3D"
 private const val PARAMS_ARTISTS: String = "EgWKAQIgAWoKEAkQChAFEAMQBA%3D%3D"
+private const val NEXT_URL: String =
+    "https://youtubei.googleapis.com/youtubei/v1/next?prettyPrint=false&key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"
 private const val BROWSE_URL: String =
     "https://youtubei.googleapis.com/youtubei/v1/browse?prettyPrint=false&key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"
 
@@ -248,6 +253,101 @@ internal class YouTubeMusicInnertubeClientImpl(
                 parseArtistPage(JSONObject(bodyString))
             }
         }
+    }
+
+    override suspend fun getUpNext(videoId: String): List<InnertubeSongResult> {
+        if (videoId.isBlank()) return emptyList()
+
+        return withContext(Dispatchers.IO) {
+            val context = JSONObject().apply {
+                put("client", JSONObject().apply {
+                    put("clientName", "WEB_REMIX")
+                    put("clientVersion", "1.20250101.01.00")
+                    put("hl", "en")
+                    put("gl", "US")
+                })
+            }
+            // "RDAMVM" + the song is the playlist music.youtube.com opens when a song is
+            // started on its own: the song first, then what it chooses to follow it.
+            val bodyJson = JSONObject().apply {
+                put("context", context)
+                put("videoId", videoId)
+                put("playlistId", "RDAMVM$videoId")
+                put("isAudioOnly", true)
+            }
+            val requestBuilder = Request.Builder()
+                .url(NEXT_URL)
+                .post(bodyJson.toString().toRequestBody(jsonMediaType))
+            applyAuthHeaders(requestBuilder)
+
+            try {
+                httpClient.newCall(requestBuilder.build()).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext emptyList()
+                    val bodyString = response.body?.string() ?: return@withContext emptyList()
+                    parseUpNext(JSONObject(bodyString))
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("Innertube", "up next failed for $videoId", e)
+                emptyList()
+            }
+        }
+    }
+
+    private fun parseUpNext(root: JSONObject): List<InnertubeSongResult> {
+        val panel = root.optJSONObject("contents")
+            ?.optJSONObject("singleColumnMusicWatchNextResultsRenderer")
+            ?.optJSONObject("tabbedRenderer")
+            ?.optJSONObject("watchNextTabbedResultsRenderer")
+            ?.optJSONArray("tabs")
+            ?.optJSONObject(0)
+            ?.optJSONObject("tabRenderer")
+            ?.optJSONObject("content")
+            ?.optJSONObject("musicQueueRenderer")
+            ?.optJSONObject("content")
+            ?.optJSONObject("playlistPanelRenderer")
+            ?.optJSONArray("contents")
+            ?: return emptyList()
+
+        val results = mutableListOf<InnertubeSongResult>()
+        for (i in 0 until panel.length()) {
+            val renderer = panel.optJSONObject(i)?.optJSONObject("playlistPanelVideoRenderer") ?: continue
+            val videoId = renderer.optString("videoId").takeIf { it.isNotBlank() } ?: continue
+            val title = renderer.optJSONObject("title")?.optJSONArray("runs")
+                ?.optJSONObject(0)?.optString("text").orEmpty()
+            if (title.isBlank()) continue
+
+            // The byline reads "Artist • Album • Year", each part a run; the browse id on a
+            // run says which part it is.
+            var artist: String? = null
+            var album: String? = null
+            val byline = renderer.optJSONObject("longBylineText")?.optJSONArray("runs")
+            if (byline != null) {
+                for (k in 0 until byline.length()) {
+                    val run = byline.optJSONObject(k) ?: continue
+                    val text = run.optString("text").trim()
+                    val browseId = run.optJSONObject("navigationEndpoint")
+                        ?.optJSONObject("browseEndpoint")?.optString("browseId").orEmpty()
+                    when {
+                        artist == null && browseId.startsWith("UC") -> artist = text
+                        album == null && browseId.startsWith("MPRE") -> album = text
+                    }
+                }
+                if (artist == null) {
+                    artist = byline.optJSONObject(0)?.optString("text")?.trim()
+                }
+            }
+            val durationText = renderer.optJSONObject("lengthText")?.optJSONArray("runs")
+                ?.optJSONObject(0)?.optString("text")
+
+            results += InnertubeSongResult(
+                videoId = videoId,
+                title = title,
+                artist = artist?.takeIf { it.isNotBlank() } ?: "Unknown artist",
+                album = album,
+                durationMillis = durationText?.let { parseDurationToMillis(it) },
+            )
+        }
+        return results
     }
 
     private suspend fun searchInternal(

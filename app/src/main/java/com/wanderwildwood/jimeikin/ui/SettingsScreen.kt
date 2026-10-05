@@ -54,6 +54,8 @@ import com.wanderwildwood.jimeikin.R
 fun SettingsScreen(
     completeAlbumsWithYouTube: Boolean,
     onCompleteAlbumsWithYouTubeChange: (Boolean) -> Unit,
+    keepPlayingSimilar: Boolean,
+    onKeepPlayingSimilarChange: (Boolean) -> Unit,
     localFolders: List<String>,
     isYoutubeAccountConnected: Boolean,
     onConnectYoutubeAccountClick: () -> Unit,
@@ -209,6 +211,14 @@ fun SettingsScreen(
                 label = stringResource(R.string.settings_fill_album_gaps),
                 checked = completeAlbumsWithYouTube,
                 onCheckedChange = onCompleteAlbumsWithYouTubeChange,
+            )
+        }
+
+        item {
+            SwitchRow(
+                label = stringResource(R.string.settings_keep_playing_similar),
+                checked = keepPlayingSimilar,
+                onCheckedChange = onKeepPlayingSimilarChange,
             )
         }
 

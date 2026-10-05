@@ -393,6 +393,8 @@
     <!-- Settings screen: the rows below the folders -->
     <!-- Switch: fetch an album's missing tracks from YouTube -->
     <string name="settings_fill_album_gaps">Fill in album gaps from YouTube</string>
+    <!-- Switch row: when the last song in the queue is a YouTube song, add the songs YouTube Music would play after it -->
+    <string name="settings_keep_playing_similar">Keep playing similar songs from YouTube</string>
     <!-- Row title: whether the app may keep playing in the background -->
     <!-- Settings row for the optional lock-screen music controls, which are turned on in Android's Accessibility settings -->
     <string name="settings_lockscreen_controls">Lock-screen controls</string>

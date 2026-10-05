@@ -78,6 +78,9 @@ private fun playsOnThisPhone(sourceType: String?): Boolean =
  */
 private const val RESTART_RATHER_THAN_PREVIOUS_MS = 3_000L
 
+/** How many similar songs go on the end at a time; the last of them asks for more. */
+private const val SIMILAR_BATCH = 20
+
 class CalmMusicViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
@@ -98,6 +101,9 @@ class CalmMusicViewModel(
     private var localPlaybackMonitorJob: Job? = null
 
     private var lastCompletedSongId: String? = null
+
+    /** The last song similar songs were looked up for, so each is asked about once. */
+    private var lastSimilarSeedId: String? = null
 
     private val _librarySongs = MutableStateFlow<List<SongUiModel>>(emptyList())
     val librarySongs: StateFlow<List<SongUiModel>> = _librarySongs
@@ -858,6 +864,51 @@ class CalmMusicViewModel(
         if (wasInitialized) playbackCoordinator.localQueueInitialized = true
     }
 
+    /**
+     * With "Keep playing similar songs" on, the last song in the queue being a YouTube song is
+     * the moment to ask YouTube Music what it would play next, and add that to the end. It is
+     * asked while the song plays rather than when it ends, so the next one follows without a
+     * gap, and the songs it adds show in the queue like any other. The last of those, in its
+     * turn, asks again.
+     *
+     * Nothing is added under repeat: the listener has said what to play after the end.
+     */
+    private fun addSimilarIfLast(state: PlaybackState, controller: MediaController) {
+        val queue = state.playbackQueue
+        val index = state.playbackQueueIndex ?: return
+        if (index != queue.lastIndex) return
+        val seed = queue[index]
+        if (seed.sourceType != "YOUTUBE" || state.repeatMode != RepeatMode.OFF) return
+        if (seed.id == lastSimilarSeedId) return
+        if (!app.settingsManager.getKeepPlayingSimilarSync()) return
+        lastSimilarSeedId = seed.id
+
+        viewModelScope.launch {
+            val found = app.youTubeInnertubeClient.getUpNext(seed.audioUri ?: seed.id)
+            val current = _playbackState.value
+            // The listener may have started something else while YouTube answered.
+            if (current.playbackQueue.lastOrNull()?.id != seed.id) return@launch
+            val inQueue = current.playbackQueue.map { it.id }.toSet()
+            val songs = found
+                .filter { it.videoId !in inQueue }
+                .distinctBy { it.videoId }
+                .take(SIMILAR_BATCH)
+                .map { item ->
+                    SongUiModel(
+                        id = item.videoId,
+                        title = item.title,
+                        artist = item.artist,
+                        durationText = formatDurationMillis(item.durationMillis),
+                        durationMillis = item.durationMillis,
+                        sourceType = "YOUTUBE",
+                        audioUri = item.videoId,
+                        album = item.album,
+                    )
+                }
+            if (songs.isNotEmpty()) enqueue(songs, playNext = false, localController = controller)
+        }
+    }
+
     fun playNextInQueue(localController: MediaController?) {
         val state = _playbackState.value
         val queue = state.playbackQueue
@@ -1177,6 +1228,8 @@ class CalmMusicViewModel(
                         )
                     }
                 }
+
+                if (isYouTube) addSimilarIfLast(state, controller)
 
                 // Handle End-of-Track / End-of-Segment Auto-Advance
                 if (playbackState == Player.STATE_ENDED && currentSong != null) {
