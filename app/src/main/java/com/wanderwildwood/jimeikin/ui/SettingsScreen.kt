@@ -223,6 +223,22 @@ fun SettingsScreen(
         }
 
         item {
+            // Read and written here rather than passed down: nothing else on this screen, or in
+            // the app, follows it. Glance asks for it each time it draws.
+            val settings = (context.applicationContext as com.wanderwildwood.jimeikin.CalmMusic).settingsManager
+            var playingOnLockScreen by remember { mutableStateOf(settings.getPlayingOnLockScreenSync()) }
+            SwitchRow(
+                label = stringResource(R.string.settings_playing_on_lock_screen),
+                checked = playingOnLockScreen,
+                onCheckedChange = { on ->
+                    playingOnLockScreen = on
+                    settings.setPlayingOnLockScreen(on)
+                    com.wanderwildwood.jimeikin.glance.GlanceProvider.changed(context)
+                },
+            )
+        }
+
+        item {
             ValueRow(
                 label = stringResource(R.string.settings_background_playback),
                 value = if (hasBatteryOptimizationExemption) {

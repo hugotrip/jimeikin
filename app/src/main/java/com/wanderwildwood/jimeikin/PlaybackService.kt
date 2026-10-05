@@ -29,6 +29,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.wanderwildwood.jimeikin.glance.NowPlaying
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import okhttp3.ConnectionPool
@@ -96,6 +97,12 @@ class PlaybackService : MediaSessionService() {
             override fun onPlayerError(error: PlaybackException) {
                 errorCallback?.invoke(error)
                 super.onPlayerError(error)
+            }
+
+            // Whatever changed - a new song, play, pause, a stop - Glance's line is worked out
+            // again, and Glance is told only if the line is now different.
+            override fun onEvents(player: Player, events: Player.Events) {
+                publishNowPlaying(player)
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -245,6 +252,26 @@ class PlaybackService : MediaSessionService() {
         return DefaultDataSource.Factory(this, networkAndCacheStack)
     }
 
+    /** What is loaded, for Glance's lock-screen panel; nothing while stopped or finished. */
+    private fun publishNowPlaying(player: Player) {
+        val item = player.currentMediaItem
+        val idle = player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED
+        val meta = player.mediaMetadata
+        val title = meta.title?.toString()?.takeIf { it.isNotBlank() }
+        NowPlaying.set(
+            this,
+            if (item == null || idle || title == null) {
+                null
+            } else {
+                NowPlaying.Now(
+                    title = title,
+                    artist = meta.artist?.toString()?.takeIf { it.isNotBlank() },
+                    isPlaying = player.playWhenReady,
+                )
+            },
+        )
+    }
+
     private fun createNotificationChannel() {
         val name = getString(R.string.service_playback_channel_name)
         val descriptionText = getString(R.string.service_playback_channel_description)
@@ -298,6 +325,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         _activeSession.value = null
+        NowPlaying.set(this, null)
         mediaSession?.run {
             player.release()
             release()

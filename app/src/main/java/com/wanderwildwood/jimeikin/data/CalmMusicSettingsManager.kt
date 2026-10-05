@@ -142,6 +142,15 @@ class CalmMusicSettingsManager(context: Context) {
         _keepPlayingSimilar.value = enabled
     }
 
+    /** On unless turned off: what is playing, handed to Glance for its lock-screen panel. */
+    fun getPlayingOnLockScreenSync(): Boolean {
+        return prefs.getBoolean(KEY_PLAYING_ON_LOCK_SCREEN, true)
+    }
+
+    fun setPlayingOnLockScreen(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_PLAYING_ON_LOCK_SCREEN, enabled) }
+    }
+
     private fun getYouTubeAccountCookieSync(): String? {
         // A signed-in cookie is a credential like any other, and is sealed the same way.
         val stored = prefs.getString(KEY_YOUTUBE_ACCOUNT_COOKIE, null) ?: return null
@@ -197,5 +206,6 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_KEEP_PLAYING_SIMILAR = "keep_playing_similar"
         private const val KEY_YOUTUBE_ACCOUNT_COOKIE = "youtube_account_cookie"
         private const val KEY_LAST_LIBRARY_TAB = "last_library_tab"
+        private const val KEY_PLAYING_ON_LOCK_SCREEN = "playing_on_lock_screen"
     }
 }

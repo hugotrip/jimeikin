@@ -104,6 +104,20 @@ Needs headphones — they are the aerial.
 One now-playing queue, mixing local files and YouTube tracks. Shuffle and repeat without
 losing your place. The Now Playing screen is large type and little else.
 
+## Opening a file from another app
+
+Music Box is offered for any audio file — "Open with" in a file manager, a download, an
+attachment. The file plays at once, on its own, through the same player and notification as
+everything else, named by its own title tag or else by its file name. It is not added to the
+library; the library is the folders chosen in Settings. Audiobooks (m4b) are left to Audio
+Reading.
+
+## On Glance's lock screen
+
+With [Glance](https://github.com/wanderwildwood/hitome) installed, the song playing or paused
+shows on its lock-screen panel as "Song — Artist", and nothing once playback stops. Settings →
+**Show what is playing in Glance** turns it off.
+
 ## Installing
 
 Android 9 (API 28) or newer. Download the APK from
@@ -125,8 +139,10 @@ outcome rather than a shortcoming.
 
 It asks for five permissions and uses all five: the network, a foreground service and its
 notification for playback, and an exemption from battery optimisation so the system is less
-likely to stop it. It does not ask for storage — folders are reached through the system
-picker, which grants this app that folder and nothing else.
+likely to stop it. The library does not need storage access — folders are reached through the
+system picker, which grants this app that folder and nothing else. Access to music files is
+asked for only when another app hands over a file by its path rather than sharing it, which is
+the one way a file opened from elsewhere cannot be read without it.
 
 **That is all of them**, and one optional service besides. **Lock-screen controls** are an
 accessibility service, off until you turn it on in Android's Accessibility settings (Settings →

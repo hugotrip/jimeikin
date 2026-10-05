@@ -395,6 +395,8 @@
     <string name="settings_fill_album_gaps">Fill in album gaps from YouTube</string>
     <!-- Switch row: when the last song in the queue is a YouTube song, add the songs YouTube Music would play after it -->
     <string name="settings_keep_playing_similar">Keep playing similar songs from YouTube</string>
+    <!-- Settings switch: the song playing is handed to the Glance app for its lock-screen panel -->
+    <string name="settings_playing_on_lock_screen">Show what is playing in Glance</string>
     <!-- Row title: whether the app may keep playing in the background -->
     <!-- Settings row for the optional lock-screen music controls, which are turned on in Android's Accessibility settings -->
     <string name="settings_lockscreen_controls">Lock-screen controls</string>
@@ -600,4 +602,12 @@
     <string name="service_subsonic_not_allowed">That account is not allowed to read the library.</string>
     <string name="service_subsonic_refused">The server refused the request.</string>
     <string name="service_subsonic_unreachable">The server could not be reached.</string>
+
+    <!-- On Glance's lock-screen panel, beside "Song — Artist" -->
+    <string name="glance_playing">Playing</string>
+    <string name="glance_paused">Paused</string>
+
+    <!-- A file opened from another app, such as a file manager -->
+    <string name="opened_file_unreadable">Could not open that file</string>
+    <string name="opened_file_needs_access">Music Box needs access to music files to play that one</string>
 </resources>

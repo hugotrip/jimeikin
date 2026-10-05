@@ -97,6 +97,7 @@ import com.wanderwildwood.jimeikin.ui.ArtistDetailsScreen
 import com.wanderwildwood.jimeikin.ui.ArtistsScreen
 import com.wanderwildwood.jimeikin.ui.DownloadsScreen
 import com.wanderwildwood.jimeikin.ui.NowPlayingScreen
+import com.wanderwildwood.jimeikin.playback.OpenedFile
 import com.wanderwildwood.jimeikin.ui.PlaylistAddSongsScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistDetailsScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistEditScreen
@@ -135,12 +136,18 @@ class MainActivity : ComponentActivity() {
         @androidx.annotation.OptIn(UnstableApi::class)
         get() = application as CalmMusic
 
+    /** An audio file another app has asked this one to play, until it has been started. */
+    private val opened = mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Only a fresh start: an activity rebuilt after rotating, or after Android reclaimed it,
+        // is handed the same intent again, and the file was played the first time.
+        if (savedInstanceState == null) takeOpenedFile(intent)
         setContent {
             ThemeMMD(colorScheme = monochrome) {
                 CompositionLocalProvider(LocalTopBarActions provides remember { TopBarActionsSlot() }) {
-                    CalmMusic(app)
+                    CalmMusic(app, openedFile = opened.value, onOpenedFileTaken = { opened.value = null })
                 }
             }
         }
@@ -149,13 +156,23 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        takeOpenedFile(intent)
+    }
+
+    private fun takeOpenedFile(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        intent.data?.let { opened.value = it }
     }
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalmMusic(app: CalmMusic) {
+fun CalmMusic(
+    app: CalmMusic,
+    openedFile: Uri? = null,
+    onOpenedFileTaken: () -> Unit = {},
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -1048,6 +1065,68 @@ fun CalmMusic(app: CalmMusic) {
             }, ContextCompat.getMainExecutor(context))
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to connect to PlaybackService", e)
+        }
+    }
+
+    // A file another app handed over, played on its own as soon as there is a player to play
+    // it. Also after the library's first load, which puts the last queue back and would
+    // otherwise land on top of this one.
+    var fileToOpen by remember { mutableStateOf<Uri?>(null) }
+    LaunchedEffect(openedFile) {
+        if (openedFile != null) {
+            fileToOpen = openedFile
+            onOpenedFileTaken()
+        }
+    }
+    var fileWaitingForAccess by remember { mutableStateOf<Uri?>(null) }
+    val askForMediaAccess = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val uri = fileWaitingForAccess
+        fileWaitingForAccess = null
+        if (granted) {
+            fileToOpen = uri
+        } else {
+            libraryScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = context.getString(R.string.opened_file_needs_access),
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
+        }
+    }
+    LaunchedEffect(fileToOpen, localMediaController, isLoadingSongs) {
+        val uri = fileToOpen ?: return@LaunchedEffect
+        if (localMediaController == null || isLoadingSongs) return@LaunchedEffect
+        // Taken off before the work is started elsewhere: clearing it changes this effect's
+        // key, which cancels the effect, and would cancel the reading with it.
+        fileToOpen = null
+        libraryScope.launch {
+            val song = withContext(Dispatchers.IO) { OpenedFile.read(appContext, uri) }
+            if (song != null) {
+                startPlaybackFromQueue(queue = listOf(song), startIndex = 0)
+                return@launch
+            }
+            // A file named by its path can only be read with access to the phone's music files,
+            // which is asked for here, when it is needed, and nowhere else.
+            val permission = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                android.Manifest.permission.READ_MEDIA_AUDIO
+            } else {
+                android.Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+            val allowed = ContextCompat.checkSelfPermission(context, permission) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (OpenedFile.needsMediaAccess(uri) && !allowed) {
+                fileWaitingForAccess = uri
+                askForMediaAccess.launch(permission)
+            } else {
+                snackbarHostState.showSnackbar(
+                    message = context.getString(R.string.opened_file_unreadable),
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
         }
     }
 

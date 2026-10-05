@@ -7,6 +7,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!--
+        Asked for only when another app hands over a file by its path (file://) rather than
+        sharing it, which is the one case the file cannot be read without it. Shared files, and
+        the library's own folders, need neither.
+    -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <application
         android:name=".CalmMusic"
@@ -54,7 +61,71 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- "Open with": one audio file from a file manager or anywhere else, played now. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/x-ogg" />
+            </intent-filter>
+            <!--
+                The same, where the sender could not say what the file is and only its name
+                does: a type that says nothing, or no type at all. pathPattern needs a host, and
+                one pattern per dot a name may hold before its extension, so each comes twice.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.mp3" />
+                <data android:pathPattern=".*\\..*\\.mp3" />
+                <data android:pathPattern=".*\\.m4a" />
+                <data android:pathPattern=".*\\..*\\.m4a" />
+                <data android:pathPattern=".*\\.flac" />
+                <data android:pathPattern=".*\\..*\\.flac" />
+                <data android:pathPattern=".*\\.ogg" />
+                <data android:pathPattern=".*\\..*\\.ogg" />
+                <data android:pathPattern=".*\\.opus" />
+                <data android:pathPattern=".*\\..*\\.opus" />
+                <data android:pathPattern=".*\\.wav" />
+                <data android:pathPattern=".*\\..*\\.wav" />
+                <data android:pathPattern=".*\\.aac" />
+                <data android:pathPattern=".*\\..*\\.aac" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.mp3" />
+                <data android:pathPattern=".*\\..*\\.mp3" />
+                <data android:pathPattern=".*\\.m4a" />
+                <data android:pathPattern=".*\\..*\\.m4a" />
+                <data android:pathPattern=".*\\.flac" />
+                <data android:pathPattern=".*\\..*\\.flac" />
+                <data android:pathPattern=".*\\.ogg" />
+                <data android:pathPattern=".*\\..*\\.ogg" />
+                <data android:pathPattern=".*\\.opus" />
+                <data android:pathPattern=".*\\..*\\.opus" />
+                <data android:pathPattern=".*\\.wav" />
+                <data android:pathPattern=".*\\..*\\.wav" />
+                <data android:pathPattern=".*\\.aac" />
+                <data android:pathPattern=".*\\..*\\.aac" />
+            </intent-filter>
         </activity>
+
+        <!-- What is playing, for Glance's lock-screen panel; it answers Glance alone. -->
+        <provider
+            android:name=".glance.PlayingOnLockScreen"
+            android:authorities="com.wanderwildwood.jimeikin.glance"
+            android:exported="true" />
     </application>
 
     <queries>
