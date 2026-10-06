@@ -67,6 +67,7 @@ fun NowPlayingScreen(
     onShuffleClick: () -> Unit,
     onRepeatClick: () -> Unit,
     onAddToPlaylistClick: () -> Unit,
+    onUpNextClick: (() -> Unit)? = null,
     onBackClick: () -> Unit = {},
     onArtistClick: (() -> Unit)? = null,
     onAlbumClick: (() -> Unit)? = null,
@@ -227,9 +228,34 @@ fun NowPlayingScreen(
         // far end of the page from them.
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // The way into the queue. On the left of this line, which was empty, rather than
+            // a fifth icon on the one above: four already leave the title little enough, and
+            // an icon alone would not say what it opens. A live stream is never in a queue.
+            if (onUpNextClick != null && !isLive) {
+                Row(
+                    modifier = Modifier
+                        .clickable(onClick = onUpNextClick)
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.QueueMusic,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextMMD(
+                        text = stringResource(R.string.player_up_next),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
             val isLocal = sourceType == "LOCAL_FILE" ||
                 sourceType == "YOUTUBE_DOWNLOAD" ||
                 sourceType == "SUBSONIC_DOWNLOAD"

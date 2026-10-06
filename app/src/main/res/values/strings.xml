@@ -227,6 +227,19 @@
     <!-- Now Playing screen: top bar -->
     <string name="player_back">Back</string>
     <string name="player_now_playing_title">Now playing</string>
+    <!-- Now Playing: opens the page listing the songs still to come -->
+    <string name="player_up_next">Up next</string>
+    <string name="queue_title">Up next</string>
+    <string name="queue_playing">Playing</string>
+    <string name="queue_nothing_after">Nothing after this song</string>
+    <plurals name="queue_songs_to_come">
+        <item quantity="one">%1$d song to come</item>
+        <item quantity="other">%1$d songs to come</item>
+    </plurals>
+    <string name="queue_move_up">Play earlier</string>
+    <string name="queue_move_down">Play later</string>
+    <string name="queue_remove">Take out of the queue</string>
+    <string name="queue_save_as_playlist">Save as playlist</string>
     <!-- Now Playing: small button that cancels a download in progress (a verb) -->
     <string name="player_download_stop">Stop</string>
     <string name="player_delete_download">Delete download</string>

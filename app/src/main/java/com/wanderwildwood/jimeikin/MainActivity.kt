@@ -85,6 +85,7 @@ import com.wanderwildwood.jimeikin.data.StreamingProvider
 import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.buildSearchResults
 import com.wanderwildwood.jimeikin.ui.SearchResult
+import com.wanderwildwood.jimeikin.ui.UpNextScreen
 import com.wanderwildwood.jimeikin.ui.AboutDialog
 import com.wanderwildwood.jimeikin.ui.EditDetailsScreen
 import com.wanderwildwood.jimeikin.ui.LocalIsDownloaded
@@ -393,9 +394,15 @@ fun CalmMusic(
     var isPlaybackPlaying = playbackState.isPlaybackPlaying
 
     var showNowPlaying by remember { mutableStateOf(false) }
+    var showUpNext by remember { mutableStateOf(false) }
+    // Up next opens over Now Playing, and leaving Now Playing by any road leaves it too, so
+    // the next song pressed does not open on the queue.
+    LaunchedEffect(showNowPlaying) {
+        if (!showNowPlaying) showUpNext = false
+    }
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
     var songsToAddToPlaylist by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
-    var pendingAddToNewPlaylistSong by remember { mutableStateOf<SongUiModel?>(null) }
+    var pendingAddToNewPlaylistSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
 
     var searchQuery by remember { mutableStateOf("") }
     var searchSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
@@ -636,9 +643,9 @@ fun CalmMusic(
     fun addSongsToPlaylist(songs: List<SongUiModel>, playlist: PlaylistUiModel) {
         playlistScope.launch {
             val message = try {
-                val result = playlistsViewModel.addSongsToPlaylist(
+                val result = playlistsViewModel.addSongsInOrder(
                     playlistId = playlist.id,
-                    selectedSongIds = songs.map { it.id }.toSet(),
+                    songs = songs,
                 )
                 libraryPlaylists = libraryPlaylists.map { existingPlaylist ->
                     if (existingPlaylist.id == playlist.id) {
@@ -1358,7 +1365,7 @@ fun CalmMusic(
                         var navigatedToDetails = false
                         var shouldPopBack = false
                         try {
-                            val songToAdd = pendingAddToNewPlaylistSong
+                            val songsToAdd = pendingAddToNewPlaylistSongs
                             val editingPlaylist = editing
 
                             val result = playlistsViewModel.createOrUpdatePlaylist(
@@ -1366,7 +1373,7 @@ fun CalmMusic(
                                     playlistId = editingPlaylist?.id,
                                     name = trimmed,
                                     description = editingPlaylist?.description,
-                                    songToAdd = songToAdd,
+                                    songsToAdd = songsToAdd,
                                 )
                             )
 
@@ -1401,7 +1408,7 @@ fun CalmMusic(
                         } catch (_: Exception) {
                             shouldPopBack = true
                         } finally {
-                            pendingAddToNewPlaylistSong = null
+                            pendingAddToNewPlaylistSongs = emptyList()
                             if (shouldPopBack && !navigatedToDetails) {
                                 navController.popBackStack()
                             }
@@ -1409,7 +1416,7 @@ fun CalmMusic(
                     }
                 },
                 onCancel = {
-                    pendingAddToNewPlaylistSong = null
+                    pendingAddToNewPlaylistSongs = emptyList()
                     navController.popBackStack()
                 },
             )
@@ -1524,7 +1531,7 @@ fun CalmMusic(
                         },
                         onPlaylistDetailsRenameClick = {
                             isPlaylistDetailsMenuExpanded = false
-                            pendingAddToNewPlaylistSong = null
+                            pendingAddToNewPlaylistSongs = emptyList()
                             playlistAddSongsSelectionIds = emptySet()
                             navController.navigate(Screen.PlaylistEdit.route) { launchSingleTop = true }
                         },
@@ -2138,6 +2145,7 @@ fun CalmMusic(
                     songsToAddToPlaylist = listOfNotNull(playbackState.nowPlayingSong)
                     showAddToPlaylistDialog = true
                 },
+                onUpNextClick = { showUpNext = true },
                 onBackClick = { showNowPlaying = false },
                 // A station has no artist or album of its own - those lines carry what the
                 // stream says is playing - so they lead nowhere on the radio.
@@ -2237,6 +2245,25 @@ fun CalmMusic(
                 sourceType = song.sourceType,
                 streamResolverLabel = if (song.sourceType == "YOUTUBE") overlayState.streamResolverLabel else null,
             )
+
+            if (showUpNext) {
+                BackHandler {
+                    showUpNext = false
+                }
+
+                UpNextScreen(
+                    queue = playbackState.playbackQueue,
+                    currentIndex = playbackState.playbackQueueIndex ?: 0,
+                    onBackClick = { showUpNext = false },
+                    onSongClick = { at -> viewModel.playFromQueue(at, localMediaController) },
+                    onMove = { from, to -> viewModel.moveInQueue(from, to, localMediaController) },
+                    onRemove = { at -> viewModel.removeFromQueue(at, localMediaController) },
+                    onSaveAsPlaylist = {
+                        songsToAddToPlaylist = playbackState.playbackQueue
+                        showAddToPlaylistDialog = true
+                    },
+                )
+            }
         }
 
         if (showAddToPlaylistDialog && songsToAddToPlaylist.isNotEmpty()) {
@@ -2322,7 +2349,7 @@ fun CalmMusic(
 
                     ButtonMMD(
                         onClick = {
-                            pendingAddToNewPlaylistSong = song
+                            pendingAddToNewPlaylistSongs = songs
                             showAddToPlaylistDialog = false
                             showNowPlaying = false
                             selectedPlaylist = null

@@ -80,7 +80,7 @@ class PlaylistsViewModel(
         val playlistId: String?, // null = new
         val name: String,
         val description: String? = null,
-        val songToAdd: SongUiModel? = null,
+        val songsToAdd: List<SongUiModel> = emptyList(),
     )
 
     data class EditPlaylistResult(
@@ -198,6 +198,61 @@ class PlaylistsViewModel(
         }
     }
 
+    /**
+     * Songs onto the end of a playlist in the order given - an album's running order, or the
+     * queue's. Unlike [addSongsToPlaylist] these need not be in the library already: a queue
+     * holds YouTube songs streamed from a search, and they are added the way one song from
+     * Now Playing always was.
+     */
+    suspend fun addSongsInOrder(
+        playlistId: String,
+        songs: List<SongUiModel>,
+    ): AddSongsToPlaylistResult {
+        return withContext(Dispatchers.IO) {
+            val added = appendSongs(playlistId, songs)
+            val total = playlistDao.getSongsForPlaylist(playlistId).size
+            _songsRefreshTrigger.value += 1
+            AddSongsToPlaylistResult(
+                addedCount = added,
+                totalSongCount = total,
+                allSelectedAlreadyPresent = added == 0,
+            )
+        }
+    }
+
+    /** Returns how many went in; a song the playlist has already, or twice over, goes in once. */
+    private suspend fun appendSongs(playlistId: String, songs: List<SongUiModel>): Int {
+        val existingIds = playlistDao.getSongsForPlaylist(playlistId).map { it.id }.toSet()
+        val toAdd = songs.distinctBy { it.id }.filter { it.id !in existingIds }
+        if (toAdd.isEmpty()) return 0
+
+        songDao.insertIfAbsent(
+            toAdd.map { song ->
+                SongEntity(
+                    id = song.id,
+                    title = song.title,
+                    artist = song.artist,
+                    album = null,
+                    albumId = null,
+                    discNumber = null,
+                    trackNumber = song.trackNumber,
+                    durationMillis = song.durationMillis,
+                    sourceType = song.sourceType,
+                    audioUri = song.audioUri ?: song.id,
+                    artistId = null,
+                    releaseYear = null,
+                )
+            }
+        )
+        val start = playlistDao.nextTrackPosition(playlistId)
+        playlistDao.upsertTracks(
+            toAdd.mapIndexed { offset, song ->
+                PlaylistTrackEntity(playlistId = playlistId, songId = song.id, position = start + offset)
+            }
+        )
+        return toAdd.size
+    }
+
     suspend fun removeSongsFromPlaylist(
         playlistId: String,
         songIds: Set<String>,
@@ -237,31 +292,10 @@ class PlaylistsViewModel(
                 playlistDao.upsertPlaylist(entity)
             }
 
-            // Optionally add a single song to the playlist (used when creating from Now Playing).
-            params.songToAdd?.let { songToAdd ->
-                val songEntity = SongEntity(
-                    id = songToAdd.id,
-                    title = songToAdd.title,
-                    artist = songToAdd.artist,
-                    album = null,
-                    albumId = null,
-                    discNumber = null,
-                    trackNumber = songToAdd.trackNumber,
-                    durationMillis = songToAdd.durationMillis,
-                    sourceType = songToAdd.sourceType,
-                    audioUri = songToAdd.audioUri ?: songToAdd.id,
-                    artistId = null,
-                    releaseYear = null,
-                )
-                songDao.insertIfAbsent(listOf(songEntity))
-                val existing = playlistDao.getSongsForPlaylist(playlistId)
-                val position = existing.size
-                val track = PlaylistTrackEntity(
-                    playlistId = playlistId,
-                    songId = songToAdd.id,
-                    position = position,
-                )
-                playlistDao.upsertTracks(listOf(track))
+            // The songs a new playlist was made for: one from Now Playing, or an album, an
+            // artist or the queue from the add-to-playlist sheet.
+            if (params.songsToAdd.isNotEmpty()) {
+                appendSongs(playlistId, params.songsToAdd)
             }
 
             val updatedSongs = playlistDao.getSongsForPlaylist(playlistId)

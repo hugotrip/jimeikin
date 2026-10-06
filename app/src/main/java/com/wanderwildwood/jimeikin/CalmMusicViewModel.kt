@@ -932,6 +932,110 @@ class CalmMusicViewModel(
     }
 
     /**
+     * Up next's arrows: one song still to come, moved a place earlier or later. Only what is
+     * after the song playing moves, and only among itself, so the song playing keeps its place
+     * and goes on playing.
+     */
+    fun moveInQueue(from: Int, to: Int, localController: MediaController?) {
+        val state = _playbackState.value
+        val queue = state.playbackQueue
+        val index = state.playbackQueueIndex ?: return
+        if (from == to || from <= index || to <= index || from !in queue.indices || to !in queue.indices) return
+
+        val newQueue = queue.toMutableList().apply { add(to, removeAt(from)) }
+        // Under shuffle the order shuffle goes back to is the album's, and moving a song in
+        // the shuffled order says nothing about that one.
+        val newOriginal = if (state.isShuffleOn) state.originalPlaybackQueue else newQueue
+        applyQueueEdit(state, newQueue, index, newOriginal, localController)
+    }
+
+    /** Up next's cross: a song still to come taken out of the queue. Not the one playing. */
+    fun removeFromQueue(at: Int, localController: MediaController?) {
+        val state = _playbackState.value
+        val queue = state.playbackQueue
+        val index = state.playbackQueueIndex ?: return
+        if (at <= index || at !in queue.indices) return
+
+        val removed = queue[at]
+        val newQueue = queue.toMutableList().apply { removeAt(at) }
+        val newOriginal = if (state.isShuffleOn) {
+            state.originalPlaybackQueue.toMutableList().apply {
+                val there = indexOfFirst { it.id == removed.id }
+                if (there >= 0) removeAt(there)
+            }
+        } else {
+            newQueue
+        }
+        applyQueueEdit(state, newQueue, index, newOriginal, localController)
+    }
+
+    /** A row in Up next pressed: the queue stays as it is and plays on from that song. */
+    fun playFromQueue(at: Int, localController: MediaController?) {
+        val queue = _playbackState.value.playbackQueue
+        if (at !in queue.indices) return
+        startPlaybackFromQueue(
+            queue = queue,
+            startIndex = at,
+            isNewQueue = false,
+            localController = localController,
+        )
+    }
+
+    /**
+     * A change to the songs after the one playing, made without interrupting it.
+     *
+     * The list is this app's, but the player holds its own copy of the run of songs it can
+     * open by itself, and goes on to whatever that copy says next. So everything it holds past
+     * the current song is taken back and the run is handed to it again from the edited list -
+     * the same run starting a song would have given it. A YouTube song is held alone and the
+     * list is read again when it ends, so it needs nothing doing.
+     */
+    private fun applyQueueEdit(
+        state: PlaybackState,
+        newQueue: List<SongUiModel>,
+        newIndex: Int,
+        newOriginal: List<SongUiModel>,
+        localController: MediaController?,
+    ) {
+        val current = state.nowPlayingSong ?: return
+
+        // As in enqueue: rebuilding clears this, and a resume from pause reads it.
+        val wasInitialized = playbackCoordinator.localQueueInitialized
+        rebuildPlaybackSubqueues(newQueue)
+
+        val newState = state.copy(
+            playbackQueue = newQueue,
+            playbackQueueEntities = newQueue.map { it.toQueueEntity() },
+            playbackQueueIndex = newIndex,
+            originalPlaybackQueue = newOriginal,
+        )
+        _playbackState.value = newState
+        persistPlaybackSnapshot(newState)
+
+        val controller = localController
+        if (controller != null &&
+            wasInitialized &&
+            playsOnThisPhone(current.sourceType) &&
+            controller.currentMediaItem?.mediaId == current.id
+        ) {
+            val at = controller.currentMediaItemIndex
+            if (at + 1 < controller.mediaItemCount) {
+                controller.removeMediaItems(at + 1, controller.mediaItemCount)
+            }
+            val ahead = mutableListOf<MediaItem>()
+            var global = newIndex + 1
+            while (global < newQueue.size && playsOnThisPhone(newQueue[global].sourceType)) {
+                val local = playbackCoordinator.localIndexByGlobal?.getOrNull(global) ?: -1
+                if (local >= 0) playbackCoordinator.localMediaItemsForQueue.getOrNull(local)?.let { ahead += it }
+                global++
+            }
+            if (ahead.isNotEmpty()) controller.addMediaItems(ahead)
+        }
+
+        if (wasInitialized) playbackCoordinator.localQueueInitialized = true
+    }
+
+    /**
      * With "Keep playing similar songs" on, the last song in the queue being a YouTube song is
      * the moment to ask YouTube Music what it would play next, and add that to the end. It is
      * asked while the song plays rather than when it ends, so the next one follows without a
