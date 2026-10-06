@@ -1776,6 +1776,18 @@ fun CalmMusic(
                         onKeepAllClick = onKeepAllOnPhone,
                         canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
+                        onRemoveAlbumClick = { songs ->
+                            libraryScope.launch {
+                                val removed = runCatching { viewModel.removeSongsFromLibrary(songs) }.getOrDefault(0)
+                                // The album has gone from the library, so its page goes too.
+                                navController.popBackStack()
+                                snackbarHostState.showSnackbar(
+                                    message = context.resources.getQuantityString(R.plurals.main_removed_album, removed, removed),
+                                    withDismissAction = false,
+                                    duration = SnackbarDurationMMD.Short,
+                                )
+                            }
+                        },
                     )
                 }
                 composable(Screen.ArtistDetails.route) {

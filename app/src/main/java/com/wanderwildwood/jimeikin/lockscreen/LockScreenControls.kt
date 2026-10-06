@@ -168,7 +168,13 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
         scope = null
         remove()
         try { unregisterReceiver(screenReceiver) } catch (_: Exception) {}
-        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        // A service stopped before it was ever connected - the app updated or force-stopped
+        // just as the system bound it - never left INITIALIZED, and the registry refuses to
+        // go from there to DESTROYED: the app crashed on its way out, with "stopped working"
+        // over the home screen.
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.CREATED)) {
+            lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        }
         store.clear()
         super.onDestroy()
     }

@@ -240,6 +240,16 @@
     <string name="queue_move_down">Play later</string>
     <string name="queue_remove">Take out of the queue</string>
     <string name="queue_save_as_playlist">Save as playlist</string>
+    <!-- Album page: takes the album's downloads and saved songs out of the library -->
+    <string name="library_album_remove">Remove from library</string>
+    <plurals name="library_album_remove_confirm">
+        <item quantity="one">Press again to remove %1$d song</item>
+        <item quantity="other">Press again to remove %1$d songs</item>
+    </plurals>
+    <plurals name="main_removed_album">
+        <item quantity="one">Removed %1$d song</item>
+        <item quantity="other">Removed %1$d songs</item>
+    </plurals>
     <!-- Now Playing: small button that cancels a download in progress (a verb) -->
     <string name="player_download_stop">Stop</string>
     <string name="player_delete_download">Delete download</string>

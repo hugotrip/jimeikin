@@ -7,6 +7,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -275,6 +277,22 @@ private fun CalmMusicTopAppBarActions(
     val navRoutes = remember { navItems.map { it.route } }
 
     if (currentDestination?.route != Screen.Search.route && currentDestination?.route in navRoutes) {
+        // Downloads, once there is anything in it: it was only ever reached through Settings,
+        // which is not where anyone looks for what the app is fetching.
+        //
+        // First of the row, not between Search and Settings. The row hangs from the right, so
+        // the one button that comes and goes has to be on its left: in the middle it pushed
+        // Search over whenever a download started, and a press aimed at Search opened
+        // Downloads instead. On a panel you learn where a button is and stop looking.
+        if (hasDownloads) {
+            IconButton(onClick = onNavigateToDownloadsClick) {
+                Icon(
+                    imageVector = Icons.Download,
+                    contentDescription = stringResource(R.string.main_cd_downloads),
+                )
+            }
+        }
+
         if (currentDestination?.route == Screen.Playlists.route && hasLibraryPlaylists && !isPlaylistsEditMode) {
             IconButton(onClick = onEnterPlaylistsEditClick) {
                 Icon(
@@ -289,17 +307,6 @@ private fun CalmMusicTopAppBarActions(
                 imageVector = Icons.Search,
                 contentDescription = stringResource(R.string.main_cd_search),
             )
-        }
-
-        // Downloads, once there is anything in it: it was only ever reached through Settings,
-        // which is not where anyone looks for what the app is fetching.
-        if (hasDownloads) {
-            IconButton(onClick = onNavigateToDownloadsClick) {
-                Icon(
-                    imageVector = Icons.Download,
-                    contentDescription = stringResource(R.string.main_cd_downloads),
-                )
-            }
         }
 
         // A cog, top right. Settings used to be two taps down inside a "More" tab, which
@@ -447,6 +454,11 @@ private fun CalmMusicTopAppBarActions(
                 contentDescription = stringResource(R.string.main_cd_now_playing),
             )
         }
+    } else if (currentDestination?.route != Screen.Search.route && currentDestination?.route in navItems.map { it.route }) {
+        // Its place is kept while nothing is loaded - at launch, before the last queue is read
+        // back - so Search and Settings beside it do not step left a moment after the screen
+        // has drawn, under a thumb already on its way to them.
+        Spacer(modifier = Modifier.size(48.dp))
     }
 }
 

@@ -307,9 +307,14 @@ class CalmMusicViewModel(
 
             if (matchIndex != -1) {
                 val localSong = availableLocal.removeAt(matchIndex)
+                // The song's own number, where its file has one. A library album has no
+                // YouTube album id, so its listing comes from a search, and a search numbers
+                // its results in the order they were found: those numbers were stamped over
+                // tags written from the album's real running order, and Peaches came first
+                // however the album was downloaded.
                 val displaySong = localSong.copy(
-                    trackNumber = ytSong.trackNumber,
-                    discNumber = ytSong.discNumber
+                    trackNumber = localSong.trackNumber ?: ytSong.trackNumber,
+                    discNumber = localSong.discNumber ?: ytSong.discNumber
                 )
 
                 titlesShown.add(ArtistNames.key(displaySong.title))
@@ -1647,6 +1652,44 @@ class CalmMusicViewModel(
     }
 
     /** A kept server song, taken off the phone and back to streaming. See [SubsonicDownloader.unkeep]. */
+    /**
+     * A whole album out of the library at once: each YouTube download's file deleted, each kept
+     * server song's copy cleared, and every row gone, from playlists too, the way one song's
+     * removal does it. The library is read again once at the end rather than after each song.
+     * The reader's own files are never passed here. Returns how many went.
+     */
+    suspend fun removeSongsFromLibrary(songs: List<SongUiModel>): Int {
+        val removed = withContext(Dispatchers.IO) {
+            var count = 0
+            for (song in songs) {
+                runCatching {
+                    when (song.sourceType) {
+                        "LOCAL_FILE" -> return@runCatching
+                        "YOUTUBE_DOWNLOAD" -> {
+                            val uri = Uri.parse(song.audioUri ?: song.id)
+                            if (uri.scheme == null || uri.scheme == "file") {
+                                uri.path?.let { java.io.File(it).delete() }
+                            } else {
+                                DocumentFile.fromSingleUri(app, uri)?.delete()
+                            }
+                            app.youTubeCopies.forget(song.id)
+                        }
+                        com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
+                            songDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
+                        }
+                    }
+                    playlistDao.deleteTracksForSongId(song.id)
+                    songDao.deleteByIds(listOf(song.id))
+                    count++
+                }
+            }
+            database.dropOrphanedYouTubeRows()
+            count
+        }
+        refreshLibraryFromDatabase()
+        return removed
+    }
+
     suspend fun unkeepServerSong(song: SongUiModel): Boolean {
         val done = withContext(Dispatchers.IO) {
             val row = songDao.getSongById(song.id) ?: return@withContext false

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -20,14 +21,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
+import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
 import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +50,7 @@ fun AlbumDetailsScreen(
     onKeepAllClick: (List<SongUiModel>) -> Unit = {},
     canKeepYouTube: Boolean = false,
     onAddAllToPlaylistClick: (List<SongUiModel>) -> Unit = {},
+    onRemoveAlbumClick: ((List<SongUiModel>) -> Unit)? = null,
 ) {
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -168,6 +173,20 @@ fun AlbumDetailsScreen(
                                 knownAlbum = album?.title,
                             )
                         }
+
+                        // What this app put on the phone for the album: YouTube downloads and
+                        // kept server songs, and any streamed song saved to the library. A file
+                        // the reader put there themselves is not this app's to take as a batch;
+                        // each still has its own Delete. A downloaded album could only be
+                        // undone a song at a time, twenty-six presses for one record.
+                        val removable = songs.filter {
+                            it.id in librarySongIds && it.sourceType != "LOCAL_FILE"
+                        }
+                        if (onRemoveAlbumClick != null && removable.isNotEmpty()) {
+                            item(key = "remove-album") {
+                                RemoveAlbumButton(count = removable.size) { onRemoveAlbumClick(removable) }
+                            }
+                        }
                     }
                 }
             }
@@ -213,6 +232,34 @@ fun AlbumDetailsScreen(
                     }
                 }
             }
+        }
+    }
+}
+/** Pressed once it says what it will do; pressed again within four seconds it does it. */
+@Composable
+private fun RemoveAlbumButton(count: Int, onConfirmed: () -> Unit) {
+    var armed by remember { mutableStateOf(false) }
+    LaunchedEffect(armed) {
+        if (armed) {
+            delay(4000)
+            armed = false
+        }
+    }
+    Column(modifier = Modifier.padding(top = 16.dp)) {
+        OutlinedButtonMMD(
+            onClick = { if (armed) onConfirmed() else armed = true },
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(12.dp),
+        ) {
+            TextMMD(
+                text = if (armed) {
+                    pluralStringResource(R.plurals.library_album_remove_confirm, count, count)
+                } else {
+                    stringResource(R.string.library_album_remove)
+                },
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = if (armed) FontWeight.Bold else FontWeight.Normal,
+            )
         }
     }
 }
