@@ -23,6 +23,9 @@ interface YouTubeMusicInnertubeClient {
 
     suspend fun getArtistPage(browseId: String): InnertubeArtistPage
 
+    /** An album's tracks, in its own order, from its page (an MPRE browse id). */
+    suspend fun getAlbumTracks(browseId: String): List<InnertubeAlbumTrack>
+
     /** What YouTube Music itself would play after [videoId]: its own radio for that song. */
     suspend fun getUpNext(videoId: String): List<InnertubeSongResult>
 
@@ -251,6 +254,35 @@ internal class YouTubeMusicInnertubeClientImpl(
                     ?: return@withContext InnertubeArtistPage("", emptyList(), emptyList(), emptyList())
 
                 parseArtistPage(JSONObject(bodyString))
+            }
+        }
+    }
+
+    override suspend fun getAlbumTracks(browseId: String): List<InnertubeAlbumTrack> {
+        if (browseId.isBlank()) return emptyList()
+
+        return withContext(Dispatchers.IO) {
+            val context = JSONObject().apply {
+                put("client", JSONObject().apply {
+                    put("clientName", "WEB_REMIX")
+                    put("clientVersion", "1.20250101.01.00")
+                    put("hl", "en")
+                    put("gl", "US")
+                })
+            }
+            val bodyJson = JSONObject().apply {
+                put("context", context)
+                put("browseId", browseId)
+            }
+            val requestBuilder = Request.Builder()
+                .url(BROWSE_URL)
+                .post(bodyJson.toString().toRequestBody(jsonMediaType))
+            applyAuthHeaders(requestBuilder)
+
+            httpClient.newCall(requestBuilder.build()).execute().use { response ->
+                if (!response.isSuccessful) return@withContext emptyList()
+                val bodyString = response.body?.string() ?: return@withContext emptyList()
+                parseAlbumTracks(JSONObject(bodyString))
             }
         }
     }
@@ -915,17 +947,5 @@ internal class YouTubeMusicInnertubeClientImpl(
         )
     }
 
-    private fun parseDurationToMillis(text: String): Long? {
-        val parts = text.trim().split(":")
-        if (parts.size < 2) return null
-        val numbers = parts.mapNotNull { it.toIntOrNull() }
-        if (numbers.size != parts.size) return null
-
-        val seconds = when (numbers.size) {
-            2 -> numbers[0] * 60 + numbers[1]
-            3 -> numbers[0] * 3600 + numbers[1] * 60 + numbers[2]
-            else -> return null
-        }
-        return (seconds * 1000L).coerceAtLeast(0L)
-    }
+    private fun parseDurationToMillis(text: String): Long? = durationTextToMillis(text)
 }

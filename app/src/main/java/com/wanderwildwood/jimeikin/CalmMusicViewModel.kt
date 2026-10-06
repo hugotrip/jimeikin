@@ -231,7 +231,36 @@ class CalmMusicViewModel(
         }
     }
 
+    /**
+     * An album's page: each song once, the copy on the phone wherever there is one, in the
+     * album's track order. The YouTube listing behind it still names videos already
+     * downloaded, and showed them as streams, with a Download button to fetch them again.
+     */
     suspend fun getAlbumSongsForDetails(album: AlbumUiModel): List<SongUiModel> {
+        val songs = albumSongsForDetails(album)
+        if (songs.none { it.sourceType == "YOUTUBE" }) return songs
+        return YouTubeCopyMatch.inAlbumOrder(app.youTubeCopies.withCopies(songs, downloadedYouTubeSongs()))
+    }
+
+    /** The YouTube downloads in the library, which [YouTubeCopies] matches listings against. */
+    private suspend fun downloadedYouTubeSongs(): List<SongUiModel> = withContext(Dispatchers.IO) {
+        songDao.getSongsBySourceType("YOUTUBE_DOWNLOAD").map { entity ->
+            SongUiModel(
+                id = entity.id,
+                title = entity.title,
+                artist = entity.artist,
+                durationText = formatDurationMillis(entity.durationMillis),
+                durationMillis = entity.durationMillis,
+                trackNumber = entity.trackNumber,
+                discNumber = entity.discNumber,
+                sourceType = entity.sourceType,
+                audioUri = entity.audioUri,
+                album = entity.album,
+            )
+        }
+    }
+
+    private suspend fun albumSongsForDetails(album: AlbumUiModel): List<SongUiModel> {
         val localSongs = getAlbumSongs(album.id)
 
         val settings = CalmMusicSettingsManager(app)
@@ -313,7 +342,43 @@ class CalmMusicViewModel(
         return false
     }
 
+    // Each album's listing, as first fetched. A page is drawn again whenever the library
+    // changes - each time a download lands - and fetching the listing afresh each time could
+    // bring it back in another order, or with a track more or less.
+    private val youTubeAlbumListings = java.util.concurrent.ConcurrentHashMap<String, List<SongUiModel>>()
+
     private suspend fun getYouTubeAlbumSongs(album: AlbumUiModel): List<SongUiModel> {
+        val cacheKey = listOf(album.id, YouTubeCopyMatch.key(album.title), YouTubeCopyMatch.key(album.artist.orEmpty()))
+            .joinToString("|")
+        youTubeAlbumListings[cacheKey]?.let { return it }
+        val songs = getYouTubeAlbumTracks(album).ifEmpty { searchYouTubeAlbumSongs(album) }
+        if (songs.isNotEmpty()) youTubeAlbumListings[cacheKey] = songs
+        return songs
+    }
+
+    /** The album's own page on YouTube Music, when it came from there and so has its id. */
+    private suspend fun getYouTubeAlbumTracks(album: AlbumUiModel): List<SongUiModel> {
+        if (!album.id.startsWith("MPRE")) return emptyList()
+        val tracks = withContext(Dispatchers.IO) {
+            runCatching { app.youTubeInnertubeClient.getAlbumTracks(album.id) }.getOrDefault(emptyList())
+        }
+        return tracks.mapIndexed { index, track ->
+            SongUiModel(
+                id = track.videoId,
+                title = track.title,
+                artist = track.artist ?: album.artist.orEmpty(),
+                durationText = formatDurationMillis(track.durationMillis),
+                durationMillis = track.durationMillis,
+                trackNumber = track.trackNumber ?: (index + 1),
+                discNumber = 1,
+                sourceType = "YOUTUBE",
+                audioUri = track.videoId,
+                album = album.title,
+            )
+        }
+    }
+
+    private suspend fun searchYouTubeAlbumSongs(album: AlbumUiModel): List<SongUiModel> {
         return withContext(Dispatchers.IO) {
             val termBuilder = StringBuilder().apply {
                 append(album.title)
@@ -582,7 +647,9 @@ class CalmMusicViewModel(
 
             YoutubeArtistPageUiModel(
                 name = page.name,
-                songs = songs,
+                // The ones already downloaded as their files, so their menus offer to remove
+                // the download rather than to fetch it again.
+                songs = app.youTubeCopies.withCopies(songs, downloadedYouTubeSongs()),
                 albums = page.albums.map(::toAlbumUiModel),
                 singles = page.singles.map(::toAlbumUiModel),
             )
@@ -1587,6 +1654,7 @@ class CalmMusicViewModel(
                 songDao.deleteByIds(listOf(song.id))
                 database.dropOrphanedYouTubeRows()
             }
+            if (song.sourceType == "YOUTUBE_DOWNLOAD") app.youTubeCopies.forget(song.id)
 
             refreshLibraryFromDatabase()
             true

@@ -151,6 +151,8 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.0.4")
 
     testImplementation("junit:junit:4.13.2")
+    // Android's own org.json is a stub under unit tests; the real one, to parse album pages.
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(composeBom)

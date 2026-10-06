@@ -166,6 +166,7 @@
 
     <!-- Downloading songs from the music server or YouTube (snackbars, and the line along the bottom) -->
     <string name="main_all_on_phone_already">These are all on this phone already</string>
+    <string name="main_song_on_phone_already">\"%1$s\" is on this phone already</string>
     <!-- %1$d is how many songs are being downloaded -->
     <plurals name="main_keeping_songs">
         <item quantity="one">Downloading one song</item>

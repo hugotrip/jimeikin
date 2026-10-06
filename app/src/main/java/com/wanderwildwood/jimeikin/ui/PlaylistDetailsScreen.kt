@@ -235,7 +235,7 @@ fun PlaylistDetailsScreen(
                 // A playlist is the thing a reader most wants on the phone before
                 // leaving the house. Shown only where something is still on a server
                 // or YouTube, so it never offers work with nothing behind it.
-                if (songs.hasSongsToKeep(canKeepYouTube)) {
+                if (songs.hasSongsToKeep(canKeepYouTube, LocalIsDownloaded.current)) {
                     IconButton(
                         onClick = { onKeepAllClick(songs) },
                     ) {

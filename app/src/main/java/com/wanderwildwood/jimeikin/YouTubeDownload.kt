@@ -312,6 +312,9 @@ internal suspend fun performYouTubeDownloadInternal(
                 }
 
                 songDao.upsertAll(listOf(localSongEntity))
+                // The row is keyed on its file from here on; this is what still knows it was
+                // this video, so a listing that names the video can find it on the phone.
+                app.youTubeCopies.record(videoId, localSongEntity.id)
                 playlistDao.updateSongIdForAllPlaylists(oldSongId = videoId, newSongId = fileUri.toString())
 
                 if (localSongEntity.id != videoId) {

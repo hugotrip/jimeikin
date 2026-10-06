@@ -70,9 +70,16 @@ the wire replaying a request, so a server reachable from outside the house wants
 
 Start typing in Search. No account is needed to search or to stream.
 
-Artist pages list an artist's top songs, albums and singles. When you are looking at a local
-album, missing tracks can be found and filled in from YouTube. Tracks can be downloaded for
-offline playback, one at a time from a song's menu or Now Playing, or a whole album at once.
+Artist pages list an artist's top songs, albums and singles. An album's page lists its tracks
+in the album's own order, as YouTube Music's album page gives them. When you are looking at a
+local album, missing tracks can be found and filled in from YouTube. Tracks can be downloaded
+for offline playback, one at a time from a song's menu or Now Playing, or a whole album at once.
+
+A song already downloaded is shown as its file wherever YouTube lists it again — an album, an
+artist's songs — and is not offered for download a second time: the album's Download button
+goes once every track on it is here, and pressing it fetches only the ones that are not. The app
+remembers which video each download came from; one downloaded before it did is recognised by
+its title and artist.
 
 ## Downloads
 

@@ -87,6 +87,7 @@ import com.wanderwildwood.jimeikin.ui.buildSearchResults
 import com.wanderwildwood.jimeikin.ui.SearchResult
 import com.wanderwildwood.jimeikin.ui.AboutDialog
 import com.wanderwildwood.jimeikin.ui.EditDetailsScreen
+import com.wanderwildwood.jimeikin.ui.LocalIsDownloaded
 import com.wanderwildwood.jimeikin.ui.LocalEditDetails
 import com.wanderwildwood.jimeikin.data.TagEditor
 import com.wanderwildwood.jimeikin.ui.LocalTopBarActions
@@ -345,6 +346,15 @@ fun CalmMusic(
     val librarySongs by viewModel.librarySongs.collectAsState()
     val librarySongIds = remember(librarySongs) {
         librarySongs.map { it.id }.toSet()
+    }
+    // A YouTube song's download is a row of its own, keyed on the file; these are what a
+    // YouTube listing's songs are looked for among before anything offers to download them.
+    val youTubeDownloads = remember(librarySongs) {
+        librarySongs.filter { it.sourceType == "YOUTUBE_DOWNLOAD" }
+    }
+    val recordedYouTubeCopies by app.youTubeCopies.recorded.collectAsState()
+    val isDownloaded: (SongUiModel) -> Boolean = remember(youTubeDownloads, recordedYouTubeCopies) {
+        { song -> YouTubeCopyMatch.copyOf(song, recordedYouTubeCopies, youTubeDownloads) != null }
     }
 
     val libraryAlbums by viewModel.libraryAlbums.collectAsState()
@@ -817,7 +827,9 @@ fun CalmMusic(
      */
     val onKeepAllOnPhone: (List<SongUiModel>) -> Unit = { songs ->
         val fromYouTube = if (streamingProvider == StreamingProvider.YOUTUBE) {
-            songs.filter { it.sourceType == "YOUTUBE" && !downloadQueue.isUnderway(it.id) }
+            // Not one already downloaded: a listing from YouTube names its songs by video
+            // even once they are here, and every one of them used to be fetched again.
+            app.youTubeCopies.leftToDownload(songs, youTubeDownloads, downloadQueue::isUnderway)
         } else {
             emptyList()
         }
@@ -863,7 +875,17 @@ fun CalmMusic(
      * Downloads one song from its menu: a server song, or a YouTube one where YouTube is the
      * streaming provider. Into the same queue as everything else.
      */
-    val onKeepOnPhone: (SongUiModel) -> Unit = { song ->
+    val onKeepOnPhone: (SongUiModel) -> Unit = onKeepOnPhone@{ song ->
+        if (song.sourceType == "YOUTUBE" && app.youTubeCopies.copyOf(song, youTubeDownloads) != null) {
+            libraryScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = context.getString(R.string.main_song_on_phone_already, song.title),
+                    withDismissAction = false,
+                    duration = SnackbarDurationMMD.Short,
+                )
+            }
+            return@onKeepOnPhone
+        }
         val queued = when {
             song.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE -> {
                 downloadQueue.enqueueServer(song)
@@ -1416,7 +1438,7 @@ fun CalmMusic(
     // listener is rather than only in Downloads.
     Column(modifier = Modifier.fillMaxSize()) {
     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-        CompositionLocalProvider(LocalEditDetails provides openEditor) {
+        CompositionLocalProvider(LocalEditDetails provides openEditor, LocalIsDownloaded provides isDownloaded) {
         Scaffold(
             topBar = {
                 Column {
@@ -2164,7 +2186,10 @@ fun CalmMusic(
                 isVideo = isLocalVideo,
                 isLive = song.sourceType == "RADIO",
                 player = if (isLocalVideo) localMediaController else null,
-                canDownload = (streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE"),
+                // Not for a YouTube song already downloaded from somewhere else - a search,
+                // an album page - and playing here from YouTube's listing.
+                canDownload = streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE" &&
+                    !isDownloaded(song),
                 isDownloadInProgress = downloadStatuses.any { it.songId == song.id && it.state.isActive },
                 onDownloadClick = {
                     var albumArtist: String? = null

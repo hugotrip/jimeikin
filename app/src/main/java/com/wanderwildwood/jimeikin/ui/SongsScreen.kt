@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -30,11 +31,22 @@ data class SongUiModel(
 )
 
 /**
- * Whether a download-it-all button has anything behind it: a song still on a music server, or a
- * YouTube song where YouTube downloads are on. Songs already on the phone need nothing.
+ * Whether a YouTube song is already on the phone as a download. A listing from YouTube names
+ * the video even once its file is here, so the row alone cannot say. Provided once at the top,
+ * like [LocalEditDetails], so every row and every page asks the same question the same way.
  */
-fun List<SongUiModel>.hasSongsToKeep(canKeepYouTube: Boolean): Boolean = any {
-    it.sourceType == "SUBSONIC" || (canKeepYouTube && it.sourceType == "YOUTUBE")
+val LocalIsDownloaded = compositionLocalOf<(SongUiModel) -> Boolean> { { false } }
+
+/**
+ * Whether a download-it-all button has anything behind it: a song still on a music server, or a
+ * YouTube song not yet downloaded where YouTube downloads are on. Songs already on the phone
+ * need nothing.
+ */
+fun List<SongUiModel>.hasSongsToKeep(
+    canKeepYouTube: Boolean,
+    isDownloaded: (SongUiModel) -> Boolean = { false },
+): Boolean = any {
+    it.sourceType == "SUBSONIC" || (canKeepYouTube && it.sourceType == "YOUTUBE" && !isDownloaded(it))
 }
 
 @Composable

@@ -254,8 +254,12 @@ fun SongItem(
                             }
                         )
 
-                        // A server song or a YouTube one: a file is already here.
-                        if (song.sourceType == "SUBSONIC" || song.sourceType == "YOUTUBE") {
+                        // A server song or a YouTube one: a file is already here. A YouTube
+                        // song downloaded already, listed again by YouTube, is here too.
+                        val isDownloadedAlready = LocalIsDownloaded.current
+                        if (song.sourceType == "SUBSONIC" ||
+                            (song.sourceType == "YOUTUBE" && !isDownloadedAlready(song))
+                        ) {
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
                                 text = { TextMMD(text = stringResource(R.string.player_song_keep_on_phone)) },

@@ -57,6 +57,11 @@ class CalmMusic : Application() {
         NowPlayingStorage(this)
     }
 
+    /** Which YouTube songs are already downloaded, and as which file. */
+    val youTubeCopies: YouTubeCopies by lazy {
+        YouTubeCopies(File(filesDir, "youtube-downloads.txt"))
+    }
+
     lateinit var settingsManager: CalmMusicSettingsManager
         private set
 
