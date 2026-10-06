@@ -318,7 +318,7 @@ class LibraryRepository(
             val artistsToUpsert = mutableListOf<ArtistEntity>()
             val albumsToUpsert = mutableListOf<AlbumEntity>()
 
-            // The ids the download itself gave these rows (YouTubeDownloadManager), rebuilt from
+            // The ids the download itself gave these rows (performYouTubeDownloadInternal), rebuilt from
             // the file's tags. Only the song used to come back, so after a reinstall a download
             // was in Songs and on no album and under no artist. (From upstream CalmMusic's
             // feature/full-cleanup.)

@@ -164,26 +164,41 @@
     <string name="main_could_not_remove_download">Couldn\'t remove the download</string>
     <string name="main_streamed_nothing_to_delete">This one is streamed, so there is nothing on the phone to delete</string>
 
-    <!-- Keeping server songs on the phone (snackbars) -->
+    <!-- Downloading songs from the music server or YouTube (snackbars, and the line along the bottom) -->
     <string name="main_all_on_phone_already">These are all on this phone already</string>
     <!-- %1$d is how many songs are being downloaded -->
     <plurals name="main_keeping_songs">
-        <item quantity="one">Keeping one song</item>
-        <item quantity="other">Keeping %1$d songs</item>
+        <item quantity="one">Downloading one song</item>
+        <item quantity="other">Downloading %1$d songs</item>
     </plurals>
     <!-- %1$d is how many songs downloaded -->
     <plurals name="main_songs_on_phone_now">
-        <item quantity="one">One song is on this phone now</item>
-        <item quantity="other">%1$d songs are on this phone now</item>
+        <item quantity="one">One song downloaded</item>
+        <item quantity="other">%1$d songs downloaded</item>
     </plurals>
-    <string name="main_none_would_download">None of them would download</string>
-    <!-- %1$d songs downloaded, %2$d failed -->
-    <string name="main_kept_and_failed">%1$d kept, %2$d did not download</string>
     <string name="main_not_on_a_server">That one is not on a server</string>
     <!-- %1$s is a song title -->
-    <string name="main_keeping_song">Keeping \"%1$s\"</string>
+    <string name="main_keeping_song">Downloading \"%1$s\"</string>
     <!-- %1$s is a song title -->
-    <string name="main_song_on_phone_now">\"%1$s\" is on this phone now</string>
+    <string name="main_song_on_phone_now">Downloaded \"%1$s\"</string>
+    <!-- %1$s is a song title -->
+    <string name="download_line_failed_one">Could not download \"%1$s\"</string>
+    <!-- %1$d songs did not download -->
+    <plurals name="download_line_failed">
+        <item quantity="one">One song did not download</item>
+        <item quantity="other">%1$d songs did not download</item>
+    </plurals>
+    <!-- The line along the bottom while songs download: "Downloading 4 of 12", then the song and its percent -->
+    <string name="download_line_underway">Downloading %1$d of %2$d</string>
+    <string name="download_line_underway_one">Downloading</string>
+    <!-- Joins the parts of the download line: "Downloading 4 of 12 · Song title · 40%" -->
+    <string name="download_line_join">%1$s · %2$s</string>
+    <!-- The line along the bottom, for screen readers: pressing it opens Downloads -->
+    <string name="download_line_open">Open Downloads</string>
+    <!-- Notification button that stops every download (a verb) -->
+    <string name="download_stop">Stop</string>
+    <!-- Name of the downloads notification category in Android's settings -->
+    <string name="download_channel">Downloads</string>
 
     <!-- Music server (status line on the Music server screen, and the summary in Settings) -->
     <string name="main_server_connecting">Connecting</string>
@@ -257,7 +272,7 @@
     <string name="player_song_close_menu">Close menu</string>
     <string name="player_song_play_next">Play next</string>
     <string name="player_song_add_to_queue">Add to queue</string>
-    <string name="player_song_keep_on_phone">Keep on this phone</string>
+    <string name="player_song_keep_on_phone">Download</string>
     <!-- Song row menu: "Delete" is a verb; tapping it once arms it -->
     <string name="player_song_delete">Delete</string>
     <string name="player_song_delete_file_confirm">Delete — this erases the file; tap again</string>
@@ -280,7 +295,7 @@
     <!-- Playlist screen: button and icon description, adds songs to the playlist -->
     <string name="player_playlist_add_songs">Add songs</string>
     <string name="player_playlist_shuffle">Shuffle playlist</string>
-    <string name="player_playlist_keep_on_phone">Keep the playlist on this phone</string>
+    <string name="player_playlist_keep_on_phone">Download the playlist</string>
     <string name="player_playlist_move_up">Move up</string>
     <string name="player_playlist_move_down">Move down</string>
 
@@ -312,8 +327,23 @@
     <!-- Downloads: progress of one download, e.g. "42%" -->
     <string name="player_downloads_percent">%1$d%%</string>
     <string name="player_downloads_done">Downloaded</string>
-    <string name="player_downloads_failed">This one did not download</string>
+    <string name="player_downloads_failed">Did not download</string>
     <string name="player_downloads_canceled">Canceled</string>
+    <!-- Downloads: waiting or underway when the app last closed, and never finished -->
+    <string name="player_downloads_not_finished">Did not finish — the app was closed</string>
+    <!-- Downloads: a download underway that cannot say how far along it is -->
+    <string name="player_downloads_underway">Downloading</string>
+    <!-- Downloads: asks again for one that did not download (a verb) -->
+    <string name="player_downloads_retry">Try again</string>
+    <!-- Downloads: asks again for every one that did not download -->
+    <string name="player_downloads_retry_all">Try them again</string>
+    <!-- Downloads: forgets the finished ones (a verb) -->
+    <string name="player_downloads_clear">Clear</string>
+    <!-- Downloads: where a song came from, under its artist -->
+    <string name="player_downloads_from_server">From your music server</string>
+    <string name="player_downloads_from_youtube">From YouTube</string>
+    <!-- Library top bar: icon description, opens Downloads -->
+    <string name="main_cd_downloads">Downloads</string>
 
     <!-- Radio screen -->
     <string name="player_radio_reading_list">Reading the list…</string>
@@ -556,7 +586,7 @@
     <!-- Screen-reader labels for the album page's buttons -->
     <string name="library_album_shuffle">Shuffle album</string>
     <string name="library_album_add_to_playlist">Add the album to a playlist</string>
-    <string name="library_album_keep_on_phone">Keep the album on this phone</string>
+    <string name="library_album_keep_on_phone">Download the album</string>
 
     <!-- Artist page (the library's, and YouTube's) -->
     <string name="library_artist_loading">Loading artist...</string>
@@ -578,7 +608,7 @@
     <!-- Screen-reader labels for the artist page's buttons -->
     <string name="library_artist_shuffle">Shuffle artist songs</string>
     <string name="library_artist_add_to_playlist">Add these to a playlist</string>
-    <string name="library_artist_keep_on_phone">Keep these on this phone</string>
+    <string name="library_artist_keep_on_phone">Download these</string>
 
     <!-- Settings: a music folder's location, shown before its path ("Phone > Music") -->
     <string name="settings_folder_phone">Phone</string>
@@ -590,7 +620,7 @@
     <string name="service_playback_channel_name">Music Box playback</string>
     <string name="service_playback_channel_description">Music playback controls</string>
 
-    <!-- Keeping a song from a music server on the phone (SubsonicDownloader) -->
+    <!-- Downloading a song from a music server (SubsonicDownloader) -->
     <string name="service_subsonic_download_no_storage">There is nowhere on this phone to put it.</string>
     <string name="service_subsonic_download_server_answered">The server answered %1$d.</string>
     <string name="service_subsonic_download_empty">The server sent nothing.</string>

@@ -60,16 +60,14 @@ class CalmMusic : Application() {
     lateinit var settingsManager: CalmMusicSettingsManager
         private set
 
-    lateinit var youTubeDownloadManager: YouTubeDownloadManager
+    /** Every download, YouTube's and the music server's, in one list. */
+    lateinit var downloadQueue: DownloadQueue
         private set
 
     override fun onCreate() {
         super<Application>.onCreate()
 
         settingsManager = CalmMusicSettingsManager(this)
-        youTubeDownloadManager = YouTubeDownloadManager(
-            app = this,
-            appScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO),
-        )
+        downloadQueue = DownloadQueue(this)
     }
 }

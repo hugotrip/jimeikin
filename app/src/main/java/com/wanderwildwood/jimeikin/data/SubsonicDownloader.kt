@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Environment
 import com.wanderwildwood.jimeikin.R
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -11,7 +12,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Keeps a song from a music server on the phone, so it plays away from the network.
+ * Downloads a song from a music server to the phone, so it plays away from the network.
  *
  * The file lands in the app's own music folder, and the song's row changes source: it stops
  * being a pointer to the server and becomes a file, which is what makes its rule solid and
@@ -27,7 +28,7 @@ object SubsonicDownloader {
         .readTimeout(120, TimeUnit.SECONDS)
         .build()
 
-    /** Where kept songs live: the app's own folder, so removing the app removes them too. */
+    /** Where downloaded songs live: the app's own folder, so removing the app removes them too. */
     private fun folder(context: Context): File? =
         context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)?.resolve("server")?.apply { mkdirs() }
 
@@ -77,6 +78,8 @@ object SubsonicDownloader {
                         while (true) {
                             val read = input.read(buffer)
                             if (read == -1) break
+                            // Canceled from Downloads: stop now rather than at the end.
+                            ensureActive()
                             out.write(buffer, 0, read)
                             written += read
                             if (total > 0) {
@@ -97,6 +100,9 @@ object SubsonicDownloader {
             }
             onProgress(1f)
             SubsonicResult.Success(target)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            partial.delete()
+            throw e
         } catch (e: Exception) {
             partial.delete()
             android.util.Log.w("SubsonicDownloader", "download failed for ${song.id}", e)

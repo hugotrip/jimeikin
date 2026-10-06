@@ -1,7 +1,6 @@
 package com.wanderwildwood.jimeikin
 
 import android.content.Context
-import android.os.Environment
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
@@ -11,15 +10,9 @@ import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
 import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.LocalMusicScanner
 import com.wanderwildwood.jimeikin.data.SongEntity
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -30,120 +23,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
-
-data class YouTubeDownloadStatus(
-    val id: String,
-    val songId: String,
-    val title: String,
-    val artist: String,
-    val progress: Float,
-    val state: State,
-    val errorMessage: String? = null,
-) {
-    enum class State { PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELED }
-}
-
-class YouTubeDownloadManager(
-    private val app: CalmMusic,
-    private val appScope: CoroutineScope,
-) {
-    private val client = OkHttpClient()
-
-    private val _downloads = MutableStateFlow<List<YouTubeDownloadStatus>>(emptyList())
-    val downloads: StateFlow<List<YouTubeDownloadStatus>> = _downloads.asStateFlow()
-
-    private val jobsById = mutableMapOf<String, Job>()
-
-    // One song at a time. A whole playlist asked for at once would otherwise open every
-    // stream together, and each would crawl; in turn, the first ones are playable while
-    // the rest wait their place in Downloads.
-    private val oneAtATime = Mutex()
-
-    fun enqueueDownload(song: com.wanderwildwood.jimeikin.ui.SongUiModel, albumArtist: String? = null) {
-        val id = UUID.randomUUID().toString()
-        val initial = YouTubeDownloadStatus(
-            id = id,
-            songId = song.id,
-            title = song.title,
-            artist = song.artist,
-            progress = 0f,
-            state = YouTubeDownloadStatus.State.PENDING,
-        )
-        _downloads.value = _downloads.value + initial
-
-        val job = appScope.launch {
-            oneAtATime.withLock { runDownload(id, song, albumArtist) }
-        }
-
-        jobsById[id] = job
-    }
-
-    private suspend fun runDownload(id: String, song: com.wanderwildwood.jimeikin.ui.SongUiModel, albumArtist: String?) {
-        val context = app.applicationContext
-        val musicDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
-
-        if (musicDir == null) {
-            updateDownload(id) { it.copy(state = YouTubeDownloadStatus.State.FAILED, errorMessage = "Storage inaccessible") }
-            return
-        }
-
-        if (!musicDir.exists()) musicDir.mkdirs()
-
-        updateDownload(id) { it.copy(state = YouTubeDownloadStatus.State.IN_PROGRESS) }
-
-        var errorMessage: String? = null
-        val ok = try {
-            performYouTubeDownloadInternal(
-                app = app,
-                song = song,
-                albumArtist = albumArtist,
-                targetDir = musicDir,
-                context = context,
-                client = client,
-                onProgress = { progress ->
-                    updateDownload(id) { status -> status.copy(progress = progress.coerceIn(0f, 1f)) }
-                },
-            )
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            // Cancelled from Downloads: the row already says so, and must not turn to failed.
-            throw e
-        } catch (e: Exception) {
-            e.printStackTrace()
-            errorMessage = e.message ?: e.javaClass.simpleName ?: "Unknown error"
-            false
-        }
-
-        updateDownload(id) { status ->
-            status.copy(
-                progress = if (ok) 1f else status.progress,
-                state = if (ok) YouTubeDownloadStatus.State.COMPLETED else YouTubeDownloadStatus.State.FAILED,
-                errorMessage = if (ok) null else (errorMessage ?: status.errorMessage ?: "Unknown error"),
-            )
-        }
-    }
-
-    fun cancelDownload(id: String) {
-        jobsById[id]?.cancel()
-        jobsById.remove(id)
-        updateDownload(id) { it.copy(state = YouTubeDownloadStatus.State.CANCELED) }
-    }
-
-    fun clearFinishedDownloads() {
-        _downloads.value = _downloads.value.filterNot { status ->
-            status.state == YouTubeDownloadStatus.State.COMPLETED ||
-                    status.state == YouTubeDownloadStatus.State.FAILED ||
-                    status.state == YouTubeDownloadStatus.State.CANCELED
-        }
-    }
-
-    private fun updateDownload(id: String, transform: (YouTubeDownloadStatus) -> YouTubeDownloadStatus) {
-        _downloads.value = _downloads.value.map { status ->
-            if (status.id == id) transform(status) else status
-        }
-    }
-}
 
 /**
  * Shared internal implementation of the YouTube download pipeline.
@@ -246,6 +126,10 @@ internal suspend fun performYouTubeDownloadInternal(
                                     var read: Int
                                     var offset = start
                                     while (body.byteStream().read(buffer).also { read = it } != -1) {
+                                        // Canceled from Downloads: stop reading now, rather
+                                        // than finishing a song nobody wants and holding up
+                                        // the next one meanwhile.
+                                        ensureActive()
                                         if (read <= 0) continue
                                         synchronized(raf) {
                                             raf.seek(offset)
@@ -279,6 +163,7 @@ internal suspend fun performYouTubeDownloadInternal(
                             var read: Int
                             var readSoFar = 0L
                             while (input.read(buffer).also { read = it } != -1) {
+                                ensureActive()
                                 out.write(buffer, 0, read)
                                 if (total > 0) {
                                     readSoFar += read

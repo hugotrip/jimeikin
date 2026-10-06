@@ -3,7 +3,9 @@ package com.wanderwildwood.jimeikin
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.content.pm.PackageManager
 import android.content.Context
 import android.net.Uri
 import android.os.storage.StorageManager
@@ -64,6 +66,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -95,6 +98,7 @@ import com.wanderwildwood.jimeikin.ui.AlbumUiModel
 import com.wanderwildwood.jimeikin.ui.AlbumsScreen
 import com.wanderwildwood.jimeikin.ui.ArtistDetailsScreen
 import com.wanderwildwood.jimeikin.ui.ArtistsScreen
+import com.wanderwildwood.jimeikin.ui.DownloadLineBar
 import com.wanderwildwood.jimeikin.ui.DownloadsScreen
 import com.wanderwildwood.jimeikin.ui.NowPlayingScreen
 import com.wanderwildwood.jimeikin.playback.OpenedFile
@@ -139,15 +143,27 @@ class MainActivity : ComponentActivity() {
     /** An audio file another app has asked this one to play, until it has been started. */
     private val opened = mutableStateOf<Uri?>(null)
 
+    /** Set when the downloads notification was pressed, until Downloads has been opened. */
+    private val openDownloads = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Only a fresh start: an activity rebuilt after rotating, or after Android reclaimed it,
         // is handed the same intent again, and the file was played the first time.
-        if (savedInstanceState == null) takeOpenedFile(intent)
+        if (savedInstanceState == null) {
+            takeOpenedFile(intent)
+            takeOpenDownloads(intent)
+        }
         setContent {
             ThemeMMD(colorScheme = monochrome) {
                 CompositionLocalProvider(LocalTopBarActions provides remember { TopBarActionsSlot() }) {
-                    CalmMusic(app, openedFile = opened.value, onOpenedFileTaken = { opened.value = null })
+                    CalmMusic(
+                        app,
+                        openedFile = opened.value,
+                        onOpenedFileTaken = { opened.value = null },
+                        openDownloads = openDownloads.value,
+                        onOpenDownloadsTaken = { openDownloads.value = false },
+                    )
                 }
             }
         }
@@ -157,6 +173,19 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         takeOpenedFile(intent)
+        takeOpenDownloads(intent)
+    }
+
+    private fun takeOpenDownloads(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false) == true) {
+            intent.removeExtra(EXTRA_OPEN_DOWNLOADS)
+            openDownloads.value = true
+        }
+    }
+
+    companion object {
+        /** On the intent the downloads notification opens the app with. */
+        const val EXTRA_OPEN_DOWNLOADS = "com.wanderwildwood.jimeikin.OPEN_DOWNLOADS"
     }
 
     private fun takeOpenedFile(intent: Intent?) {
@@ -172,6 +201,8 @@ fun CalmMusic(
     app: CalmMusic,
     openedFile: Uri? = null,
     onOpenedFileTaken: () -> Unit = {},
+    openDownloads: Boolean = false,
+    onOpenDownloadsTaken: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -191,20 +222,52 @@ fun CalmMusic(
 
     val viewModel: CalmMusicViewModel = viewModel(factory = CalmMusicViewModel.factory(app))
     val playbackState by viewModel.playbackState.collectAsState()
-    val downloadStatuses by app.youTubeDownloadManager.downloads.collectAsState()
+    val downloadQueue = app.downloadQueue
+    val downloadStatuses by downloadQueue.items.collectAsState()
+    val downloadRun by downloadQueue.run.collectAsState()
+
+    // The notification is how a download says it is still going with the app closed. It is
+    // asked for once, the first time something is downloaded, and never again: downloads work
+    // the same without it, only more quietly.
+    val askForNotifications = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { }
+    val askForNotificationsOnce: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            val prefs = context.getSharedPreferences(DOWNLOAD_PREFS, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(ASKED_FOR_NOTIFICATIONS, false)) {
+                prefs.edit().putBoolean(ASKED_FOR_NOTIFICATIONS, true).apply()
+                askForNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    // While this screen is on view the end of a run is said on the line along the bottom;
+    // while it is not, the download service says it in a notification instead.
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            downloadQueue.watch()
+        }
+    }
     val playlistsViewModel: PlaylistsViewModel = viewModel(factory = PlaylistsViewModel.factory(app))
 
     var localMediaController by remember { mutableStateOf<MediaController?>(null) }
-    var lastCompletedDownloadUUIDs by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Null until the list has been seen once: the downloads remembered from an earlier day
+    // are not news, and refreshing the library for each of them would be wasted work.
+    var lastCompletedDownloadUUIDs by remember { mutableStateOf<Set<String>?>(null) }
 
 
     LaunchedEffect(downloadStatuses) {
         val currentCompletedDownloads = downloadStatuses
-            .filter { it.state == YouTubeDownloadStatus.State.COMPLETED }
+            .filter { it.state == DownloadState.DOWNLOADED }
 
         val currentCompletedUUIDs = currentCompletedDownloads.map { it.id }.toSet()
-        val newCompletedUUIDs = currentCompletedUUIDs - lastCompletedDownloadUUIDs
+        val newCompletedUUIDs = currentCompletedUUIDs - (lastCompletedDownloadUUIDs ?: currentCompletedUUIDs)
 
+        // Refreshed as they land, so the rules turn solid one by one rather than the whole
+        // list changing at the end.
         if (newCompletedUUIDs.isNotEmpty()) {
             viewModel.refreshLibraryFromDatabase()
             playlistsViewModel.refreshSongs()
@@ -744,85 +807,51 @@ fun CalmMusic(
     }
 
     /**
-     * Keeps a whole album, or everything by an artist, on the phone.
+     * Downloads a whole album, everything by an artist, or a playlist.
      *
-     * One at a time and in order, rather than all at once: a phone on a home network gains
-     * nothing from six downloads competing, and doing them in sequence means the list fills
-     * from the top, which is legible while it happens. Songs already here are skipped, so
-     * pressing it twice costs nothing and finishes what a first press did not.
-     *
-     * YouTube songs in the list go to Downloads, which also takes them one at a time; one
-     * already waiting or underway there is not asked for twice.
+     * Into the one queue, which takes them one at a time and in order: a phone on a home
+     * network gains nothing from six downloads competing, and in sequence the list fills from
+     * the top, which is legible while it happens. Songs already here are skipped, and so is
+     * one already waiting, so pressing it twice costs nothing and finishes what a first press
+     * did not. How it goes is said along the bottom of the screen and in Downloads.
      */
     val onKeepAllOnPhone: (List<SongUiModel>) -> Unit = { songs ->
-        val underway = downloadStatuses
-            .filter { it.state == YouTubeDownloadStatus.State.PENDING || it.state == YouTubeDownloadStatus.State.IN_PROGRESS }
-            .map { it.songId }
-            .toSet()
         val fromYouTube = if (streamingProvider == StreamingProvider.YOUTUBE) {
-            songs.filter { it.sourceType == "YOUTUBE" && it.id !in underway }
+            songs.filter { it.sourceType == "YOUTUBE" && !downloadQueue.isUnderway(it.id) }
         } else {
             emptyList()
         }
-        libraryScope.launch {
-            val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
-            val wanted = songs.filter { it.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE }
-            if (wanted.isEmpty() && fromYouTube.isEmpty()) {
+        val fromServer = songs.filter {
+            it.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE && !downloadQueue.isUnderway(it.id)
+        }
+        if (fromServer.isEmpty() && fromYouTube.isEmpty()) {
+            libraryScope.launch {
                 snackbarHostState.showSnackbar(
                     message = context.getString(R.string.main_all_on_phone_already),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
-            } else {
-                // Filed under the album's artist when the library already has the album,
-                // as the one-song download in Now Playing does.
-                fromYouTube.forEach { song ->
-                    val albumArtist = song.album?.let { title ->
-                        libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist
+            }
+        } else {
+            askForNotificationsOnce()
+            // In the order they were listed, so an album arrives from its first track.
+            songs.forEach { song ->
+                when (song) {
+                    in fromServer -> downloadQueue.enqueueServer(song)
+                    in fromYouTube -> {
+                        // Filed under the album's artist when the library already has the
+                        // album, as the one-song download in Now Playing does.
+                        val albumArtist = song.album?.let { title ->
+                            libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist
+                        }
+                        downloadQueue.enqueueYouTube(song, albumArtist)
                     }
-                    app.youTubeDownloadManager.enqueueDownload(song, albumArtist)
                 }
-                val total = wanted.size + fromYouTube.size
+            }
+            val total = fromServer.size + fromYouTube.size
+            libraryScope.launch {
                 snackbarHostState.showSnackbar(
                     message = context.resources.getQuantityString(R.plurals.main_keeping_songs, total, total),
-                    withDismissAction = false,
-                    duration = SnackbarDurationMMD.Short,
-                )
-                // The YouTube songs report themselves in Downloads as they land.
-                if (wanted.isEmpty()) return@launch
-                var kept = 0
-                var failed = 0
-                val rows = withContext(Dispatchers.IO) { database.songDao().getAllSongs() }
-                    .associateBy { it.id }
-                for (song in wanted) {
-                    val row = rows[song.id] ?: continue
-                    when (val result = com.wanderwildwood.jimeikin.data.SubsonicDownloader.download(app, row)) {
-                        is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> failed++
-                        is com.wanderwildwood.jimeikin.data.SubsonicResult.Success -> {
-                            withContext(Dispatchers.IO) {
-                                database.songDao().upsertAll(
-                                    listOf(
-                                        row.copy(
-                                            sourceType = com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE,
-                                            audioUri = android.net.Uri.fromFile(result.value).toString(),
-                                        ),
-                                    ),
-                                )
-                            }
-                            kept++
-                            // Refreshed as they land, so the rules turn solid one by one
-                            // rather than the whole list changing at the end.
-                            viewModel.refreshLibraryFromDatabase()
-                            playlistsViewModel.refreshSongs()
-                        }
-                    }
-                }
-                snackbarHostState.showSnackbar(
-                    message = when {
-                        failed == 0 -> context.resources.getQuantityString(R.plurals.main_songs_on_phone_now, kept, kept)
-                        kept == 0 -> context.getString(R.string.main_none_would_download)
-                        else -> context.getString(R.string.main_kept_and_failed, kept, failed)
-                    },
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -831,52 +860,35 @@ fun CalmMusic(
     }
 
     /**
-     * Keeps a server song on the phone. The row is not duplicated: when the file is whole its
-     * source changes from a pointer to the server into a file, which is what makes its rule
-     * solid and lets it play with the network off. Deleting it later puts the pointer back.
+     * Downloads one song from its menu: a server song, or a YouTube one where YouTube is the
+     * streaming provider. Into the same queue as everything else.
      */
     val onKeepOnPhone: (SongUiModel) -> Unit = { song ->
-        libraryScope.launch {
-            val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
-            val row = withContext(Dispatchers.IO) {
-                database.songDao().getAllSongs().firstOrNull { it.id == song.id }
+        val queued = when {
+            song.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE -> {
+                downloadQueue.enqueueServer(song)
+                true
             }
-            if (row == null || row.sourceType != com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE) {
-                snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.main_not_on_a_server),
-                    withDismissAction = false,
-                    duration = SnackbarDurationMMD.Short,
-                )
-            } else {
-                snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.main_keeping_song, song.title),
-                    withDismissAction = false,
-                    duration = SnackbarDurationMMD.Short,
-                )
-                val result = com.wanderwildwood.jimeikin.data.SubsonicDownloader.download(app, row)
-                val message = when (result) {
-                    is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> result.message
-                    is com.wanderwildwood.jimeikin.data.SubsonicResult.Success -> {
-                        withContext(Dispatchers.IO) {
-                            database.songDao().upsertAll(
-                                listOf(
-                                    row.copy(
-                                        sourceType = com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE,
-                                        audioUri = android.net.Uri.fromFile(result.value).toString(),
-                                    ),
-                                ),
-                            )
-                        }
-                        viewModel.refreshLibraryFromDatabase()
-                        context.getString(R.string.main_song_on_phone_now, song.title)
-                    }
+            song.sourceType == "YOUTUBE" && streamingProvider == StreamingProvider.YOUTUBE -> {
+                val albumArtist = song.album?.let { title ->
+                    libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist
                 }
-                snackbarHostState.showSnackbar(
-                    message = message,
-                    withDismissAction = false,
-                    duration = SnackbarDurationMMD.Short,
-                )
+                downloadQueue.enqueueYouTube(song, albumArtist)
+                true
             }
+            else -> false
+        }
+        if (queued) askForNotificationsOnce()
+        libraryScope.launch {
+            snackbarHostState.showSnackbar(
+                message = if (queued) {
+                    context.getString(R.string.main_keeping_song, song.title)
+                } else {
+                    context.getString(R.string.main_not_on_a_server)
+                },
+                withDismissAction = false,
+                duration = SnackbarDurationMMD.Short,
+            )
         }
     }
 
@@ -940,9 +952,8 @@ fun CalmMusic(
         libraryScope.launch {
             when (song.sourceType) {
                 "YOUTUBE" -> {
-                    val download = downloadStatuses.find { it.songId == song.id }
-                    if (download != null) {
-                        app.youTubeDownloadManager.cancelDownload(download.id)
+                    if (downloadQueue.isUnderway(song.id)) {
+                        downloadQueue.cancelSong(song.id)
                         snackbarHostState.showSnackbar(
                             message = context.getString(R.string.main_deleting_download),
                             withDismissAction = false,
@@ -1390,7 +1401,21 @@ fun CalmMusic(
         navController.navigate(Screen.EditDetails.route) { launchSingleTop = true }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val openDownloadsScreen: () -> Unit = {
+        showNowPlaying = false
+        navController.navigate(Screen.Downloads.route) { launchSingleTop = true }
+    }
+    LaunchedEffect(openDownloads) {
+        if (openDownloads) {
+            onOpenDownloadsTaken()
+            openDownloadsScreen()
+        }
+    }
+
+    // The download line sits under everything, Now Playing included, so it is wherever the
+    // listener is rather than only in Downloads.
+    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         CompositionLocalProvider(LocalEditDetails provides openEditor) {
         Scaffold(
             topBar = {
@@ -1552,6 +1577,8 @@ fun CalmMusic(
                             navController.navigate(Screen.Settings.route) { launchSingleTop = true }
                         },
                         onShowAboutClick = { showAbout = true },
+                        hasDownloads = downloadStatuses.isNotEmpty(),
+                        onNavigateToDownloadsClick = openDownloadsScreen,
                     )
                     HorizontalDividerMMD(thickness = 3.dp)
                 }
@@ -1804,11 +1831,12 @@ fun CalmMusic(
                 }
 
                 composable(Screen.Downloads.route) {
-                    val downloads by app.youTubeDownloadManager.downloads.collectAsStateWithLifecycle()
-
                     DownloadsScreen(
-                        downloads = downloads,
-                        onCancelDownload = { id -> app.youTubeDownloadManager.cancelDownload(id) },
+                        downloads = downloadStatuses,
+                        onCancelDownload = { id -> downloadQueue.cancel(id) },
+                        onRetry = { id -> downloadQueue.retry(id) },
+                        onRetryAll = { downloadQueue.retryAll() },
+                        onClear = { downloadQueue.clearFinished() },
                     )
                 }
 
@@ -2137,7 +2165,7 @@ fun CalmMusic(
                 isLive = song.sourceType == "RADIO",
                 player = if (isLocalVideo) localMediaController else null,
                 canDownload = (streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE"),
-                isDownloadInProgress = downloadStatuses.any { it.songId == song.id && (it.state == YouTubeDownloadStatus.State.PENDING || it.state == YouTubeDownloadStatus.State.IN_PROGRESS) },
+                isDownloadInProgress = downloadStatuses.any { it.songId == song.id && it.state.isActive },
                 onDownloadClick = {
                     var albumArtist: String? = null
 
@@ -2154,7 +2182,8 @@ fun CalmMusic(
                         }
                     }
 
-                    app.youTubeDownloadManager.enqueueDownload(song, albumArtist)
+                    downloadQueue.enqueueYouTube(song, albumArtist)
+                    askForNotificationsOnce()
                     libraryScope.launch {
                         snackbarHostState.showSnackbar(
                             message = context.getString(R.string.main_download_started),
@@ -2164,14 +2193,11 @@ fun CalmMusic(
                     }
                 },
                 onCancelDownloadClick = {
-                    val active = downloadStatuses.firstOrNull { it.songId == song.id && (it.state == YouTubeDownloadStatus.State.PENDING || it.state == YouTubeDownloadStatus.State.IN_PROGRESS) }
-                    if (active != null) {
-                        app.youTubeDownloadManager.cancelDownload(active.id)
-                    }
+                    downloadQueue.cancelSong(song.id)
                 },
                 // A completed download replaces the streamed song in the queue with the
                 // local one, so the source type is the durable answer to "is this on the
-                // phone" - the download list itself is only held in memory.
+                // phone" - Downloads forgets what it finished after a week.
                 isDownloaded = song.sourceType == "YOUTUBE_DOWNLOAD",
                 // Undoing a download deletes the file and the library row, which is to say
                 // it deletes the song this screen is about: the row it came from is gone
@@ -2533,7 +2559,31 @@ fun CalmMusic(
             )
         }
     }
+
+    val runItems = downloadStatuses.filter { it.id in downloadRun }
+    val line = com.wanderwildwood.jimeikin.Downloads.line(runItems)
+    // How a run ended is said for a few seconds, then the line goes. Longer than a snackbar:
+    // the listener may have looked away for the minutes it took.
+    LaunchedEffect(line is DownloadLine.Finished, downloadRun) {
+        if (line is DownloadLine.Finished) {
+            delay(DOWNLOAD_SUMMARY_MS)
+            downloadQueue.forgetRun()
+        }
+    }
+    if (line != null) {
+        val words = DownloadWords(context.resources)
+        DownloadLineBar(
+            text = com.wanderwildwood.jimeikin.Downloads.text(line, words, withPercent = false),
+            progress = (line as? DownloadLine.Underway)?.percent?.let { words.percent(it) },
+            onClick = openDownloadsScreen,
+        )
+    }
+    }
 }
+
+private const val DOWNLOAD_SUMMARY_MS = 8_000L
+private const val DOWNLOAD_PREFS = "downloads"
+private const val ASKED_FOR_NOTIFICATIONS = "asked_for_notifications"
 
 @Composable
 fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boolean = false): String {

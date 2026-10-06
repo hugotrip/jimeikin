@@ -254,9 +254,8 @@ fun SongItem(
                             }
                         )
 
-                        // Only a server song can be kept: a file is already here, and a
-                        // YouTube result has its own download elsewhere.
-                        if (song.sourceType == "SUBSONIC") {
+                        // A server song or a YouTube one: a file is already here.
+                        if (song.sourceType == "SUBSONIC" || song.sourceType == "YOUTUBE") {
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
                                 text = { TextMMD(text = stringResource(R.string.player_song_keep_on_phone)) },

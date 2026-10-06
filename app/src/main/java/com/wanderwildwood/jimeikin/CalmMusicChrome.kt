@@ -71,6 +71,8 @@ fun CalmMusicTopAppBar(
     onNowPlayingClick: () -> Unit,
     onNavigateToSettingsClick: () -> Unit,
     onShowAboutClick: () -> Unit,
+    hasDownloads: Boolean = false,
+    onNavigateToDownloadsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val navRoutes = remember { navItems.map { it.route } }
@@ -234,6 +236,8 @@ fun CalmMusicTopAppBar(
                 onNowPlayingClick = onNowPlayingClick,
                 onNavigateToSettingsClick = onNavigateToSettingsClick,
                 onShowAboutClick = onShowAboutClick,
+                hasDownloads = hasDownloads,
+                onNavigateToDownloadsClick = onNavigateToDownloadsClick,
             )
         },
         showDivider = false,
@@ -265,6 +269,8 @@ private fun CalmMusicTopAppBarActions(
     onNowPlayingClick: () -> Unit,
     onNavigateToSettingsClick: () -> Unit,
     onShowAboutClick: () -> Unit,
+    hasDownloads: Boolean = false,
+    onNavigateToDownloadsClick: () -> Unit = {},
 ) {
     val navRoutes = remember { navItems.map { it.route } }
 
@@ -283,6 +289,17 @@ private fun CalmMusicTopAppBarActions(
                 imageVector = Icons.Search,
                 contentDescription = stringResource(R.string.main_cd_search),
             )
+        }
+
+        // Downloads, once there is anything in it: it was only ever reached through Settings,
+        // which is not where anyone looks for what the app is fetching.
+        if (hasDownloads) {
+            IconButton(onClick = onNavigateToDownloadsClick) {
+                Icon(
+                    imageVector = Icons.Download,
+                    contentDescription = stringResource(R.string.main_cd_downloads),
+                )
+            }
         }
 
         // A cog, top right. Settings used to be two taps down inside a "More" tab, which

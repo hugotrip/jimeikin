@@ -52,10 +52,11 @@ A song held both on the server and on the card is shown once, and it is the copy
 that survives, because that one plays with no network. The server goes on earning its place
 for everything the card does not have. A dotted rule under a row means it needs the network.
 
-Long press a song for **Keep on this phone**, or use the button on an album or an artist to
-keep the lot. A kept song stops being a pointer to the server and becomes a file: solid rule,
-plays offline, and a later sync leaves it alone. Formats the phone cannot decode are asked for
-as mp3 instead of raw, so a Windows Media or Musepack track arrives playable.
+Long press a song for **Download**, or use the download button on an album, an artist or a
+playlist to download the lot. A downloaded song stops being a pointer to the server and
+becomes a file: solid rule, plays offline, and a later sync leaves it alone. Formats the phone
+cannot decode are asked for as mp3 instead of raw, so a Windows Media or Musepack track arrives
+playable.
 
 The server's playlists come across too, pointing at the copy on the phone wherever there is
 one. A playlist already here under the same name is left alone — a server that keeps its
@@ -71,7 +72,25 @@ Start typing in Search. No account is needed to search or to stream.
 
 Artist pages list an artist's top songs, albums and singles. When you are looking at a local
 album, missing tracks can be found and filled in from YouTube. Tracks can be downloaded for
-offline playback; downloads have their own screen.
+offline playback, one at a time from a song's menu or Now Playing, or a whole album at once.
+
+## Downloads
+
+Songs from the music server and from YouTube go into one queue and download one at a time, in
+the order asked for. While anything is downloading, a line along the bottom of every screen
+says which song and how far along ("Downloading 4 of 12 · River Song · 40%"), and when the
+queue empties it says how it went for a few seconds. Pressing it opens Downloads, which is also
+the download icon at the top of the library and a row in Settings.
+
+Downloads lists what is waiting, what is underway, and what finished in the last week (up to a
+hundred), with the reason when one did not download. Each can be canceled while it waits or
+downloads, and tried again if it failed, was canceled, or was cut off when the app was closed.
+**Clear** forgets the finished ones.
+
+Downloads carry on with the screen off or the app in the background: a quiet notification says
+"Downloading 4 of 12" and has a Stop button, and when the app is not on screen a last
+notification says how the run ended. On Android 13 and later the app asks once, the first time
+something is downloaded, whether it may show notifications; downloads work the same without.
 
 Connecting a YouTube account under Settings → **YouTube account** makes search reflect it.
 Nothing else in the app needs one.

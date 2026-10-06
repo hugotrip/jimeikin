@@ -233,7 +233,7 @@ fun ArtistDetailsScreen(
                     )
                 }
 
-                // Only where there is something to keep: a record already on the phone
+                // Only where there is something to download: a record already on the phone
                 // needs nothing, and this button would then be a button that does nothing.
                 if (songs.hasSongsToKeep(canKeepYouTube)) {
                     IconButton(onClick = { onKeepAllClick(songs) }) {
