@@ -173,23 +173,14 @@ fun SongItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (song.trackNumber != null && showTrackNumber) {
-                // The playing row used to swap its number for a glyph, so the one track you
-                // most wanted to place in the album was the one with no number on it. Bold
-                // is the emphasis instead - the only one the house style allows.
+                // The playing row keeps its number: the one track you most wanted to place
+                // in the album used to be the one with no number on it.
                 TextMMD(
                     text = song.trackNumber.toString(),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = if (isCurrentlyPlaying) FontWeight.Bold else FontWeight.Normal,
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center
-                )
-            } else if (isCurrentlyPlaying) {
-                Icon(
-                    imageVector = Icons.Headphones,
-                    contentDescription = stringResource(R.string.player_song_now_playing),
-                    modifier = Modifier
-                        .size(24.dp)
-                        .padding(start = 4.dp),
                 )
             }
 
@@ -209,6 +200,18 @@ fun SongItem(
                 // on streamed songs in the library, and a dotted rule under every streamed
                 // row: two marks for one fact, and neither said from where.
                 SubtitleLine(text = subtitle, origin = originOf(song.sourceType))
+            }
+
+            // Which song is playing, at a glance. The bold number alone was not: every title
+            // is bold already, and a bold "7" among plain ones is not a thing an eye finds on
+            // a grey panel. One still mark at the end of the row, on the song loaded whether
+            // it is playing or paused; it moves when the song does.
+            if (isCurrentlyPlaying && !showMenu) {
+                Icon(
+                    imageVector = Icons.GraphicEq,
+                    contentDescription = stringResource(R.string.player_song_now_playing),
+                    modifier = Modifier.size(20.dp),
+                )
             }
 
             if (showMenu) {

@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -89,6 +90,8 @@ import com.wanderwildwood.jimeikin.ui.UpNextScreen
 import com.wanderwildwood.jimeikin.ui.AboutDialog
 import com.wanderwildwood.jimeikin.ui.EditDetailsScreen
 import com.wanderwildwood.jimeikin.ui.LocalIsDownloaded
+import com.wanderwildwood.jimeikin.ui.LocalAlbumActions
+import com.wanderwildwood.jimeikin.ui.AlbumActions
 import com.wanderwildwood.jimeikin.ui.LocalEditDetails
 import com.wanderwildwood.jimeikin.data.TagEditor
 import com.wanderwildwood.jimeikin.ui.LocalTopBarActions
@@ -1441,11 +1444,68 @@ fun CalmMusic(
         }
     }
 
+    // A long press on any album row, in whichever list: the four things a song's menu does,
+    // on the whole record. Queueing names the album, as queueing a song names the song.
+    // Built fresh each time so its handlers see today's library, and handed down through one
+    // object that stays the same, so the rows reading it are not redrawn for the rebuild.
+    val latestAlbumActions by rememberUpdatedState(
+        AlbumActions(
+            songs = { album -> viewModel.getAlbumSongsForDetails(album) },
+            canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+            onPlayNext = { album, songs ->
+                viewModel.enqueue(songs, playNext = true, localController = localMediaController)
+                libraryScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.main_plays_next, album.title),
+                        withDismissAction = false,
+                        duration = SnackbarDurationMMD.Short,
+                    )
+                }
+            },
+            onAddToQueue = { album, songs ->
+                viewModel.enqueue(songs, playNext = false, localController = localMediaController)
+                libraryScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.main_added_to_queue, album.title),
+                        withDismissAction = false,
+                        duration = SnackbarDurationMMD.Short,
+                    )
+                }
+            },
+            onAddToPlaylist = onAddAllToPlaylist,
+            onDownload = onKeepAllOnPhone,
+            onLoadFailed = {
+                libraryScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.library_album_load_failed),
+                        withDismissAction = false,
+                        duration = SnackbarDurationMMD.Short,
+                    )
+                }
+            },
+        )
+    )
+    val albumActions = remember(streamingProvider) {
+        AlbumActions(
+            songs = { latestAlbumActions.songs(it) },
+            canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+            onPlayNext = { album, songs -> latestAlbumActions.onPlayNext(album, songs) },
+            onAddToQueue = { album, songs -> latestAlbumActions.onAddToQueue(album, songs) },
+            onAddToPlaylist = { latestAlbumActions.onAddToPlaylist(it) },
+            onDownload = { latestAlbumActions.onDownload(it) },
+            onLoadFailed = { latestAlbumActions.onLoadFailed() },
+        )
+    }
+
     // The download line sits under everything, Now Playing included, so it is wherever the
     // listener is rather than only in Downloads.
     Column(modifier = Modifier.fillMaxSize()) {
     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-        CompositionLocalProvider(LocalEditDetails provides openEditor, LocalIsDownloaded provides isDownloaded) {
+        CompositionLocalProvider(
+            LocalEditDetails provides openEditor,
+            LocalIsDownloaded provides isDownloaded,
+            LocalAlbumActions provides albumActions,
+        ) {
         Scaffold(
             topBar = {
                 Column {
@@ -1745,6 +1805,7 @@ fun CalmMusic(
                                 launchSingleTop = true
                             }
                         },
+                        currentSongId = currentSongId,
                         librarySongIds = librarySongIds,
                         onAddToPlaylistClick = onAddToPlaylist,
                 onPlayNextClick = onPlayNext,

@@ -185,12 +185,13 @@ private fun UpNextRow(
         }
 
         if (isPlaying) {
+            // The same mark every other list puts on the playing song.
             Icon(
-                imageVector = Icons.Headphones,
+                imageVector = Icons.GraphicEq,
                 contentDescription = stringResource(R.string.player_song_now_playing),
                 modifier = Modifier
                     .padding(horizontal = 12.dp)
-                    .size(24.dp),
+                    .size(20.dp),
             )
         } else {
             // An arrow with nowhere to go is left as a gap rather than drawn grey, so the

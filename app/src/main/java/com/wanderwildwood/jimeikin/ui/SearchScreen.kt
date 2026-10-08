@@ -39,6 +39,7 @@ fun SearchScreen(
     onAlbumClick: (AlbumUiModel) -> Unit,
     onLibraryArtistClick: (ArtistUiModel) -> Unit,
     onArtistClick: (YoutubeArtistUiModel) -> Unit,
+    currentSongId: String? = null,
     librarySongIds: Set<String> = emptySet(),
     onAddToPlaylistClick: (SongUiModel) -> Unit = {},
     onPlayNextClick: (SongUiModel) -> Unit = {},
@@ -71,7 +72,7 @@ fun SearchScreen(
                         val song = result.song
                         SongItem(
                             song = song,
-                            isCurrentlyPlaying = false,
+                            isCurrentlyPlaying = song.id == currentSongId,
                             onClick = { onPlaySongClick(song) },
                             onAddToPlaylist = { onAddToPlaylistClick(song) },
                             onPlayNext = { onPlayNextClick(song) },
