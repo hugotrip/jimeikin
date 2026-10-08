@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Music Box: launcher icon in the Mudita Kompakt stock style (81 grid, ring r=19.25 x 2.5,
+     glyph stroke 2.5, black on transparent). Built by icons/mudita-style/final.py. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="81dp"
+    android:height="81dp"
+    android:viewportWidth="81"
+    android:viewportHeight="81">
+    <path
+        android:pathData="M19.25,2.5C9.999,2.5 2.5,9.999 2.5,19.25V61.75C2.5,71.001 9.999,78.5 19.25,78.5H61.75C71.001,78.5 78.5,71.001 78.5,61.75V19.25C78.5,9.999 71.001,2.5 61.75,2.5H19.25ZM0,19.25C0,8.619 8.619,0 19.25,0H61.75C72.382,0 81,8.619 81,19.25V61.75C81,72.382 72.382,81 61.75,81H19.25C8.619,81 0,72.382 0,61.75V19.25Z"
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"/>
+    <path
+        android:pathData="M33.577,53.347C33.577,56.445 31.097,58.956 28.038,58.956C24.98,58.956 22.5,56.445 22.5,53.347C22.5,50.25 24.98,47.739 28.038,47.739C31.097,47.739 33.577,50.25 33.577,53.347ZM33.577,53.347V30.576C33.579,30.269 33.68,29.971 33.865,29.728C34.05,29.485 34.309,29.31 34.602,29.23L56.755,23.004C56.96,22.948 57.174,22.941 57.382,22.982C57.59,23.024 57.786,23.113 57.954,23.243C58.123,23.373 58.26,23.54 58.354,23.732C58.449,23.924 58.499,24.136 58.5,24.35V46.336M58.5,46.336C58.5,49.434 56.02,51.945 52.961,51.945C49.903,51.945 47.423,49.434 47.423,46.336C47.423,43.239 49.903,40.728 52.961,40.728C56.02,40.728 58.5,43.239 58.5,46.336ZM33.577,37.923L58.5,30.913"
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+</vector>
