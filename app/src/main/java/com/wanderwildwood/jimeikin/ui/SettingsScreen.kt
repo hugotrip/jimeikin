@@ -82,6 +82,7 @@ fun SettingsScreen(
     LazyColumnMMD(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
+        isScrollbarVisible = false,
     ) {
         run {
             if (localFolders.isEmpty()) {

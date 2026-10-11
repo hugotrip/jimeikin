@@ -22,7 +22,7 @@ import com.mudita.mmd.components.lazy.LazyColumnMMD
  * half a panel and a swipe leaves most of the screen unread; on the album and artist lists it
  * is nearer two thirds. Messaging reached the same conclusion from the other side and pages by
  * a screenful, and this is that behaviour taken into MMD's component rather than away from it —
- * the chevrons, the track and the step-and-stop all stay, only the number changes.
+ * the step-and-stop stays, only the number changes.
  *
  * The measure is taken from the list itself rather than written down: a row's height is read
  * from what is on screen, so a screen of tall rows steps fewer and a screen of short ones steps
@@ -79,6 +79,7 @@ fun PagedColumnMMD(
         verticalArrangement = verticalArrangement,
         horizontalAlignment = horizontalAlignment,
         scrollStep = rememberPageScrollStep(state),
+        isScrollbarVisible = false,
         content = content,
     )
 }

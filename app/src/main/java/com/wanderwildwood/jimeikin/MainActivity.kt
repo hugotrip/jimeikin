@@ -2395,7 +2395,8 @@ fun CalmMusic(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = screenHeight * 0.6f),
-                            contentPadding = PaddingValues(vertical = 4.dp)
+                            contentPadding = PaddingValues(vertical = 4.dp),
+                            isScrollbarVisible = false,
                         ) {
                             items(
                                 items = libraryPlaylists,
