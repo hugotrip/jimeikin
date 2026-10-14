@@ -24,6 +24,10 @@ import java.util.concurrent.TimeUnit
  * the wire can replay a request — so over the open internet this wants HTTPS; on a home
  * network it is enough to keep the password itself off the wire. The password still has to
  * be kept on the phone to compute the tokens, which is worth saying plainly in the About.
+ *
+ * The one exception is a server older than Subsonic 1.13, which predates the tokens and
+ * accepts only the password itself, hex-encoded. Such a server says so by refusing the
+ * version this asks for and naming its own; then, and only then, the old form is used.
  */
 class SubsonicClient(
     private val config: SubsonicConfig,
@@ -41,30 +45,13 @@ class SubsonicClient(
     suspend fun ping(): SubsonicResult<Unit> = request("ping").map { }
 
     /**
-     * Everything the library needs, in one pass: the artists, their albums, and the songs on
-     * each album. On a small library that is one call plus one per album, which on a home
-     * network is a second or two; there is no bulk "give me everything" call in the API.
+     * Everything the library needs: the albums and the songs on each, by whichever route the
+     * server supports. See [SubsonicLibraryReader].
      */
     suspend fun fetchLibrary(
-        onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
-    ): SubsonicResult<SubsonicLibrary> {
-        val albumsResult = fetchAllAlbums()
-        val albums = when (albumsResult) {
-            is SubsonicResult.Failure -> return albumsResult
-            is SubsonicResult.Success -> albumsResult.value
-        }
-
-        val songs = mutableListOf<SubsonicSong>()
-        albums.forEachIndexed { index, album ->
-            when (val songsResult = fetchAlbumSongs(album.id)) {
-                is SubsonicResult.Failure -> return songsResult
-                is SubsonicResult.Success -> songs += songsResult.value
-            }
-            onProgress(index + 1, albums.size)
-        }
-
-        return SubsonicResult.Success(SubsonicLibrary(albums = albums, songs = songs))
-    }
+        onProgress: suspend (SubsonicProgress) -> Unit = {},
+    ): SubsonicResult<SubsonicLibrary> =
+        SubsonicLibraryReader { method, params -> request(method, params) }.read(onProgress)
 
     /**
      * Where the audio actually is. Built fresh from the stored password rather than kept in
@@ -127,70 +114,34 @@ class SubsonicClient(
     /** The same file, for keeping. Subsonic's download never transcodes. */
     fun downloadUrl(songId: String): String = url("download", mapOf("id" to songId))
 
-    private suspend fun fetchAllAlbums(): SubsonicResult<List<SubsonicAlbum>> {
-        val all = mutableListOf<SubsonicAlbum>()
-        var offset = 0
-        // The API caps a page at 500 whatever you ask for, so this pages until a short one.
-        while (true) {
-            val page = request(
-                "getAlbumList2",
-                mapOf(
-                    "type" to "alphabeticalByName",
-                    "size" to PAGE_SIZE.toString(),
-                    "offset" to offset.toString(),
-                ),
-            )
-            val body = when (page) {
-                is SubsonicResult.Failure -> return page
-                is SubsonicResult.Success -> page.value
-            }
-            val array = body.optJSONObject("albumList2")?.optJSONArray("album")
-            val count = array?.length() ?: 0
-            for (i in 0 until count) {
-                val o = array!!.getJSONObject(i)
-                all += SubsonicAlbum(
-                    id = o.getString("id"),
-                    name = o.optString("name").ifBlank { "[Unknown album]" },
-                    artist = o.optString("artist").ifBlank { "[Unknown artist]" },
-                    artistId = o.optString("artistId").takeIf { it.isNotBlank() },
-                    year = o.optInt("year").takeIf { it > 0 },
-                )
-            }
-            if (count < PAGE_SIZE) return SubsonicResult.Success(all)
-            offset += count
-        }
-    }
+    /**
+     * The API version spoken. Starts at the newest this was written against; a server that
+     * is older answers error 30 with its own version, and every call after that uses it.
+     */
+    @Volatile
+    private var apiVersion = API_VERSION
 
-    private suspend fun fetchAlbumSongs(albumId: String): SubsonicResult<List<SubsonicSong>> {
-        val body = when (val r = request("getAlbum", mapOf("id" to albumId))) {
-            is SubsonicResult.Failure -> return r
-            is SubsonicResult.Success -> r.value
-        }
-        val array = body.optJSONObject("album")?.optJSONArray("song")
-        val songs = mutableListOf<SubsonicSong>()
-        for (i in 0 until (array?.length() ?: 0)) {
-            val o = array!!.getJSONObject(i)
-            songs += SubsonicSong(
-                id = o.getString("id"),
-                title = o.optString("title").ifBlank { "[Untitled]" },
-                artist = o.optString("artist").ifBlank { "[Unknown artist]" },
-                artistId = o.optString("artistId").takeIf { it.isNotBlank() },
-                album = o.optString("album").takeIf { it.isNotBlank() },
-                albumId = o.optString("albumId").takeIf { it.isNotBlank() } ?: albumId,
-                trackNumber = o.optInt("track").takeIf { it > 0 },
-                discNumber = o.optInt("discNumber").takeIf { it > 0 },
-                year = o.optInt("year").takeIf { it > 0 },
-                durationMillis = o.optInt("duration").takeIf { it > 0 }?.let { it * 1000L },
-                sizeBytes = o.optLong("size").takeIf { it > 0 },
-                suffix = o.optString("suffix").takeIf { it.isNotBlank() },
-            )
-        }
-        return SubsonicResult.Success(songs)
-    }
+    /** True once the server has turned out to be too old for tokens: the password goes as itself. */
+    val sendsPassword: Boolean get() = isOlder(apiVersion, TOKENS_SINCE)
 
     private suspend fun request(
         method: String,
         params: Map<String, String> = emptyMap(),
+    ): SubsonicResult<JSONObject> {
+        val first = requestOnce(method, params)
+        if (first is SubsonicResult.Failure && first.code == ERROR_SERVER_TOO_OLD) {
+            val theirs = first.serverVersion
+            if (theirs != null && theirs != apiVersion && isOlder(theirs, apiVersion)) {
+                apiVersion = theirs
+                return requestOnce(method, params)
+            }
+        }
+        return first
+    }
+
+    private suspend fun requestOnce(
+        method: String,
+        params: Map<String, String>,
     ): SubsonicResult<JSONObject> = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(url(method, params)).build()
         try {
@@ -198,6 +149,7 @@ class SubsonicClient(
                 if (!response.isSuccessful) {
                     return@withContext SubsonicResult.Failure(
                         resources.getString(R.string.service_subsonic_download_server_answered, response.code),
+                        code = -response.code,
                     )
                 }
                 val text = response.body?.string().orEmpty()
@@ -207,16 +159,19 @@ class SubsonicClient(
                     )
                 if (body.optString("status") != "ok") {
                     val error = body.optJSONObject("error")
+                    val code = error?.optInt("code")
                     // The two a person can actually act on are told apart; the rest are
                     // passed through as the server worded them.
                     return@withContext SubsonicResult.Failure(
-                        when (error?.optInt("code")) {
+                        when (code) {
                             40 -> resources.getString(R.string.service_subsonic_login_refused)
                             50 -> resources.getString(R.string.service_subsonic_not_allowed)
                             else -> error?.optString("message")
                                 ?.takeIf { it.isNotBlank() }
                                 ?: resources.getString(R.string.service_subsonic_refused)
                         },
+                        code = code,
+                        serverVersion = body.optString("version").takeIf { it.isNotBlank() },
                     )
                 }
                 SubsonicResult.Success(body)
@@ -233,9 +188,16 @@ class SubsonicClient(
             .appendPath("rest")
             .appendPath(method)
             .appendQueryParameter("u", config.user)
-            .appendQueryParameter("t", md5(config.password + salt))
-            .appendQueryParameter("s", salt)
-            .appendQueryParameter("v", API_VERSION)
+        val version = apiVersion
+        if (isOlder(version, TOKENS_SINCE)) {
+            builder.appendQueryParameter("p", "enc:" + config.password.toByteArray().joinToString("") { "%02x".format(it) })
+        } else {
+            builder
+                .appendQueryParameter("t", md5(config.password + salt))
+                .appendQueryParameter("s", salt)
+        }
+        builder
+            .appendQueryParameter("v", version)
             .appendQueryParameter("c", CLIENT_NAME)
             .appendQueryParameter("f", "json")
         params.forEach { (k, v) -> builder.appendQueryParameter(k, v) }
@@ -255,8 +217,11 @@ class SubsonicClient(
 
     private companion object {
         const val API_VERSION = "1.16.1"
+
+        /** The first version that took a salted token instead of the password. */
+        const val TOKENS_SINCE = "1.13.0"
+        const val ERROR_SERVER_TOO_OLD = 30
         const val CLIENT_NAME = "jimeikin"
-        const val PAGE_SIZE = 500
 
         /** What media3 can decode on this phone without help from the server. */
         val PLAYABLE_SUFFIXES = setOf(
@@ -288,11 +253,21 @@ data class SubsonicConfig(
 sealed interface SubsonicResult<out T> {
     data class Success<T>(val value: T) : SubsonicResult<T>
 
-    /** Worded for the person reading it, not for a log. */
-    data class Failure(val message: String) : SubsonicResult<Nothing>
+    /**
+     * Worded for the person reading it, not for a log. [code] is the server's Subsonic error
+     * code, or minus the HTTP status when it never got that far; null when nothing answered.
+     */
+    data class Failure(
+        val message: String,
+        val code: Int? = null,
+        val serverVersion: String? = null,
+    ) : SubsonicResult<Nothing> {
+        /** A wrong password or a forbidden account: no other route around it will help. */
+        val isAboutTheAccount: Boolean get() = code == 40 || code == 41 || code == 50
+    }
 }
 
-private inline fun <T, R> SubsonicResult<T>.map(transform: (T) -> R): SubsonicResult<R> =
+internal inline fun <T, R> SubsonicResult<T>.map(transform: (T) -> R): SubsonicResult<R> =
     when (this) {
         is SubsonicResult.Success -> SubsonicResult.Success(transform(value))
         is SubsonicResult.Failure -> this
@@ -315,6 +290,8 @@ data class SubsonicAlbum(
     val artist: String,
     val artistId: String?,
     val year: Int?,
+    /** As the server's album list gives it; used to tell a complete read from a short one. */
+    val songCount: Int? = null,
 )
 
 data class SubsonicSong(
@@ -331,3 +308,34 @@ data class SubsonicSong(
     val sizeBytes: Long?,
     val suffix: String?,
 )
+
+/** Whether dotted version [a] comes before [b]: "1.8.0" is older than "1.13.0". */
+internal fun isOlder(a: String, b: String): Boolean {
+    val x = a.split('.').map { it.toIntOrNull() ?: 0 }
+    val y = b.split('.').map { it.toIntOrNull() ?: 0 }
+    for (i in 0 until maxOf(x.size, y.size)) {
+        val d = x.getOrElse(i) { 0 } - y.getOrElse(i) { 0 }
+        if (d != 0) return d < 0
+    }
+    return false
+}
+
+/**
+ * A server song's stream address with a ceiling on its bitrate, or as it was when there is
+ * no ceiling.
+ *
+ * Applied when a queue is built rather than when the library is read, so a change takes
+ * effect the next time something is put on to play, without reading the library again. `format=raw` is
+ * what asks the server not to transcode, so it has to go for the ceiling to mean anything;
+ * a song already under the ceiling is still sent untouched, since the server only transcodes
+ * what is over it.
+ */
+fun withBitrateCeiling(url: String, kbps: Int?): String {
+    if (kbps == null || kbps <= 0 || "/rest/stream" !in url) return url
+    val q = url.indexOf('?')
+    if (q < 0) return "$url?maxBitRate=$kbps"
+    val kept = url.substring(q + 1).split('&').filterNot {
+        it == "format=raw" || it.startsWith("maxBitRate=")
+    }
+    return url.substring(0, q) + "?" + (kept + "maxBitRate=$kbps").joinToString("&")
+}

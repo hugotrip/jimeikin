@@ -1,6 +1,10 @@
 package com.wanderwildwood.jimeikin.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,73 +66,80 @@ fun MusicServerScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-    ) {
-        TextFieldMMD(
-            modifier = Modifier.fillMaxWidth(),
-            value = address,
-            onValueChange = { address = it },
-            label = { TextMMD(text = stringResource(R.string.library_server_address)) },
-            placeholder = { TextMMD(text = "192.168.1.10:4533") },
-            singleLine = true,
-            enabled = !isBusy,
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        TextFieldMMD(
-            modifier = Modifier.fillMaxWidth(),
-            value = user,
-            onValueChange = { user = it },
-            label = { TextMMD(text = stringResource(R.string.library_server_username)) },
-            singleLine = true,
-            enabled = !isBusy,
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        TextFieldMMD(
-            modifier = Modifier.fillMaxWidth(),
-            value = password,
-            onValueChange = { password = it },
-            label = { TextMMD(text = stringResource(R.string.library_server_password)) },
-            singleLine = true,
-            enabled = !isBusy,
-            visualTransformation = PasswordVisualTransformation(),
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        val entered = SubsonicConfig(address, user, password)
-        ButtonMMD(
-            onClick = { onConnectClick(entered) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = entered.isComplete && !isBusy,
+    // Forget sits at the foot of the screen when everything fits, and the page scrolls
+    // when it does not - a long status line once pushed it off the bottom entirely.
+    // The minimum height is what lets the spacer above it still push it down.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .fillMaxWidth()
+                .padding(16.dp),
         ) {
-            TextMMD(
-                text = if (config == null) stringResource(R.string.library_server_connect) else stringResource(R.string.library_server_connect_again),
-                style = MaterialTheme.typography.titleSmall,
+            TextFieldMMD(
+                modifier = Modifier.fillMaxWidth(),
+                value = address,
+                onValueChange = { address = it },
+                label = { TextMMD(text = stringResource(R.string.library_server_address)) },
+                placeholder = { TextMMD(text = "192.168.1.10:4533") },
+                singleLine = true,
+                enabled = !isBusy,
             )
-        }
 
-        if (statusMessage != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            TextMMD(text = statusMessage, style = MaterialTheme.typography.labelSmall)
-        }
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+            TextFieldMMD(
+                modifier = Modifier.fillMaxWidth(),
+                value = user,
+                onValueChange = { user = it },
+                label = { TextMMD(text = stringResource(R.string.library_server_username)) },
+                singleLine = true,
+                enabled = !isBusy,
+            )
 
-        TextMMD(
-            text = stringResource(R.string.library_server_password_note),
-            style = MaterialTheme.typography.labelSmall,
-        )
+            Spacer(modifier = Modifier.height(12.dp))
 
-        if (config != null) {
-            Spacer(modifier = Modifier.weight(1f))
-            ForgetServerRow(onForget = onForgetClick)
+            TextFieldMMD(
+                modifier = Modifier.fillMaxWidth(),
+                value = password,
+                onValueChange = { password = it },
+                label = { TextMMD(text = stringResource(R.string.library_server_password)) },
+                singleLine = true,
+                enabled = !isBusy,
+                visualTransformation = PasswordVisualTransformation(),
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            val entered = SubsonicConfig(address, user, password)
+            ButtonMMD(
+                onClick = { onConnectClick(entered) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = entered.isComplete && !isBusy,
+            ) {
+                TextMMD(
+                    text = if (config == null) stringResource(R.string.library_server_connect) else stringResource(R.string.library_server_connect_again),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+
+            if (statusMessage != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                TextMMD(text = statusMessage, style = MaterialTheme.typography.labelSmall)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            TextMMD(
+                text = stringResource(R.string.library_server_password_note),
+                style = MaterialTheme.typography.labelSmall,
+            )
+
+            if (config != null) {
+                Spacer(modifier = Modifier.weight(1f))
+                ForgetServerRow(onForget = onForgetClick)
+            }
         }
     }
 }

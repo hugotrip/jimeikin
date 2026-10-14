@@ -2,6 +2,7 @@ package com.wanderwildwood.jimeikin.playback
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.wanderwildwood.jimeikin.data.withBitrateCeiling
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 
 /**
@@ -10,7 +11,10 @@ import com.wanderwildwood.jimeikin.ui.SongUiModel
  * amount of playback bookkeeping state inside the composable while preserving
  * existing behavior.
  */
-class PlaybackCoordinator {
+class PlaybackCoordinator(
+    /** The music server's bitrate ceiling, read each time a queue is built. */
+    private val serverBitrateCeiling: () -> Int? = { null },
+) {
 
     var localPlaybackSubqueue: List<SongUiModel> = emptyList()
         private set
@@ -60,6 +64,7 @@ class PlaybackCoordinator {
         localPlaybackSubqueue = localList
         localIndexByGlobal = localMap
 
+        val ceiling = serverBitrateCeiling()
         localMediaItemsForQueue = localList.map { song ->
             val metadata = MediaMetadata.Builder()
                 .setTitle(song.title)
@@ -69,7 +74,10 @@ class PlaybackCoordinator {
 
             MediaItem.Builder()
                 .setMediaId(song.id)
-                .setUri(song.audioUri)
+                .setUri(
+                    if (song.sourceType == "SUBSONIC") withBitrateCeiling(song.audioUri!!, ceiling)
+                    else song.audioUri,
+                )
                 .setMediaMetadata(metadata)
                 .build()
         }

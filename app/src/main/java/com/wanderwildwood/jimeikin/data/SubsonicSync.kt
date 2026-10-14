@@ -33,13 +33,14 @@ object SubsonicSync {
         albumDao: AlbumDao,
         artistDao: ArtistDao,
         playlistDao: PlaylistDao? = null,
-        onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
+        onProgress: suspend (SubsonicProgress) -> Unit = {},
     ): SubsonicResult<Int> {
         val library = when (val r = client.fetchLibrary(onProgress)) {
             is SubsonicResult.Failure -> return r
             is SubsonicResult.Success -> r.value
         }
 
+        val albumsById = library.albums.associateBy { it.id }
         val songs = library.songs.map { song ->
             SongEntity(
                 id = songId(song.id),
@@ -54,7 +55,7 @@ object SubsonicSync {
                 audioUri = client.streamUrl(song.id, song.suffix),
                 // Filed under the album artist, the same rule the card library follows, so a
                 // compilation stays one artist rather than one per track.
-                artistId = library.albums.firstOrNull { it.id == song.albumId }
+                artistId = song.albumId?.let { albumsById[it] }
                     ?.let { artistId(it.artist) }
                     ?: artistId(song.artist),
                 releaseYear = song.year,

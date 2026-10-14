@@ -433,6 +433,7 @@ fun CalmMusic(
     var editProgressText by remember { mutableStateOf<String?>(null) }
     var editErrorText by remember { mutableStateOf<String?>(null) }
     val subsonicConfig by settingsManager.subsonicConfig.collectAsState()
+    val subsonicMaxBitrate by settingsManager.subsonicMaxBitrate.collectAsState()
     var isServerBusy by remember { mutableStateOf(false) }
     var serverStatus by remember { mutableStateOf<String?>(null) }
 
@@ -702,14 +703,24 @@ fun CalmMusic(
                 albumDao = database.albumDao(),
                 artistDao = database.artistDao(),
                 playlistDao = database.playlistDao(),
-                onProgress = { done, total ->
-                    serverStatus = context.getString(R.string.main_server_reading_album, done, total)
+                onProgress = { progress ->
+                    serverStatus = when (progress) {
+                        is com.wanderwildwood.jimeikin.data.SubsonicProgress.Songs ->
+                            context.getString(R.string.main_server_reading_songs, progress.done, progress.total)
+                        is com.wanderwildwood.jimeikin.data.SubsonicProgress.Albums ->
+                            context.getString(R.string.main_server_reading_album, progress.done, progress.total)
+                        is com.wanderwildwood.jimeikin.data.SubsonicProgress.Folders ->
+                            context.getString(R.string.main_server_reading_folders, progress.done)
+                    }
                 },
             )
             serverStatus = when (result) {
                 is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> result.message
-                is com.wanderwildwood.jimeikin.data.SubsonicResult.Success ->
-                    context.resources.getQuantityString(R.plurals.main_server_songs_in_library, result.value, result.value)
+                is com.wanderwildwood.jimeikin.data.SubsonicResult.Success -> {
+                    val read = context.resources.getQuantityString(R.plurals.main_server_songs_in_library, result.value, result.value)
+                    // Said here, to the few it applies to, rather than on the screen for everyone.
+                    if (client.sendsPassword) context.getString(R.string.main_server_sends_password, read) else read
+                }
             }
             viewModel.refreshLibraryFromDatabase()
             isServerBusy = false
@@ -2032,6 +2043,9 @@ fun CalmMusic(
                             serverStatus = null
                             navController.navigate(Screen.MusicServer.route) { launchSingleTop = true }
                         },
+                        isMusicServerConnected = subsonicConfig != null,
+                        serverMaxBitrateKbps = subsonicMaxBitrate,
+                        onServerMaxBitrateChange = { settingsManager.setSubsonicMaxBitrate(it) },
                         onRescanLocalMusicClick = {
                             libraryScope.launch {
                                 resyncLocalLibrary(localMusicFolders)

@@ -33,6 +33,23 @@ class CalmMusicSettingsManager(context: Context) {
     private val _subsonicConfig = MutableStateFlow(getSubsonicConfigSync())
     val subsonicConfig: StateFlow<SubsonicConfig?> = _subsonicConfig.asStateFlow()
 
+    private val _subsonicMaxBitrate = MutableStateFlow(getSubsonicMaxBitrateSync())
+
+    /**
+     * The most a server song may stream at, in kbps, or null to stream every song as it is
+     * stored. Kept apart from the login, so forgetting a server and connecting again does not
+     * lose it.
+     */
+    val subsonicMaxBitrate: StateFlow<Int?> = _subsonicMaxBitrate.asStateFlow()
+
+    fun setSubsonicMaxBitrate(kbps: Int?) {
+        prefs.edit { putInt(KEY_SUBSONIC_MAX_BITRATE, kbps ?: 0) }
+        _subsonicMaxBitrate.value = kbps?.takeIf { it > 0 }
+    }
+
+    fun getSubsonicMaxBitrateSync(): Int? =
+        prefs.getInt(KEY_SUBSONIC_MAX_BITRATE, 0).takeIf { it > 0 }
+
     /**
      * The music server's address and login. The password has to be kept, not just a token:
      * Subsonic signs each request with md5(password + a fresh salt), so the password itself
@@ -197,6 +214,7 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_SUBSONIC_URL = "subsonic_url"
         private const val KEY_SUBSONIC_USER = "subsonic_user"
         private const val KEY_SUBSONIC_PASSWORD = "subsonic_password"
+        private const val KEY_SUBSONIC_MAX_BITRATE = "subsonic_max_bitrate"
         private const val KEY_INCLUDE_LOCAL_MUSIC = "include_local_music"
         private const val KEY_LOCAL_MUSIC_FOLDERS = "local_music_folders"
         private const val KEY_LAST_LOCAL_LIBRARY_SCAN_MILLIS = "last_local_library_scan_millis"

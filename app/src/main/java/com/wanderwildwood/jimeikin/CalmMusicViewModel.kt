@@ -97,7 +97,7 @@ class CalmMusicViewModel(
     private val libraryRepository: LibraryRepository by lazy { LibraryRepository(app) }
     private val nowPlayingStorage: NowPlayingStorage by lazy { app.nowPlayingStorage }
 
-    private val playbackCoordinator = PlaybackCoordinator()
+    private val playbackCoordinator = PlaybackCoordinator { app.settingsManager.getSubsonicMaxBitrateSync() }
     private var localPlaybackMonitorJob: Job? = null
 
     private var lastCompletedSongId: String? = null

@@ -206,6 +206,13 @@
     <string name="main_server_reading_library">Reading the library</string>
     <!-- %1$d albums read so far, %2$d albums in all -->
     <string name="main_server_reading_album">Reading the library, album %1$d of %2$d</string>
+    <!-- %1$d songs read so far, %2$d songs in all -->
+    <string name="main_server_reading_songs">Reading the library, song %1$d of %2$d</string>
+    <!-- %1$d folders read so far; how many there are is not known until the end -->
+    <string name="main_server_reading_folders">Reading the library, folder %1$d</string>
+    <!-- Added after the songs line, only when the server is older than Subsonic 1.13 -->
+    <!-- %1$s is the songs line above, e.g. "12 songs from the server are in the library" -->
+    <string name="main_server_sends_password">%1$s. This server is too old to check a signature, so the password itself is sent with each request.</string>
     <!-- %1$d is how many songs were read. English uses the same wording for every count. -->
     <plurals name="main_server_songs_in_library">
         <item quantity="one">%1$d songs from the server are in the library</item>
@@ -538,6 +545,11 @@
     <!-- Button, when a server is already set up -->
     <string name="library_server_connect_again">Connect again</string>
     <string name="library_server_password_note">The password is kept on this phone. It is not sent to the server: each request carries a one-time signature made from it instead. Anyone who can read your network can still replay a request, so a server reachable from outside the house wants https.</string>
+    <!-- Settings row under Music server. Tapping it steps through the values below. -->
+    <string name="library_server_quality">Streaming quality</string>
+    <string name="library_server_quality_original">As the server keeps it</string>
+    <!-- %1$d is a bitrate in kilobits per second, e.g. 192. Only songs above it are re-encoded. -->
+    <string name="library_server_quality_capped">At most %1$d kbps</string>
     <!-- Row at the foot of the screen; the second label is shown in bold after one tap -->
     <string name="library_server_forget">Forget this server</string>
     <string name="library_server_forget_armed">Forget this server — its songs leave the library; tap again</string>

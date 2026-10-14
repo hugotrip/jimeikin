@@ -68,6 +68,9 @@ fun SettingsScreen(
     onNavigateToDownloadsClick: () -> Unit,
     musicServerSummary: String,
     onNavigateToMusicServerClick: () -> Unit,
+    isMusicServerConnected: Boolean,
+    serverMaxBitrateKbps: Int?,
+    onServerMaxBitrateChange: (Int?) -> Unit,
     isRescanningLocal: Boolean,
     isIngestingLocal: Boolean,
     localScanProgress: Float,
@@ -301,6 +304,22 @@ fun SettingsScreen(
             )
         }
 
+        // Each tap steps to the next ceiling, the value shown under the name like every row
+        // here: one repaint per change and no dialog. Only there while a server is.
+        if (isMusicServerConnected) {
+            item {
+                val index = SERVER_QUALITY_STEPS.indexOf(serverMaxBitrateKbps).coerceAtLeast(0)
+                ValueRow(
+                    label = stringResource(R.string.library_server_quality),
+                    value = serverMaxBitrateKbps
+                        ?.let { stringResource(R.string.library_server_quality_capped, it) }
+                        ?: stringResource(R.string.library_server_quality_original),
+                    onClick = { onServerMaxBitrateChange(SERVER_QUALITY_STEPS[(index + 1) % SERVER_QUALITY_STEPS.size]) },
+                    enabled = true,
+                )
+            }
+        }
+
         item {
             ValueRow(
                 label = stringResource(R.string.settings_youtube_account),
@@ -322,6 +341,9 @@ fun SettingsScreen(
         }
     }
 }
+
+/** From no ceiling down to what a slow mobile connection carries without a pause. */
+private val SERVER_QUALITY_STEPS: List<Int?> = listOf(null, 320, 192, 128, 96)
 
 /** A row that only opens somewhere. It has no value to show, so it shows none. */
 @Composable
