@@ -24,10 +24,8 @@ android {
         }
     }
 
-    // The checked-in debug.keystore is the standard Android debug key, password "android" -
-    // its private half is in this public repo, so anyone can build an APK that upgrades an
-    // install in place. A real keystore in signing/ replaces it for every build type when one
-    // is present; the release workflow writes it there from repository secrets.
+    // The real keystore lives in signing/, which is gitignored. No key is kept in this repo:
+    // one anyone can read would let anyone build an APK that installs over this one.
     val signingPropertiesFile = rootProject.file("signing/signing.properties")
     val realSigningConfig = if (signingPropertiesFile.isFile) {
         val signingProperties = Properties().apply {
@@ -43,27 +41,19 @@ android {
         null
     }
 
-    // Kept as the fallback so a fresh clone with no keystore still builds, and so a downloaded
-    // release APK can upgrade a debug install in place on machines that have neither.
-    signingConfigs {
-        getByName("debug") {
-            storeFile = layout.projectDirectory.file("debug.keystore").asFile
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
-
     buildTypes {
-        // Both build types take the same key so a downloaded release APK still upgrades a local
-        // debug install in place - it is just the real key now rather than the public one.
+        // Both build types take the real key when it is here, so a downloaded release APK
+        // still upgrades a local debug install in place. Without it a debug build uses this
+        // machine's own Android debug key.
         debug {
-            signingConfig = realSigningConfig ?: signingConfigs.getByName("debug")
+            if (realSigningConfig != null) signingConfig = realSigningConfig
         }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = realSigningConfig ?: signingConfigs.getByName("debug")
+            // No fallback: without the real key a release is unsigned and will not install,
+            // which fails loudly instead of producing something signed with the wrong key.
+            signingConfig = realSigningConfig
 
             // Two builds of the same commit differed by 120 bytes, and this was all of it:
             // AGP stamps the git revision into META-INF, CI builds from a clone and the

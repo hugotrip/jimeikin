@@ -23,12 +23,9 @@ Thumbs.db
 captures/
 outputs/
 
-# Signing keys (if ever added locally)
+# Signing keys. None is ever committed; the real one lives in signing/.
 *.jks
 *.keystore
-# ...except the checked-in debug/release-signing keystore (no real security
-# value, not Play Store distributed; kept consistent across machines and CI).
-!app/debug.keystore
 
 # Misc
 /local.properties
