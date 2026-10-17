@@ -220,7 +220,8 @@ private fun PageDots(state: LazyListState) {
         }
     }
     val (pageCount, currentPage, step) = pages
-    val fits = ((heightPx + with(density) { DOT_SPACING.toPx() }) / slotPx).toInt().coerceAtLeast(1)
+    // Inset from the list's ends as the letters are, so no dot sits on a rule.
+    val fits = ((heightPx + with(density) { (DOT_SPACING - EDGE_INSET * 2).toPx() }) / slotPx).toInt().coerceAtLeast(1)
     val dots = pageCount.coerceAtMost(fits)
     val latest by rememberUpdatedState(Triple(pageCount, dots, step))
     var touched by remember { mutableStateOf<Int?>(null) }
@@ -234,7 +235,7 @@ private fun PageDots(state: LazyListState) {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.pointerInput(Unit) {
+            modifier = Modifier.padding(vertical = EDGE_INSET).pointerInput(Unit) {
                 trackSlots(
                     count = { latest.second },
                     slotPx = { slotPx },
