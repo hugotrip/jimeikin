@@ -11,9 +11,10 @@ import kotlinx.coroutines.withContext
 
 /**
  * How local albums are keyed. 2: an album with no Album Artist tag is its name in its folder,
- * where it used to be split by each track's artist.
+ * where it used to be split by each track's artist. 3: artists are keyed without their guests
+ * (feat./ft.) and without a leading "The", so one artist is one id however a track credits them.
  */
-private const val LOCAL_ALBUM_KEY_VERSION = 2
+private const val LOCAL_ALBUM_KEY_VERSION = 3
 
 /**
  * Repository responsible for performing library-related data work against the
@@ -99,7 +100,7 @@ class LibraryRepository(
 
                             // Björk and Bjork are one artist, and so are the three ways this
                             // library spells Godspeed You! Black Emperor.
-                            fun String.normalize() = ArtistNames.key(this)
+                            fun String.normalize() = ArtistNames.artistKey(this)
 
                             // The album artist is the one a reader means by "artist": an album
                             // tagged Gorillaz stays one row however many guests are credited on
@@ -121,7 +122,7 @@ class LibraryRepository(
 
                                 if (!effectiveAlbumArtist.isNullOrBlank()) {
                                     val id = "LOCAL_FILE:" + effectiveAlbumArtist.normalize()
-                                    artistEntities.add(ArtistEntity(id, effectiveAlbumArtist, wrapper.song.sourceType))
+                                    artistEntities.add(ArtistEntity(id, ArtistNames.lead(effectiveAlbumArtist), wrapper.song.sourceType))
                                     entity.albumId?.let { albumIdsWithAlbumArtist.add(it) }
                                 }
                             }
@@ -131,7 +132,7 @@ class LibraryRepository(
                             normalizedLocalEntities.forEach { entity ->
                                 if (entity.albumId != null && entity.albumId in albumIdsWithAlbumArtist) return@forEach
                                 val id = entity.artistId ?: return@forEach
-                                val name = entity.artist.takeIf { it.isNotBlank() } ?: id.removePrefix("LOCAL_FILE:")
+                                val name = entity.artist.takeIf { it.isNotBlank() }?.let(ArtistNames::lead) ?: id.removePrefix("LOCAL_FILE:")
                                 artistEntities.add(ArtistEntity(id, name, entity.sourceType))
                             }
 
@@ -152,7 +153,13 @@ class LibraryRepository(
                                 .filter { it.albumId?.startsWith(UNTAGGED_ALBUM_PREFIX) == true && it.artist.isNotBlank() }
                                 .groupBy { it.albumId!! }
                                 .mapValues { (_, songs) ->
-                                    songs.groupingBy { it.artist }.eachCount().maxBy { it.value }.key
+                                    // Counted by who the credit is for, so "A" and "A feat. B"
+                                    // are one vote, not two.
+                                    songs.map { ArtistNames.lead(it.artist) }
+                                        .groupBy { ArtistNames.artistKey(it) }
+                                        .values
+                                        .maxBy { it.size }
+                                        .let { ArtistNames.preferred(it) }
                                 }
 
                             val albumEntities: List<AlbumEntity> = scannedAudio.audio

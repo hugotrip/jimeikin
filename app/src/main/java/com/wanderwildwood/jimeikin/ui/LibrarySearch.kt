@@ -123,12 +123,12 @@ private fun match(query: String, name: String, vararg others: String?): Int? {
 
 // A song is the same song under a different album - YouTube files a track under whatever
 // release it found it on - so songs meet on who and what, not where.
-private fun songKey(s: SongUiModel) = "song|" + ArtistNames.key(s.artist) + "|" + ArtistNames.key(withoutVersion(s.title))
+private fun songKey(s: SongUiModel) = "song|" + ArtistNames.artistKey(s.artist) + "|" + ArtistNames.key(withoutVersion(s.title))
 
 private fun albumKey(a: AlbumUiModel) =
-    "album|" + ArtistNames.key(a.artist.orEmpty()) + "|" + ArtistNames.key(withoutVersion(a.title))
+    "album|" + ArtistNames.artistKey(a.artist.orEmpty()) + "|" + ArtistNames.key(withoutVersion(a.title))
 
-private fun artistKey(name: String) = "artist|" + ArtistNames.key(name)
+private fun artistKey(name: String) = "artist|" + ArtistNames.artistKey(name)
 
 /**
  * "Moondance (2013 Remaster)" is Moondance. Only remasters are folded: a live take, a demo

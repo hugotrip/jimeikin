@@ -48,6 +48,42 @@ object ArtistNames {
     }
 
     /**
+     * The artist a credit is for, without the guests on it.
+     *
+     * "Gorillaz feat. De La Soul" is a Gorillaz song, and filing it under a name of its own
+     * gave every guest appearance a row on the Artists screen beside the band's own, each
+     * holding one song. Only the unambiguous markers are cut — feat., ft. and featuring, with
+     * a space either side — never "&", "and" or a comma, which are as often part of a band's
+     * name as a list of people.
+     */
+    fun lead(name: String): String {
+        val cut = FEATURING.find(name)?.range?.first ?: return name.trim()
+        return name.substring(0, cut).trim().ifEmpty { name.trim() }
+    }
+
+    /**
+     * What two credits for the same artist have in common: [key] over the [lead] artist, with a
+     * leading "The" set aside, so "The Beatles", "Beatles" and "Beatles, The" meet. A name that
+     * is nothing but "The" keeps it.
+     */
+    fun artistKey(name: String): String {
+        val lead = lead(name)
+        val withoutThe = lead
+            .replace(TRAILING_THE, "")
+            .replace(LEADING_THE, "")
+            .ifBlank { lead }
+        return key(withoutThe).ifEmpty { key(lead) }
+    }
+
+    /** One album, however its title and its artist were typed. */
+    fun albumKey(title: String, artist: String?): String =
+        key(title) + "\u0000" + artistKey(artist.orEmpty())
+
+    private val FEATURING = Regex("""\s+[(\[]?\s*(?:feat\.?|ft\.?|featuring)\s+""", RegexOption.IGNORE_CASE)
+    private val LEADING_THE = Regex("""^\s*the\s+""", RegexOption.IGNORE_CASE)
+    private val TRAILING_THE = Regex(""",\s*the\s*$""", RegexOption.IGNORE_CASE)
+
+    /**
      * Which spelling to show, given several for the same artist.
      *
      * The one used most often wins, because that is usually the one the person tagging meant.
@@ -61,6 +97,9 @@ object ArtistNames {
         return counts.entries.maxWithOrNull(
             compareBy<Map.Entry<String, Int>> { it.value }
                 .thenBy { if (hasDiacritics(it.key)) 1 else 0 }
+                // "Nick Drake" over "NICK DRAKE" and "nick drake": a name in one case
+                // throughout is a tag typed in a hurry.
+                .thenBy { if (it.key != it.key.uppercase() && it.key != it.key.lowercase()) 1 else 0 }
                 .thenBy { it.key.length },
         )!!.key
     }
@@ -79,5 +118,5 @@ object ArtistNames {
      * plays without a network.
      */
     fun songKey(artist: String, album: String?, title: String): String =
-        listOf(key(artist), key(album.orEmpty()), key(title)).joinToString("\u0000")
+        listOf(artistKey(artist), key(album.orEmpty()), key(title)).joinToString("\u0000")
 }

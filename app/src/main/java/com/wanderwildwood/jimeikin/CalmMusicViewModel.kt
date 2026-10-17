@@ -201,7 +201,20 @@ class CalmMusicViewModel(
 
     suspend fun getAlbumSongs(albumId: String): List<SongUiModel> {
         return withContext(Dispatchers.IO) {
-            val idsToFetch = mutableSetOf(albumId)
+            // The Albums tab shows one row for every album row that folds to the same title and
+            // artist - the half of a record on the card and the whole of it on a server, two
+            // discs in two folders, one album a server has split in two - and opened only the
+            // first of them, so the page was missing every song filed under the others. All of
+            // them are read now, in id order, which puts disc folders in their own order.
+            val allAlbums = albumDao.getAllAlbums()
+            val opened = allAlbums.firstOrNull { it.id == albumId }
+            val sameAlbum = opened?.let { o ->
+                val key = ArtistNames.albumKey(o.name, o.artist)
+                allAlbums.filter { ArtistNames.albumKey(it.name, it.artist) == key }.map { it.id }.sorted()
+            } ?: listOf(albumId)
+
+            val idsToFetch = LinkedHashSet(sameAlbum)
+            idsToFetch.add(albumId)
 
             val suffix = albumId.substringAfter(":", missingDelimiterValue = "")
             if (suffix.isNotEmpty()) {
@@ -210,9 +223,15 @@ class CalmMusicViewModel(
                 idsToFetch.add("YOUTUBE_DOWNLOAD:$suffix")
             }
 
-            val allEntities = idsToFetch.flatMap { id ->
-                songDao.getSongsByAlbumId(id)
-            }.distinctBy { it.id }
+            // A part with no disc numbers is numbered by its place among the parts, so two
+            // folders' track ones do not interleave.
+            val discOfPart = sameAlbum.withIndex().associate { (i, id) -> id to i + 1 }
+            val partOfSong = mutableMapOf<String, Int>()
+            val allEntities = withoutServerDuplicates(
+                idsToFetch.flatMap { id ->
+                    songDao.getSongsByAlbumId(id).onEach { partOfSong.putIfAbsent(it.id, discOfPart[id] ?: 1) }
+                }.distinctBy { it.id },
+            )
 
             allEntities.map { entity ->
                 SongUiModel(
@@ -227,7 +246,21 @@ class CalmMusicViewModel(
                     audioUri = entity.audioUri,
                     album = entity.album,
                 )
-            }.sortedWith(compareBy({ it.discNumber ?: 1 }, { it.trackNumber ?: 0 }))
+            }.let { songs ->
+                // Only where the parts both start again at track one: half an album tagged and
+                // half not is still one disc, and keeps one running order.
+                val partsRestart = songs
+                    .filter { it.discNumber == null && it.trackNumber != null }
+                    .groupBy { it.trackNumber }
+                    .values
+                    .any { same -> same.mapNotNull { partOfSong[it.id] }.distinct().size > 1 }
+                songs.sortedWith(
+                    compareBy(
+                        { it.discNumber ?: if (partsRestart) partOfSong[it.id] ?: 1 else 1 },
+                        { it.trackNumber ?: 0 },
+                    ),
+                )
+            }
         }
     }
 
@@ -466,8 +499,8 @@ class CalmMusicViewModel(
 
         val libraryArtists = _libraryArtists.value
         for (name in names) {
-            val key = ArtistNames.key(name)
-            libraryArtists.firstOrNull { ArtistNames.key(it.name) == key }?.let {
+            val key = ArtistNames.artistKey(name)
+            libraryArtists.firstOrNull { ArtistNames.artistKey(it.name) == key }?.let {
                 return ArtistPage.Library(it)
             }
         }
@@ -497,7 +530,7 @@ class CalmMusicViewModel(
      * page already knows how to fill.
      */
     suspend fun albumPageFor(song: SongUiModel): AlbumUiModel? {
-        fun key(name: String, artist: String?) = name.lowercase().trim() to (artist?.lowercase()?.trim() ?: "")
+        fun key(name: String, artist: String?) = ArtistNames.albumKey(name, artist)
 
         val albumEntity = withContext(Dispatchers.IO) {
             songDao.getSongById(song.id)?.albumId?.let { albumId ->
@@ -513,10 +546,10 @@ class CalmMusicViewModel(
         }
 
         val title = song.album?.takeIf { it.isNotBlank() } ?: return null
-        val artistKey = ArtistNames.key(song.artist)
+        val artistKey = ArtistNames.artistKey(song.artist)
         libraryAlbums.firstOrNull {
             it.title.trim().equals(title.trim(), ignoreCase = true) &&
-                    (it.artist == null || ArtistNames.key(it.artist) == artistKey)
+                    (it.artist == null || ArtistNames.artistKey(it.artist) == artistKey)
         }?.let { return it }
 
         if (song.sourceType != "YOUTUBE") return null
@@ -530,8 +563,9 @@ class CalmMusicViewModel(
 
     suspend fun getArtistContent(artistId: String): ArtistContent {
         return withContext(Dispatchers.IO) {
-            fun normalizeName(name: String): String =
-                name.trim().replace(Regex("\\s+"), " ").lowercase()
+            // The same fold the Artists tab groups by, so the page holds every row the tab
+            // put under this one name - Bjork's server songs beside Björk's on the card.
+            fun normalizeName(name: String): String = ArtistNames.artistKey(name)
 
             val allArtists = artistDao.getAllArtistsWithCounts()
             val baseArtist = allArtists.firstOrNull { it.id == artistId }
@@ -543,9 +577,15 @@ class CalmMusicViewModel(
                 listOf(artistId)
             }
 
-            val songEntities = relatedArtistIds
-                .flatMap { id -> songDao.getSongsByArtistId(id) }
-                .distinctBy { it.id }
+            // Their own songs, and every song on an album filed under them: a track crediting
+            // a guest is still on the record, and the Artists tab counts it, so the page that
+            // said "12 songs" listed only the ones whose own artist tag matched.
+            val filedAlbumIds = relatedArtistIds.flatMap { id -> albumDao.getAlbumsByArtistId(id) }.map { it.id }
+            val songEntities = withoutServerDuplicates(
+                (relatedArtistIds.flatMap { id -> songDao.getSongsByArtistId(id) } +
+                    filedAlbumIds.flatMap { id -> songDao.getSongsByAlbumId(id) })
+                    .distinctBy { it.id },
+            )
 
             // An album filed under someone else still belongs here if one of these songs is on
             // it - a guest on a record no tag named the artist of. The Artists tab counts it.
@@ -592,7 +632,7 @@ class CalmMusicViewModel(
 
             val mergedAlbums = albumEntities
                 .groupBy {
-                    (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
+                    ArtistNames.albumKey(it.name, it.artist)
                 }
                 .map { (_, duplicates) ->
                     val primary = duplicates.find { it.sourceType == "LOCAL_FILE" } ?: duplicates.first()
@@ -602,8 +642,8 @@ class CalmMusicViewModel(
                         title = primary.name,
                         artist = primary.artist,
                         sourceType = primary.sourceType,
-                        releaseYear = albumIdToYear[primary.id],
-                        origin = originOf(songSourcesByAlbumId[primary.id].orEmpty()),
+                        releaseYear = duplicates.mapNotNull { albumIdToYear[it.id] }.maxOrNull(),
+                        origin = originOf(duplicates.flatMap { songSourcesByAlbumId[it.id].orEmpty() }),
                     )
                 }
                 .sortedWith(
@@ -1857,7 +1897,7 @@ class CalmMusicViewModel(
                 .groupBy { it.artistId!! }
                 .mapValues { (_, albums) ->
                     albums.groupBy {
-                        (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
+                        ArtistNames.albumKey(it.name, it.artist)
                     }.count()
                 }
 
@@ -1899,7 +1939,7 @@ class CalmMusicViewModel(
             val mergedAlbums = allAlbums
                 .filter { albumIdToYear.containsKey(it.id) }
                 .groupBy {
-                    (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
+                    ArtistNames.albumKey(it.name, it.artist)
                 }
                 .map { (_, duplicates) ->
                     val primary = duplicates.find { it.sourceType == "LOCAL_FILE" } ?: duplicates.first()
@@ -1909,8 +1949,8 @@ class CalmMusicViewModel(
                         title = primary.name,
                         artist = primary.artist,
                         sourceType = primary.sourceType,
-                        releaseYear = albumIdToYear[primary.id],
-                        origin = originOf(songSourcesByAlbumId[primary.id].orEmpty()),
+                        releaseYear = duplicates.mapNotNull { albumIdToYear[it.id] }.maxOrNull(),
+                        origin = originOf(duplicates.flatMap { songSourcesByAlbumId[it.id].orEmpty() }),
                     )
                 }
 
@@ -1954,6 +1994,7 @@ class CalmMusicViewModel(
         // on. The query this replaced joined on both, and counting only the first put a zero
         // beside every artist whose songs are filed under their album instead.
         val artistIdByAlbumId = albums.mapNotNull { a -> a.artistId?.let { a.id to it } }.toMap()
+        val albumKeyById = albums.associate { it.id to ArtistNames.albumKey(it.name, it.artist) }
         val songsByArtistId = mutableMapOf<String, MutableList<SongEntity>>()
         songs.forEach { song ->
             val ids = setOfNotNull(song.artistId, song.albumId?.let { artistIdByAlbumId[it] })
@@ -1961,7 +2002,7 @@ class CalmMusicViewModel(
         }
 
         return allArtistsWithCounts
-            .groupBy { ArtistNames.key(it.name) }
+            .groupBy { ArtistNames.artistKey(it.name) }
             .values
             .map { group ->
                 val primary = group.find { it.sourceType == "LOCAL_FILE" }
@@ -1970,7 +2011,11 @@ class CalmMusicViewModel(
 
                 val theirSongs = group.flatMap { songsByArtistId[it.id].orEmpty() }.distinctBy { it.id }
                 val totalSongCount = theirSongs.size
-                val totalAlbumCount = theirSongs.mapNotNull { it.albumId }.distinct().size
+                // Counted the way the Albums tab shows them: half a record tagged and half not,
+                // or two disc folders, are two album rows and one album.
+                val totalAlbumCount = theirSongs.mapNotNull { it.albumId }
+                    .map { id -> albumKeyById[id] ?: id }
+                    .distinct().size
 
                 ArtistUiModel(
                     id = primary.id,
@@ -2008,7 +2053,7 @@ class CalmMusicViewModel(
                 .groupBy { it.artistId!! }
                 .mapValues { (_, albums) ->
                     albums.groupBy {
-                        (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
+                        ArtistNames.albumKey(it.name, it.artist)
                     }.count()
                 }
 
@@ -2046,7 +2091,7 @@ class CalmMusicViewModel(
 
             val mergedAlbums = allAlbums
                 .groupBy {
-                    (it.name.lowercase().trim() to (it.artist?.lowercase()?.trim() ?: ""))
+                    ArtistNames.albumKey(it.name, it.artist)
                 }
                 .map { (_, duplicates) ->
                     val primary = duplicates.find { it.sourceType == "LOCAL_FILE" } ?: duplicates.first()
@@ -2056,8 +2101,8 @@ class CalmMusicViewModel(
                         title = primary.name,
                         artist = primary.artist,
                         sourceType = primary.sourceType,
-                        releaseYear = albumIdToYear[primary.id],
-                        origin = originOf(songSourcesByAlbumId[primary.id].orEmpty()),
+                        releaseYear = duplicates.mapNotNull { albumIdToYear[it.id] }.maxOrNull(),
+                        origin = originOf(duplicates.flatMap { songSourcesByAlbumId[it.id].orEmpty() }),
                     )
                 }
 

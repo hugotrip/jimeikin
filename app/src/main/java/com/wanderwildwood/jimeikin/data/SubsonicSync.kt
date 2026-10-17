@@ -23,7 +23,7 @@ object SubsonicSync {
     /** Server ids are short and could collide with a document id, so they are namespaced. */
     private fun songId(id: String) = "SUBSONIC:$id"
     private fun albumId(id: String) = "SUBSONIC:ALBUM:$id"
-    private fun artistId(name: String) = "SUBSONIC:ARTIST:" + ArtistNames.key(name)
+    private fun artistId(name: String) = "SUBSONIC:ARTIST:" + ArtistNames.artistKey(name)
 
     private fun playlistId(id: String) = "SUBSONIC:PLAYLIST:$id"
 
@@ -78,7 +78,7 @@ object SubsonicSync {
             .map { it.artist }
             .groupBy { artistId(it) }
             .map { (id, spellings) ->
-                ArtistEntity(id, ArtistNames.preferred(spellings), SOURCE_TYPE)
+                ArtistEntity(id, ArtistNames.lead(ArtistNames.preferred(spellings)), SOURCE_TYPE)
             }
 
         withContext(Dispatchers.IO) {
