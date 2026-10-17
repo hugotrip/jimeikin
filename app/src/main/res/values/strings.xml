@@ -210,9 +210,9 @@
     <string name="main_server_reading_songs">Reading the library, song %1$d of %2$d</string>
     <!-- %1$d folders read so far; how many there are is not known until the end -->
     <string name="main_server_reading_folders">Reading the library, folder %1$d</string>
-    <!-- Added after the songs line, only when the server is older than Subsonic 1.13 -->
+    <!-- Added after the songs line, only when the server does not take Subsonic's token sign-in: older than Subsonic 1.13, or one such as Nextcloud Music -->
     <!-- %1$s is the songs line above, e.g. "12 songs from the server are in the library" -->
-    <string name="main_server_sends_password">%1$s. This server is too old to check a signature, so the password itself is sent with each request.</string>
+    <string name="main_server_sends_password">%1$s. This server does not take a signature, so the password itself is sent with each request. Away from home, use an https address.</string>
     <!-- %1$d is how many songs were read. English uses the same wording for every count. -->
     <plurals name="main_server_songs_in_library">
         <item quantity="one">%1$d songs from the server are in the library</item>
@@ -545,6 +545,8 @@
     <!-- Button, when a server is already set up -->
     <string name="library_server_connect_again">Connect again</string>
     <string name="library_server_password_note">The password is kept on this phone. It is not sent to the server: each request carries a one-time signature made from it instead. Anyone who can read your network can still replay a request, so a server reachable from outside the house wants https.</string>
+    <!-- In place of the note above, once the server has turned out not to take the signature -->
+    <string name="library_server_password_note_sent">The password is kept on this phone. This server does not take a one-time signature, so the password itself is sent with each request. Anyone who can read your network can read it, so a server reachable from outside the house wants https.</string>
     <!-- Settings row under Music server. Tapping it steps through the values below. -->
     <string name="library_server_quality">Streaming quality</string>
     <string name="library_server_quality_original">As the server keeps it</string>
@@ -665,6 +667,8 @@
     <!-- Connecting to a music server (Subsonic/Navidrome), shown under the server row in settings -->
     <string name="service_subsonic_not_a_music_server">That address answered, but not like a music server.</string>
     <string name="service_subsonic_login_refused">That username and password were not accepted.</string>
+    <!-- Subsonic error 41, when sending the password itself was refused as well -->
+    <string name="service_subsonic_no_tokens">This server does not take token sign-in, and it refused the password too.</string>
     <string name="service_subsonic_not_allowed">That account is not allowed to read the library.</string>
     <string name="service_subsonic_refused">The server refused the request.</string>
     <string name="service_subsonic_unreachable">The server could not be reached.</string>

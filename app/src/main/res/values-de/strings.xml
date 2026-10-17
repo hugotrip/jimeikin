@@ -412,6 +412,7 @@
     <string name="library_server_connect">Verbinden</string>
     <!-- Button, when a server is already set up -->
     <string name="library_server_connect_again">Erneut verbinden</string>
+    <string name="library_server_password_note_sent">Das Passwort bleibt auf diesem Telefon. Dieser Server nimmt keine einmalige Signatur an, deshalb wird das Passwort selbst mit jeder Anfrage gesendet. Jeder, der dein Netzwerk mitlesen kann, kann es lesen. Somit sollte jeder Server, der außerhalb des eigenen Netzwerks erreichbar ist, HTTPS verwenden.</string>
     <string name="library_server_password_note">Das Passwort bleibt auf diesem Telefon. Es wird nicht an den Server gesendet: Jede Anfrage trägt eine einmalige Signatur, die darauf basiert. Jeder, der dein Netzwerk mitlesen kann, kann diese Anfrage speichern und wiederholen. Somit sollte jeder Server, der außerhalb des eigenen Netzwerks erreichbar ist, HTTPS verwenden.</string>
     <!-- Row at the foot of the screen; the second label is shown in bold after one tap -->
     <string name="library_server_forget">Vergiss diesen Server</string>
@@ -523,6 +524,7 @@
     <!-- Connecting to a music server (Subsonic/Navidrome), shown under the server row in settings -->
     <string name="service_subsonic_not_a_music_server">Diese Adresse hat geantwortet, aber nicht wie erwartet.</string>
     <string name="service_subsonic_login_refused">Benutzername und Passwort wurden nicht akzeptiert.</string>
+    <string name="service_subsonic_no_tokens">Dieser Server nimmt keine Anmeldung per Token an und hat auch das Passwort abgelehnt.</string>
     <string name="service_subsonic_not_allowed">Diesem Account wurde nicht erlaubt, die Bibliothek auszulesen.</string>
     <string name="service_subsonic_refused">Der Server hat die Anfrage verweigert.</string>
     <string name="service_subsonic_unreachable">Der Server konnte nicht erreicht werden.</string>

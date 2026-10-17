@@ -57,6 +57,12 @@ class CalmMusicSettingsManager(context: Context) {
      */
     fun setSubsonicConfig(config: SubsonicConfig?) {
         prefs.edit {
+            // What one server wanted says nothing about another, or about another account.
+            if (config == null || prefs.getString(KEY_SUBSONIC_AUTH_FOR, null) != authKey(config)) {
+                remove(KEY_SUBSONIC_AUTH_FOR)
+                remove(KEY_SUBSONIC_AUTH_VERSION)
+                remove(KEY_SUBSONIC_AUTH_PASSWORD_FORM)
+            }
             if (config == null || !config.isComplete) {
                 remove(KEY_SUBSONIC_URL)
                 remove(KEY_SUBSONIC_USER)
@@ -70,7 +76,41 @@ class CalmMusicSettingsManager(context: Context) {
             }
         }
         _subsonicConfig.value = if (config?.isComplete == true) config else null
+        _subsonicSendsPassword.value = _subsonicConfig.value?.let { getSubsonicAuth(it).sendsPassword } ?: false
     }
+
+    /**
+     * How this server and account have turned out to want requests signed (see
+     * [SubsonicClient]), or the usual way when nothing has been learned about them.
+     */
+    fun getSubsonicAuth(config: SubsonicConfig): SubsonicAuth {
+        if (prefs.getString(KEY_SUBSONIC_AUTH_FOR, null) != authKey(config)) return SubsonicAuth()
+        return SubsonicAuth(
+            apiVersion = prefs.getString(KEY_SUBSONIC_AUTH_VERSION, null),
+            passwordForm = prefs.getBoolean(KEY_SUBSONIC_AUTH_PASSWORD_FORM, false),
+        )
+    }
+
+    fun setSubsonicAuth(config: SubsonicConfig, auth: SubsonicAuth) {
+        prefs.edit {
+            putString(KEY_SUBSONIC_AUTH_FOR, authKey(config))
+            if (auth.apiVersion == null) remove(KEY_SUBSONIC_AUTH_VERSION)
+            else putString(KEY_SUBSONIC_AUTH_VERSION, auth.apiVersion)
+            putBoolean(KEY_SUBSONIC_AUTH_PASSWORD_FORM, auth.passwordForm)
+        }
+        if (_subsonicConfig.value?.let(::authKey) == authKey(config)) {
+            _subsonicSendsPassword.value = auth.sendsPassword
+        }
+    }
+
+    private val _subsonicSendsPassword = MutableStateFlow(
+        _subsonicConfig.value?.let { getSubsonicAuth(it).sendsPassword } ?: false,
+    )
+
+    /** Whether the stored server is one that is sent the password itself, for the server screen's note. */
+    val subsonicSendsPassword: StateFlow<Boolean> = _subsonicSendsPassword.asStateFlow()
+
+    private fun authKey(config: SubsonicConfig) = config.normalisedBaseUrl + "\n" + config.user.trim()
 
     private fun getSubsonicConfigSync(): SubsonicConfig? {
         val url = prefs.getString(KEY_SUBSONIC_URL, null) ?: return null
@@ -214,6 +254,9 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_SUBSONIC_URL = "subsonic_url"
         private const val KEY_SUBSONIC_USER = "subsonic_user"
         private const val KEY_SUBSONIC_PASSWORD = "subsonic_password"
+        private const val KEY_SUBSONIC_AUTH_FOR = "subsonic_auth_for"
+        private const val KEY_SUBSONIC_AUTH_VERSION = "subsonic_auth_version"
+        private const val KEY_SUBSONIC_AUTH_PASSWORD_FORM = "subsonic_auth_password_form"
         private const val KEY_SUBSONIC_MAX_BITRATE = "subsonic_max_bitrate"
         private const val KEY_INCLUDE_LOCAL_MUSIC = "include_local_music"
         private const val KEY_LOCAL_MUSIC_FOLDERS = "local_music_folders"

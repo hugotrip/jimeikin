@@ -433,6 +433,7 @@ fun CalmMusic(
     var editProgressText by remember { mutableStateOf<String?>(null) }
     var editErrorText by remember { mutableStateOf<String?>(null) }
     val subsonicConfig by settingsManager.subsonicConfig.collectAsState()
+    val subsonicSendsPassword by settingsManager.subsonicSendsPassword.collectAsState()
     val subsonicMaxBitrate by settingsManager.subsonicMaxBitrate.collectAsState()
     var isServerBusy by remember { mutableStateOf(false) }
     var serverStatus by remember { mutableStateOf<String?>(null) }
@@ -683,7 +684,12 @@ fun CalmMusic(
         isServerBusy = true
         serverStatus = context.getString(R.string.main_server_connecting)
         libraryScope.launch {
-            val client = com.wanderwildwood.jimeikin.data.SubsonicClient(entered, context.resources)
+            val client = com.wanderwildwood.jimeikin.data.SubsonicClient(
+                config = entered,
+                resources = context.resources,
+                initialAuth = settingsManager.getSubsonicAuth(entered),
+                onAuthLearned = { settingsManager.setSubsonicAuth(entered, it) },
+            )
             when (val ping = client.ping()) {
                 is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure -> {
                     serverStatus = ping.message
@@ -2064,6 +2070,7 @@ fun CalmMusic(
                 composable(Screen.MusicServer.route) {
                     MusicServerScreen(
                         config = subsonicConfig,
+                        sendsPassword = subsonicSendsPassword,
                         isBusy = isServerBusy,
                         statusMessage = serverStatus,
                         onConnectClick = { entered -> connectToMusicServer(entered) },

@@ -19,19 +19,28 @@ import java.util.concurrent.TimeUnit
  * Subsonic 1.16.1 rather than against Navidrome in particular; the only Navidrome-specific
  * thing here is that it is what this was tested on.
  *
- * **The password is never sent.** Subsonic's token scheme is `md5(password + salt)` with a
+ * **Normally the password is never sent.** Subsonic's token scheme is `md5(password + salt)` with a
  * fresh salt per request, which is what this uses. That is not encryption — anyone reading
  * the wire can replay a request — so over the open internet this wants HTTPS; on a home
  * network it is enough to keep the password itself off the wire. The password still has to
  * be kept on the phone to compute the tokens, which is worth saying plainly in the About.
  *
- * The one exception is a server older than Subsonic 1.13, which predates the tokens and
- * accepts only the password itself, hex-encoded. Such a server says so by refusing the
- * version this asks for and naming its own; then, and only then, the old form is used.
+ * There are two exceptions, and each is used only once the server has asked for it. The first
+ * is a server older than Subsonic 1.13, which predates the tokens: it says so by refusing the
+ * version this asks for and naming its own. The second is a server that is new enough but does
+ * not take tokens at all - Nextcloud Music, and servers that check passwords against LDAP -
+ * which answers error 41. Either way the password itself goes instead, hex-encoded, and
+ * [sendsPassword] turns true so the person can be told.
+ *
+ * What a server turned out to need is handed to [onAuthLearned] and comes back in as
+ * [initialAuth], so a client made later starts out speaking the server's way rather than
+ * spending its first request on being refused.
  */
 class SubsonicClient(
     private val config: SubsonicConfig,
     private val resources: Resources,
+    initialAuth: SubsonicAuth = SubsonicAuth(),
+    private val onAuthLearned: (SubsonicAuth) -> Unit = {},
 ) {
 
     private val http = OkHttpClient.Builder()
@@ -54,9 +63,8 @@ class SubsonicClient(
         SubsonicLibraryReader { method, params -> request(method, params) }.read(onProgress)
 
     /**
-     * Where the audio actually is. Built fresh from the stored password rather than kept in
-     * the database, so changing the password on the server and re-entering it here is enough
-     * to make every song playable again without a resync.
+     * Where the audio actually is. Kept on the song's row when the library is read (see
+     * [SubsonicSync]), so it is signed the way this client has learned the server wants.
      *
      * Anything the phone can decode is asked for untouched, so a FLAC arrives as a FLAC and
      * nothing is spent re-encoding it. For the formats it cannot decode — Windows Media,
@@ -115,28 +123,56 @@ class SubsonicClient(
     fun downloadUrl(songId: String): String = url("download", mapOf("id" to songId))
 
     /**
-     * The API version spoken. Starts at the newest this was written against; a server that
-     * is older answers error 30 with its own version, and every call after that uses it.
+     * The API version spoken. Starts at the newest this was written against, or at what the
+     * server named last time; a server that is older answers error 30 with its own version,
+     * and every call after that uses it.
      */
     @Volatile
-    private var apiVersion = API_VERSION
+    private var apiVersion = initialAuth.apiVersion
+        ?.takeIf { isOlder(it, API_VERSION) }
+        ?: API_VERSION
 
-    /** True once the server has turned out to be too old for tokens: the password goes as itself. */
-    val sendsPassword: Boolean get() = isOlder(apiVersion, TOKENS_SINCE)
+    /** Set once the server has answered error 41: it does not take tokens, whatever its version. */
+    @Volatile
+    private var passwordForm = initialAuth.passwordForm
+
+    /** True once the server has turned out not to take tokens: the password goes as itself. */
+    val sendsPassword: Boolean get() = passwordForm || isOlder(apiVersion, TOKENS_SINCE)
 
     private suspend fun request(
         method: String,
         params: Map<String, String> = emptyMap(),
     ): SubsonicResult<JSONObject> {
-        val first = requestOnce(method, params)
-        if (first is SubsonicResult.Failure && first.code == ERROR_SERVER_TOO_OLD) {
-            val theirs = first.serverVersion
+        var result = requestOnce(method, params)
+        // At most twice: a server can be both too old for this version and, at its own
+        // version, still not take tokens.
+        repeat(2) {
+            val failure = result as? SubsonicResult.Failure ?: return result
+            if (!adjustTo(failure)) return result
+            onAuthLearned(SubsonicAuth(apiVersion.takeIf { it != API_VERSION }, passwordForm))
+            result = requestOnce(method, params)
+        }
+        return result
+    }
+
+    /** Whether the refusal says how to ask instead; if so, asks that way from now on. */
+    private fun adjustTo(failure: SubsonicResult.Failure): Boolean = when (failure.code) {
+        ERROR_SERVER_TOO_OLD -> {
+            val theirs = failure.serverVersion
             if (theirs != null && theirs != apiVersion && isOlder(theirs, apiVersion)) {
                 apiVersion = theirs
-                return requestOnce(method, params)
+                true
+            } else {
+                false
             }
         }
-        return first
+        ERROR_NO_TOKENS -> if (!sendsPassword) {
+            passwordForm = true
+            true
+        } else {
+            false
+        }
+        else -> false
     }
 
     private suspend fun requestOnce(
@@ -160,11 +196,12 @@ class SubsonicClient(
                 if (body.optString("status") != "ok") {
                     val error = body.optJSONObject("error")
                     val code = error?.optInt("code")
-                    // The two a person can actually act on are told apart; the rest are
+                    // The ones a person can actually act on are told apart; the rest are
                     // passed through as the server worded them.
                     return@withContext SubsonicResult.Failure(
                         when (code) {
                             40 -> resources.getString(R.string.service_subsonic_login_refused)
+                            ERROR_NO_TOKENS -> resources.getString(R.string.service_subsonic_no_tokens)
                             50 -> resources.getString(R.string.service_subsonic_not_allowed)
                             else -> error?.optString("message")
                                 ?.takeIf { it.isNotBlank() }
@@ -189,7 +226,7 @@ class SubsonicClient(
             .appendPath(method)
             .appendQueryParameter("u", config.user)
         val version = apiVersion
-        if (isOlder(version, TOKENS_SINCE)) {
+        if (sendsPassword) {
             builder.appendQueryParameter("p", "enc:" + config.password.toByteArray().joinToString("") { "%02x".format(it) })
         } else {
             builder
@@ -221,6 +258,9 @@ class SubsonicClient(
         /** The first version that took a salted token instead of the password. */
         const val TOKENS_SINCE = "1.13.0"
         const val ERROR_SERVER_TOO_OLD = 30
+
+        /** "Token authentication not supported": Nextcloud Music, LDAP-backed servers. */
+        const val ERROR_NO_TOKENS = 41
         const val CLIENT_NAME = "jimeikin"
 
         /** What media3 can decode on this phone without help from the server. */
@@ -228,6 +268,18 @@ class SubsonicClient(
             "mp3", "m4a", "m4b", "aac", "mp4", "flac", "ogg", "oga", "opus", "wav", "mka",
         )
     }
+}
+
+/**
+ * How a server has turned out to want its requests signed: [apiVersion] when it named an older
+ * one than this speaks, [passwordForm] when it refused tokens. The default is the usual case.
+ */
+data class SubsonicAuth(
+    val apiVersion: String? = null,
+    val passwordForm: Boolean = false,
+) {
+    /** Whether the password itself goes with each request rather than a token made from it. */
+    val sendsPassword: Boolean get() = passwordForm || (apiVersion != null && isOlder(apiVersion, "1.13.0"))
 }
 
 data class SubsonicConfig(

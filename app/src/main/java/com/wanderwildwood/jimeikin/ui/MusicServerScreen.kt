@@ -44,6 +44,7 @@ import com.wanderwildwood.jimeikin.R
 @Composable
 fun MusicServerScreen(
     config: SubsonicConfig?,
+    sendsPassword: Boolean,
     isBusy: Boolean,
     statusMessage: String?,
     onConnectClick: (SubsonicConfig) -> Unit,
@@ -132,7 +133,10 @@ fun MusicServerScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             TextMMD(
-                text = stringResource(R.string.library_server_password_note),
+                text = stringResource(
+                    if (sendsPassword) R.string.library_server_password_note_sent
+                    else R.string.library_server_password_note,
+                ),
                 style = MaterialTheme.typography.labelSmall,
             )
 
