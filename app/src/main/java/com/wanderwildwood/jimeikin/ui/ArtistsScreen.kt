@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -95,7 +96,10 @@ fun ArtistsScreen(
 
             else -> {
                 val lastArtistId = artists.lastOrNull()?.id
-                PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
+                PagedColumnMMD(
+                    contentPadding = PaddingValues(16.dp),
+                    jump = remember(artists) { ListJump.Letters(artists.map { it.name }) },
+                ) {
                     items(
                         items = artists,
                         key = { it.id },

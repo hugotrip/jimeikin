@@ -2,6 +2,7 @@ package com.wanderwildwood.jimeikin.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -69,17 +70,22 @@ fun PagedColumnMMD(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    /** Letters down the edge of an alphabetical list, page dots beside any other; see [ListJump]. */
+    jump: ListJump? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val state = rememberLazyListState()
-    LazyColumnMMD(
-        modifier = modifier,
-        state = state,
-        contentPadding = contentPadding,
-        verticalArrangement = verticalArrangement,
-        horizontalAlignment = horizontalAlignment,
-        scrollStep = rememberPageScrollStep(state),
-        isScrollbarVisible = false,
-        content = content,
-    )
+    val list = @Composable {
+        LazyColumnMMD(
+            modifier = if (jump == null) modifier else Modifier.fillMaxSize(),
+            state = state,
+            contentPadding = contentPadding,
+            verticalArrangement = verticalArrangement,
+            horizontalAlignment = horizontalAlignment,
+            scrollStep = rememberPageScrollStep(state),
+            isScrollbarVisible = false,
+            content = content,
+        )
+    }
+    if (jump == null) list() else ListJumpBox(state, jump, modifier) { list() }
 }

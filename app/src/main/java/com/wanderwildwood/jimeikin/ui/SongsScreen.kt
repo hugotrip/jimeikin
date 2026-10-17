@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -123,6 +124,7 @@ fun SongsScreen(
 
             else -> {
                 PagedColumnMMD(
+                    jump = remember(songs) { ListJump.Letters(songs.map { it.title }) },
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

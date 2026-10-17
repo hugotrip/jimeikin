@@ -167,6 +167,7 @@ fun PlaylistDetailsScreen(
 
             else -> {
                 PagedColumnMMD(
+                    jump = ListJump.Pages,
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

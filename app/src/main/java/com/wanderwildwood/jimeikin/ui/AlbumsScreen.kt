@@ -116,7 +116,10 @@ fun AlbumsScreen(
 
             else -> {
                 val lastAlbumId = albums.lastOrNull()?.id
-                PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
+                PagedColumnMMD(
+                    contentPadding = PaddingValues(16.dp),
+                    jump = remember(albums) { ListJump.Letters(albums.map { it.title }) },
+                ) {
                     items(
                         items = albums,
                         key = { it.id },
