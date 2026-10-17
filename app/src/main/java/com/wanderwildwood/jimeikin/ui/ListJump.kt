@@ -34,6 +34,7 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.text.TextMMD
 import kotlinx.coroutines.launch
@@ -63,8 +64,16 @@ sealed interface ListJump {
     /**
      * An alphabetical list: [names] is what each row is sorted by, in the list's own order.
      * [firstIndex] is where the first of them sits in the list, when a header comes before.
+     *
+     * A list in some other fixed order of its own, such as a shelf by Dewey hundreds, passes
+     * the column's [labels] instead of # and A to Z, top to bottom, and each of [names] is then
+     * already its row's label, one of them. The column looks and answers the same.
      */
-    class Letters(val names: List<String>, val firstIndex: Int = 0) : ListJump
+    class Letters(
+        val names: List<String>,
+        val firstIndex: Int = 0,
+        val labels: List<String>? = null,
+    ) : ListJump
 
     /** Any other list: its own pages. */
     data object Pages : ListJump
@@ -72,7 +81,8 @@ sealed interface ListJump {
 
 /**
  * The list in [content], with the jump down its right edge once it is long enough. Pass the
- * same [state] the list is given; null [jump] draws the list alone.
+ * same [state] the list is given; null [jump] draws the list alone. Where buttons float over
+ * the foot of the list, [clearBelow] is their height, and the jump stops above them.
  *
  * ```
  * val state = rememberLazyListState()
@@ -86,6 +96,7 @@ fun ListJumpBox(
     state: LazyListState,
     jump: ListJump?,
     modifier: Modifier = Modifier,
+    clearBelow: Dp = 0.dp,
     content: @Composable () -> Unit,
 ) {
     val isLong by remember(state) {
@@ -98,9 +109,11 @@ fun ListJumpBox(
     Row(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) { content() }
         if (jump != null && isLong) {
-            when (jump) {
-                is ListJump.Letters -> LetterColumn(state, jump)
-                ListJump.Pages -> PageDots(state)
+            Box(modifier = Modifier.fillMaxHeight().padding(bottom = clearBelow)) {
+                when (jump) {
+                    is ListJump.Letters -> LetterColumn(state, jump)
+                    ListJump.Pages -> PageDots(state)
+                }
             }
             Spacer(Modifier.width(EDGE_INSET / 2))
         }
@@ -110,22 +123,24 @@ fun ListJumpBox(
 @Composable
 private fun LetterColumn(state: LazyListState, jump: ListJump.Letters) {
     val scope = rememberCoroutineScope()
+    val letters = jump.labels ?: LETTERS
+    val labelOf: (String) -> String = if (jump.labels != null) { name -> name } else ::jumpLetterOf
     // Where each letter opens the list. A letter nobody is filed under opens it at the next
     // one that is, so every letter in the column does something and none of them moves.
-    val target = remember(jump.names, jump.firstIndex) {
+    val target = remember(jump.names, jump.firstIndex, letters) {
         val firsts = HashMap<String, Int>()
-        jump.names.forEachIndexed { i, name -> firsts.putIfAbsent(jumpLetterOf(name), i + jump.firstIndex) }
+        jump.names.forEachIndexed { i, name -> firsts.putIfAbsent(labelOf(name), i + jump.firstIndex) }
         val last = jump.firstIndex + (jump.names.size - 1).coerceAtLeast(0)
-        LETTERS.indices.associate { at ->
-            LETTERS[at] to (LETTERS.drop(at).firstNotNullOfOrNull { firsts[it] }
-                ?: LETTERS.take(at).reversed().firstNotNullOfOrNull { firsts[it] }
+        letters.indices.associate { at ->
+            letters[at] to (letters.drop(at).firstNotNullOfOrNull { firsts[it] }
+                ?: letters.take(at).reversed().firstNotNullOfOrNull { firsts[it] }
                 ?: last)
         }
     }
-    val onScreen by remember(state, jump.names, jump.firstIndex) {
+    val onScreen by remember(state, jump.names, jump.firstIndex, letters) {
         derivedStateOf {
             jump.names.getOrNull(state.firstVisibleItemIndex - jump.firstIndex)
-                ?.let { LETTERS.indexOf(jumpLetterOf(it)) } ?: -1
+                ?.let { letters.indexOf(labelOf(it)) } ?: -1
         }
     }
     var touched by remember { mutableStateOf<Int?>(null) }
@@ -140,18 +155,18 @@ private fun LetterColumn(state: LazyListState, jump: ListJump.Letters) {
             .onSizeChanged { heightPx = it.height }
             .pointerInput(target) {
                 trackSlots(
-                    count = { LETTERS.size },
-                    slotPx = { if (heightPx > 0) heightPx.toFloat() / LETTERS.size else 0f },
+                    count = { letters.size },
+                    slotPx = { if (heightPx > 0) heightPx.toFloat() / letters.size else 0f },
                     onSlot = { at ->
                         touched = at
-                        scope.launch { state.scrollToItem(target.getValue(LETTERS[at])) }
+                        scope.launch { state.scrollToItem(target.getValue(letters[at])) }
                     },
                     onEnd = { touched = null },
                 )
             },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        LETTERS.forEachIndexed { at, letter ->
+        letters.forEachIndexed { at, letter ->
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center,
@@ -226,7 +241,9 @@ private fun PageDots(state: LazyListState) {
                     onSlot = { dot ->
                         touched = dot
                         val (count, shown, pageStep) = latest
-                        val page = dot * count / shown
+                        // The first page of the dot's run, rounded up so the dot pressed is
+                        // the dot that stays filled; the last dot is the foot of the list.
+                        val page = if (dot >= shown - 1) count - 1 else (dot * count + shown - 1) / shown
                         scope.launch {
                             if (page >= count - 1) state.scrollToItem(state.layoutInfo.totalItemsCount - 1)
                             else state.scrollToItem(page * pageStep)
