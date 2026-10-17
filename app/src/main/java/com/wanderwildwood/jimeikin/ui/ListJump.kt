@@ -200,7 +200,12 @@ private fun LetterColumn(state: LazyListState, jump: ListJump.Letters) {
 private fun PageDots(state: LazyListState) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val slotPx = with(density) { (DOT_SIZE + DOT_SPACING).toPx() }
+    // In whole pixels, as the column lays them out: summed from fractions, nineteen dots came to
+    // a few pixels less than they take, and the last one was squeezed flat against the foot.
+    val dotPx = with(density) { DOT_SIZE.roundToPx() }
+    val gapPx = with(density) { DOT_SPACING.roundToPx() }
+    val insetPx = with(density) { EDGE_INSET.roundToPx() }
+    val slotPx = (dotPx + gapPx).toFloat()
     var heightPx by remember { mutableIntStateOf(0) }
 
     // A page is a screenful less a row, the step a swipe takes, so a dot lands where swiping
@@ -228,7 +233,7 @@ private fun PageDots(state: LazyListState) {
     }
     val (pageCount, currentPage, step) = pages
     // Inset from the list's ends as the letters are, so no dot sits on a rule.
-    val fits = ((heightPx + with(density) { (DOT_SPACING - EDGE_INSET * 2).toPx() }) / slotPx).toInt().coerceAtLeast(1)
+    val fits = ((heightPx + gapPx - insetPx * 2) / slotPx).toInt().coerceAtLeast(1)
     val dots = pageCount.coerceAtMost(fits)
     val latest by rememberUpdatedState(Triple(pageCount, dots, step))
     var touched by remember { mutableStateOf<Int?>(null) }
