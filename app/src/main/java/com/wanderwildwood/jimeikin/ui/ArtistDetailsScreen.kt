@@ -29,8 +29,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
-import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
-import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
 
@@ -130,21 +128,11 @@ fun ArtistDetailsScreen(
 
             else -> {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    PrimaryTabRowMMD(selectedTabIndex = selectedTab) {
-                        tabOptions.forEachIndexed { index, title ->
-                            TabMMD(
-                                selected = selectedTab == index,
-                                onClick = { selectedTab = index },
-                                text = {
-                                    TextMMD(
-                                        text = title,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                    )
-                                },
-                            )
-                        }
-                    }
+                    StoneTabs(
+                        labels = tabOptions,
+                        selected = selectedTab,
+                        onSelect = { selectedTab = it },
+                    )
 
                     if (selectedTab == 0) {
                         // Albums tab

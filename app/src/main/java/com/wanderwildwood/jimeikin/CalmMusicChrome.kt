@@ -164,9 +164,8 @@ fun CalmMusicTopAppBar(
                     androidx.compose.foundation.layout.Column {
                         TextMMD(
                             text = selectedAlbum.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         val artist = selectedAlbum.artist
@@ -187,8 +186,7 @@ fun CalmMusicTopAppBar(
                     selectedArtistName != null -> {
                     TextMMD(
                         text = selectedArtistName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -197,8 +195,7 @@ fun CalmMusicTopAppBar(
                 currentDestination.isPlaylistDetails() && selectedPlaylist != null -> {
                     TextMMD(
                         text = selectedPlaylist.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -208,7 +205,6 @@ fun CalmMusicTopAppBar(
                     TextMMD(
                         text = getAppBarTitle(currentDestination, isEditingPlaylist = selectedPlaylist != null),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
                 }
@@ -242,7 +238,6 @@ fun CalmMusicTopAppBar(
                 onNavigateToDownloadsClick = onNavigateToDownloadsClick,
             )
         },
-        showDivider = false,
         modifier = modifier,
     )
 }

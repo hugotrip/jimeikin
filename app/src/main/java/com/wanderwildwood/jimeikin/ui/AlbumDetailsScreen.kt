@@ -27,8 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wanderwildwood.jimeikin.CalmMusicViewModel
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
-import com.mudita.mmd.components.tabs.PrimaryTabRowMMD
-import com.mudita.mmd.components.tabs.TabMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
 import kotlinx.coroutines.delay
@@ -118,21 +116,11 @@ fun AlbumDetailsScreen(
             else -> {
                 Column(modifier = Modifier.fillMaxSize()) {
                     if (discNumbers.size > 1) {
-                        PrimaryTabRowMMD(selectedTabIndex = selectedDiscIndex) {
-                            discNumbers.forEachIndexed { index, disc ->
-                                TabMMD(
-                                    selected = selectedDiscIndex == index,
-                                    onClick = { selectedDiscIndex = index },
-                                    text = {
-                                        TextMMD(
-                                            text = stringResource(R.string.library_album_disc, disc),
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = if (selectedDiscIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                        )
-                                    },
-                                )
-                            }
-                        }
+                        StoneTabs(
+                            labels = discNumbers.map { stringResource(R.string.library_album_disc, it) },
+                            selected = selectedDiscIndex,
+                            onSelect = { selectedDiscIndex = it },
+                        )
                     }
 
                     val currentDiscNumber = discNumbers.getOrElse(selectedDiscIndex) { 1 }

@@ -1680,7 +1680,6 @@ fun CalmMusic(
                         hasDownloads = downloadStatuses.isNotEmpty(),
                         onNavigateToDownloadsClick = openDownloadsScreen,
                     )
-                    HorizontalDividerMMD(thickness = 3.dp)
                 }
             },
             bottomBar = {
