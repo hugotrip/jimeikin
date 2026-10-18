@@ -86,6 +86,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wanderwildwood.jimeikin.data.StreamingProvider
 import com.wanderwildwood.jimeikin.ui.ArtistUiModel
+import com.wanderwildwood.jimeikin.ui.DarkStatusIconsInSheet
 import com.wanderwildwood.jimeikin.ui.buildSearchResults
 import com.wanderwildwood.jimeikin.ui.SearchResult
 import com.wanderwildwood.jimeikin.ui.UpNextScreen
@@ -2478,6 +2479,7 @@ fun CalmMusic(
                 onDismissRequest = { showAddToPlaylistDialog = false },
                 sheetState = addToPlaylistSheetState,
             ) {
+                DarkStatusIconsInSheet()
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2582,6 +2584,7 @@ fun CalmMusic(
                     onDismissRequest = { showDeletePlaylistSongsConfirmation = false },
                     sheetState = removeSongsSheetState,
                 ) {
+                    DarkStatusIconsInSheet()
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2691,6 +2694,7 @@ fun CalmMusic(
                     onDismissRequest = { showDeletePlaylistsConfirmation = false },
                     sheetState = deletePlaylistsSheetState,
                 ) {
+                    DarkStatusIconsInSheet()
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
