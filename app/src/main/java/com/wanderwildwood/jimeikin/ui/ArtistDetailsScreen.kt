@@ -63,8 +63,9 @@ fun ArtistDetailsScreen(
 
     // Whose page this is, taken from the records rather than from the row being drawn, so a
     // track credited to somebody else and filed here under its album artist still says so.
-    val pageArtist = remember(songs, albums) {
-        ArtistNames.preferred(albums.mapNotNull { it.artist } + songs.map { it.artist })
+    var groupName by remember { mutableStateOf<String?>(null) }
+    val pageArtist = remember(songs, albums, groupName) {
+        groupName ?: ArtistNames.preferred(albums.mapNotNull { it.artist } + songs.map { it.artist })
             .takeIf { it.isNotBlank() }
     }
 
@@ -85,6 +86,7 @@ fun ArtistDetailsScreen(
             val content = viewModel.getArtistContent(artistId)
             songs = content.songs
             albums = content.albums
+            groupName = content.name
         } catch (e: Exception) {
             errorMessage = e.message ?: loadFailedText
         } finally {
@@ -137,7 +139,7 @@ fun ArtistDetailsScreen(
                     if (selectedTab == 0) {
                         // Albums tab
                         PagedColumnMMD(
-                            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+                            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
                             verticalArrangement = Arrangement.Top,
                         ) {
                             if (albums.isNotEmpty()) {
@@ -164,7 +166,7 @@ fun ArtistDetailsScreen(
                     } else {
                         // Songs tab
                         PagedColumnMMD(
-                            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+                            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
                             verticalArrangement = Arrangement.Top,
                         ) {
                             if (songs.isNotEmpty()) {

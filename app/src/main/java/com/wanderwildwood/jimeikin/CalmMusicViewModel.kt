@@ -464,7 +464,9 @@ class CalmMusicViewModel(
 
     data class ArtistContent(
         val songs: List<SongUiModel>,
-        val albums: List<AlbumUiModel>
+        val albums: List<AlbumUiModel>,
+        /** Whom the page is for, as the Artists tab names them; null when not known. */
+        val name: String? = null,
     )
 
     /** Where the artist line on Now playing leads: a page in the library, or one on YouTube. */
@@ -482,6 +484,7 @@ class CalmMusicViewModel(
      * same key is taken - a page for someone else is worse than no page.
      */
     suspend fun artistPageFor(song: SongUiModel): ArtistPage? {
+        var groupOf: (String) -> String = ArtistNames::artistKey
         val names = withContext(Dispatchers.IO) {
             val entity = songDao.getSongById(song.id)
             val artistIds = buildList {
@@ -490,17 +493,16 @@ class CalmMusicViewModel(
                     albumDao.getAllAlbums().firstOrNull { it.id == albumId }?.artistId?.let(::add)
                 }
             }
-            val byId = if (artistIds.isEmpty()) emptyList() else {
-                val artists = artistDao.getAllArtists()
-                artistIds.mapNotNull { id -> artists.firstOrNull { it.id == id }?.name }
-            }
+            val artists = artistDao.getAllArtists()
+            groupOf = ArtistNames.grouping(artists.map { it.name })
+            val byId = artistIds.mapNotNull { id -> artists.firstOrNull { it.id == id }?.name }
             (byId + listOfNotNull(entity?.artist, song.artist)).filter { it.isNotBlank() }.distinct()
         }
 
         val libraryArtists = _libraryArtists.value
         for (name in names) {
-            val key = ArtistNames.artistKey(name)
-            libraryArtists.firstOrNull { ArtistNames.artistKey(it.name) == key }?.let {
+            val key = groupOf(name)
+            libraryArtists.firstOrNull { groupOf(it.name) == key }?.let {
                 return ArtistPage.Library(it)
             }
         }
@@ -565,16 +567,19 @@ class CalmMusicViewModel(
         return withContext(Dispatchers.IO) {
             // The same fold the Artists tab groups by, so the page holds every row the tab
             // put under this one name - Bjork's server songs beside Björk's on the card.
-            fun normalizeName(name: String): String = ArtistNames.artistKey(name)
-
             val allArtists = artistDao.getAllArtistsWithCounts()
+            val normalizeName = ArtistNames.grouping(allArtists.map { it.name })
             val baseArtist = allArtists.firstOrNull { it.id == artistId }
 
-            val relatedArtistIds: List<String> = if (baseArtist != null) {
+            val related = if (baseArtist != null) {
                 val key = normalizeName(baseArtist.name)
-                allArtists.filter { normalizeName(it.name) == key }.map { it.id }
+                allArtists.filter { normalizeName(it.name) == key }
             } else {
-                listOf(artistId)
+                emptyList()
+            }
+            val relatedArtistIds: List<String> = related.map { it.id }.ifEmpty { listOf(artistId) }
+            val groupName = baseArtist?.let { base ->
+                if (related.size > 1) ArtistNames.groupName(related.map { it.name }, normalizeName(base.name)) else base.name
             }
 
             // Their own songs, and every song on an album filed under them: a track crediting
@@ -652,7 +657,7 @@ class CalmMusicViewModel(
                     }.thenBy { album -> album.title },
                 )
 
-            ArtistContent(songs, mergedAlbums)
+            ArtistContent(songs, mergedAlbums, groupName)
         }
     }
 
@@ -2001,13 +2006,16 @@ class CalmMusicViewModel(
             ids.forEach { songsByArtistId.getOrPut(it) { mutableListOf() }.add(song) }
         }
 
+        // Collaborations ("Asake & Olamide") gather under their first artist where the library
+        // says that is who they are; see ArtistNames.grouping.
+        val groupOf = ArtistNames.grouping(allArtistsWithCounts.map { it.name })
         return allArtistsWithCounts
-            .groupBy { ArtistNames.artistKey(it.name) }
-            .values
-            .map { group ->
-                val primary = group.find { it.sourceType == "LOCAL_FILE" }
-                    ?: group.find { it.sourceType == "YOUTUBE_DOWNLOAD" }
-                    ?: group.first()
+            .groupBy { groupOf(it.name) }
+            .map { (key, group) ->
+                val alone = group.filter { ArtistNames.artistKey(it.name) == key }.ifEmpty { group }
+                val primary = alone.find { it.sourceType == "LOCAL_FILE" }
+                    ?: alone.find { it.sourceType == "YOUTUBE_DOWNLOAD" }
+                    ?: alone.first()
 
                 val theirSongs = group.flatMap { songsByArtistId[it.id].orEmpty() }.distinctBy { it.id }
                 val totalSongCount = theirSongs.size
@@ -2019,7 +2027,7 @@ class CalmMusicViewModel(
 
                 ArtistUiModel(
                     id = primary.id,
-                    name = primary.name,
+                    name = if (group.size == 1) primary.name else ArtistNames.groupName(group.map { it.name }, key),
                     songCount = totalSongCount,
                     albumCount = totalAlbumCount,
                     origin = originOf(theirSongs.map { it.sourceType }),

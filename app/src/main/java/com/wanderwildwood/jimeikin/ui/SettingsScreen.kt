@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.switcher.SwitchMMD
 import com.mudita.mmd.components.text.TextMMD
 import kotlinx.coroutines.delay
@@ -82,10 +81,9 @@ fun SettingsScreen(
     localScanUnreadableFolders: Int?,
 ) {
     val context = LocalContext.current
-    LazyColumnMMD(
+    PagedColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
-        isScrollbarVisible = false,
     ) {
         run {
             if (localFolders.isEmpty()) {

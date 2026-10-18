@@ -75,6 +75,84 @@ object ArtistNames {
         return key(withoutThe).ifEmpty { key(lead) }
     }
 
+    /**
+     * The names in a credit that lists several: "Asake & Ludmilla", "Calvin Harris x Dua Lipa",
+     * "A, B & C". Split on " & ", " x " and ", ", each with its spaces. A comma before "The" is
+     * not a split: "Tyler, The Creator" and "Beatles, The" are one name. Guests after feat. are
+     * left out first, as in [lead]. A credit with one name gives a list of one.
+     */
+    fun collaborators(name: String): List<String> = splitPoints(lead(name)).let { (credit, cuts) ->
+        if (cuts.isEmpty()) listOf(credit)
+        else (listOf(0) + cuts.map { it.last + 1 }).zip(cuts.map { it.first } + credit.length)
+            .map { (from, to) -> credit.substring(from, to).trim() }
+    }
+
+    /** The credit [lead] leaves, and where each separator between its names sits in it. */
+    private fun splitPoints(name: String): Pair<String, List<IntRange>> {
+        val credit = name.trim()
+        val cuts = SEPARATOR.findAll(credit)
+            .map { it.range }
+            .filterNot { range -> credit[range.first] == ',' && THE_AFTER.containsMatchIn(credit.substring(range.last + 1)) }
+            .toList()
+        return credit to cuts
+    }
+
+    /**
+     * Who each credit is filed under on the Artists screen, worked out from the whole library.
+     *
+     * "&" is as often part of a name as a list of people (Iron & Wine, Simon & Garfunkel), so
+     * the name itself cannot say which it is. The library can. A credit goes under its first
+     * name only where that name is also an artist on its own here ("Asake" beside
+     * "Asake & Olamide"), or leads two or more such credits (four "Asake & ..." and no plain
+     * Asake). Where the first few names of a credit are an artist here, those are who it goes
+     * under: "Iron & Wine, Calexico" is filed with Iron & Wine, not under "Iron". Anything else
+     * keeps its whole credit. A song's own credit line is never changed; only its row is.
+     *
+     * Returns the [artistKey] each credit is grouped by.
+     */
+    fun grouping(names: Collection<String>): (String) -> String {
+        val own = names.mapTo(HashSet()) { artistKey(it) }
+        // The longest run of leading names that is an artist of its own here, short of the
+        // whole credit.
+        fun leadingArtist(name: String): String? {
+            val (credit, cuts) = splitPoints(lead(name))
+            return cuts.reversed().map { credit.substring(0, it.first).trim() }
+                .firstOrNull { artistKey(it) in own }
+        }
+        val leads = names.asSequence()
+            .filter { collaborators(it).size > 1 && leadingArtist(it) == null }
+            .map { artistKey(it) to artistKey(collaborators(it).first()) }
+            .distinct()
+            .groupingBy { it.second }
+            .eachCount()
+        val memo = HashMap<String, String>()
+        return { name ->
+            memo.getOrPut(name) {
+                val parts = collaborators(name)
+                if (parts.size < 2) {
+                    artistKey(name)
+                } else {
+                    leadingArtist(name)?.let(::artistKey)
+                        ?: artistKey(parts.first()).takeIf { (leads[it] ?: 0) >= 2 }
+                        ?: artistKey(name)
+                }
+            }
+        }
+    }
+
+    /**
+     * What a group of credits is called on the Artists screen: the name of the one that is the
+     * artist alone, if there is one, and otherwise the first name they all begin with.
+     */
+    fun groupName(credits: Collection<String>, key: String): String {
+        val alone = credits.filter { artistKey(it) == key }
+        if (alone.isNotEmpty()) return lead(preferred(alone))
+        return preferred(credits.map { credit ->
+            val (whole, cuts) = splitPoints(lead(credit))
+            cuts.map { whole.substring(0, it.first).trim() }.firstOrNull { artistKey(it) == key } ?: lead(credit)
+        })
+    }
+
     /** One album, however its title and its artist were typed. */
     fun albumKey(title: String, artist: String?): String =
         key(title) + "\u0000" + artistKey(artist.orEmpty())
@@ -82,6 +160,8 @@ object ArtistNames {
     private val FEATURING = Regex("""\s+[(\[]?\s*(?:feat\.?|ft\.?|featuring)\s+""", RegexOption.IGNORE_CASE)
     private val LEADING_THE = Regex("""^\s*the\s+""", RegexOption.IGNORE_CASE)
     private val TRAILING_THE = Regex(""",\s*the\s*$""", RegexOption.IGNORE_CASE)
+    private val SEPARATOR = Regex("""\s+&\s+|\s+x\s+|,\s+""", RegexOption.IGNORE_CASE)
+    private val THE_AFTER = Regex("""^the\b""", RegexOption.IGNORE_CASE)
 
     /**
      * Which spelling to show, given several for the same artist.

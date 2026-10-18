@@ -89,6 +89,8 @@ import com.wanderwildwood.jimeikin.ui.SearchResult
 import com.wanderwildwood.jimeikin.ui.UpNextScreen
 import com.wanderwildwood.jimeikin.ui.AboutDialog
 import com.wanderwildwood.jimeikin.ui.EditDetailsScreen
+import com.wanderwildwood.jimeikin.ui.FileUnderScreen
+import com.wanderwildwood.jimeikin.ui.isEditable
 import com.wanderwildwood.jimeikin.ui.LocalIsDownloaded
 import com.wanderwildwood.jimeikin.ui.LocalAlbumActions
 import com.wanderwildwood.jimeikin.ui.AlbumActions
@@ -128,7 +130,7 @@ import com.mudita.mmd.components.bottom_sheet.rememberModalBottomSheetMMDState
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
-import com.mudita.mmd.components.lazy.LazyColumnMMD
+import com.wanderwildwood.jimeikin.ui.PagedColumn
 import com.mudita.mmd.components.snackbar.SnackbarDurationMMD
 import com.mudita.mmd.components.snackbar.SnackbarHostMMD
 import com.mudita.mmd.components.snackbar.SnackbarHostStateMMD
@@ -432,6 +434,12 @@ fun CalmMusic(
     var isSavingEdit by remember { mutableStateOf(false) }
     var editProgressText by remember { mutableStateOf<String?>(null) }
     var editErrorText by remember { mutableStateOf<String?>(null) }
+    var fileUnderArtist by remember { mutableStateOf<ArtistUiModel?>(null) }
+    var fileUnderSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
+    var fileUnderCounts by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var fileUnderProgressText by remember { mutableStateOf<String?>(null) }
+    var fileUnderErrorText by remember { mutableStateOf<String?>(null) }
+    var isSavingFileUnder by remember { mutableStateOf(false) }
     val subsonicConfig by settingsManager.subsonicConfig.collectAsState()
     val subsonicSendsPassword by settingsManager.subsonicSendsPassword.collectAsState()
     val subsonicMaxBitrate by settingsManager.subsonicMaxBitrate.collectAsState()
@@ -1731,6 +1739,62 @@ fun CalmMusic(
                                 launchSingleTop = true
                             }
                         },
+                        onFileUnderClick = { artist ->
+                            fileUnderArtist = artist
+                            fileUnderSongs = emptyList()
+                            fileUnderCounts = null
+                            fileUnderProgressText = null
+                            fileUnderErrorText = null
+                            navController.navigate(Screen.FileUnder.route) { launchSingleTop = true }
+                        },
+                    )
+                }
+                composable(Screen.FileUnder.route) {
+                    val artist = fileUnderArtist
+                    if (artist == null) {
+                        LaunchedEffect(Unit) { navController.navigateUp() }
+                        return@composable
+                    }
+                    LaunchedEffect(artist.id) {
+                        val all = runCatching { viewModel.getArtistContent(artist.id).songs }.getOrDefault(emptyList())
+                        fileUnderSongs = all.filter { it.isEditable() }
+                        fileUnderCounts = fileUnderSongs.size to all.count { it.sourceType.startsWith("SUBSONIC") }
+                    }
+                    FileUnderScreen(
+                        artist = artist,
+                        others = libraryArtists.filter { it.id != artist.id },
+                        counts = fileUnderCounts,
+                        isSaving = isSavingFileUnder,
+                        progressText = fileUnderProgressText,
+                        errorText = fileUnderErrorText,
+                        onChoose = { target ->
+                            val songs = fileUnderSongs
+                            libraryScope.launch {
+                                isSavingFileUnder = true
+                                fileUnderErrorText = null
+                                val (written, failure) = try {
+                                    viewModel.writeTags(songs, TagEditor.Fields(albumArtist = target.name)) { done, total ->
+                                        fileUnderProgressText = context.getString(R.string.edit_details_progress, done, total)
+                                    }
+                                } finally {
+                                    isSavingFileUnder = false
+                                    fileUnderProgressText = null
+                                }
+                                if (written > 0) {
+                                    while (isRescanningLocal) delay(200L)
+                                    resyncLocalLibrary(localMusicFolders)
+                                }
+                                fileUnderErrorText = when {
+                                    failure == null -> null
+                                    songs.size > 1 ->
+                                        context.getString(R.string.edit_details_some_failed, songs.size - written, songs.size)
+                                    failure == TagEditor.Result.Unsupported ->
+                                        context.getString(R.string.edit_details_unsupported)
+                                    else -> context.getString(R.string.edit_details_failed)
+                                }
+                                if (failure == null) navController.navigateUp()
+                            }
+                        },
                     )
                 }
                 composable(Screen.Songs.route) {
@@ -2411,12 +2475,11 @@ fun CalmMusic(
                         Spacer(modifier = Modifier.height(8.dp))
                     } else {
                         val lastPlaylistId = libraryPlaylists.lastOrNull()?.id
-                        LazyColumnMMD(
+                        PagedColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = screenHeight * 0.6f),
                             contentPadding = PaddingValues(vertical = 4.dp),
-                            isScrollbarVisible = false,
                         ) {
                             items(
                                 items = libraryPlaylists,
@@ -2748,6 +2811,7 @@ fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boole
         currentDestination?.route == Screen.MusicServer.route -> stringResource(R.string.main_title_music_server)
         currentDestination?.route == Screen.YouTubeLogin.route -> stringResource(R.string.main_title_connect_youtube)
         currentDestination?.route == Screen.EditDetails.route -> stringResource(R.string.main_title_edit_details)
+        currentDestination?.route == Screen.FileUnder.route -> stringResource(R.string.main_title_file_under)
         currentDestination?.route == Screen.PlaylistEdit.route -> if (isEditingPlaylist) stringResource(R.string.main_title_rename_playlist) else stringResource(R.string.main_title_new_playlist)
         currentDestination?.route == Screen.PlaylistAddSongs.route -> stringResource(R.string.main_title_add_songs)
         currentDestination.isPlaylistDetails() -> stringResource(R.string.main_title_playlist)

@@ -1,6 +1,17 @@
 package com.wanderwildwood.jimeikin.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.mudita.mmd.components.menus.DropdownMenuItemMMD
+import com.mudita.mmd.components.menus.DropdownMenuMMD
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,6 +56,8 @@ fun ArtistsScreen(
     onOpenLocalSettingsClick: () -> Unit,
     onOpenMusicServerClick: () -> Unit = {},
     onArtistClick: (ArtistUiModel) -> Unit,
+    /** Long-pressing a row offers "File under…" when this is given. */
+    onFileUnderClick: ((ArtistUiModel) -> Unit)? = null,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -109,6 +122,7 @@ fun ArtistsScreen(
                             artist = artist,
                             onClick = { onArtistClick(artist) },
                             showDivider = !isLast,
+                            onFileUnder = onFileUnderClick?.let { { it(artist) } },
                         )
                     }
                 }
@@ -117,32 +131,66 @@ fun ArtistsScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ArtistItem(
     artist: ArtistUiModel,
     onClick: () -> Unit,
     showDivider: Boolean = true,
+    onFileUnder: (() -> Unit)? = null,
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onFileUnder?.let { { showMenu = true } },
+            )
             .padding(bottom = 8.dp),
     ) {
-        TextMMD(
-            text = artist.name,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                TextMMD(
+                    text = artist.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
 
-        val songLabel = pluralStringResource(R.plurals.library_artist_song_count, artist.songCount, artist.songCount)
-        val albumLabel = pluralStringResource(R.plurals.library_artist_album_count, artist.albumCount, artist.albumCount)
-        val subtitle = stringResource(R.string.library_artist_songs_and_albums, songLabel, albumLabel)
+                val songLabel = pluralStringResource(R.plurals.library_artist_song_count, artist.songCount, artist.songCount)
+                val albumLabel = pluralStringResource(R.plurals.library_artist_album_count, artist.albumCount, artist.albumCount)
+                val subtitle = stringResource(R.string.library_artist_songs_and_albums, songLabel, albumLabel)
 
-        Spacer(modifier = Modifier.height(4.dp))
-        SubtitleLine(text = subtitle, origin = artist.origin)
+                Spacer(modifier = Modifier.height(4.dp))
+                SubtitleLine(text = subtitle, origin = artist.origin)
+            }
+
+            if (showMenu && onFileUnder != null) {
+                Box(modifier = Modifier.wrapContentSize()) {
+                    Icon(
+                        imageVector = Icons.Close,
+                        contentDescription = stringResource(R.string.player_song_close_menu),
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable { showMenu = false },
+                    )
+                    DropdownMenuMMD(
+                        expanded = true,
+                        onDismissRequest = { showMenu = false },
+                    ) {
+                        DropdownMenuItemMMD(
+                            text = { TextMMD(text = stringResource(R.string.library_artist_file_under)) },
+                            onClick = {
+                                showMenu = false
+                                onFileUnder()
+                            },
+                        )
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 

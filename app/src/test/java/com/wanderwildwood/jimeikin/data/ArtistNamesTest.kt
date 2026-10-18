@@ -64,4 +64,64 @@ class ArtistNamesTest {
         assertEquals("A", jumpLetterOf("(a) Song"))
         assertEquals("#", jumpLetterOf(""))
     }
+
+    @Test
+    fun guestsGatherUnderTheArtistTheyAllShare() {
+        val credits = listOf("Asake & Ludmilla", "Asake & Olamide", "Asake & Stormzy", "Asake & Tiakola")
+        val groupOf = ArtistNames.grouping(credits)
+        credits.forEach { assertEquals(ArtistNames.artistKey("Asake"), groupOf(it)) }
+        assertEquals("Asake", ArtistNames.groupName(credits, groupOf(credits.first())))
+    }
+
+    @Test
+    fun aCollaborationGoesUnderAnArtistWhoIsAlsoThereAlone() {
+        val groupOf = ArtistNames.grouping(listOf("Asake", "Asake & Olamide"))
+        assertEquals(groupOf("Asake"), groupOf("Asake & Olamide"))
+        assertEquals("Asake", ArtistNames.groupName(listOf("Asake", "Asake & Olamide"), groupOf("Asake")))
+    }
+
+    @Test
+    fun bandsWithAnAmpersandStayWhole() {
+        val groupOf = ArtistNames.grouping(listOf("Iron & Wine", "Simon & Garfunkel", "Paul Simon", "Asake"))
+        assertEquals(ArtistNames.artistKey("Iron & Wine"), groupOf("Iron & Wine"))
+        assertEquals(ArtistNames.artistKey("Simon & Garfunkel"), groupOf("Simon & Garfunkel"))
+    }
+
+    @Test
+    fun theLongestArtistAtTheStartOfACreditWins() {
+        val groupOf = ArtistNames.grouping(listOf("Iron & Wine", "Iron & Wine, Calexico", "Iron & Wine & Ben Bridwell"))
+        assertEquals(ArtistNames.artistKey("Iron & Wine"), groupOf("Iron & Wine"))
+        assertEquals(ArtistNames.artistKey("Iron & Wine"), groupOf("Iron & Wine, Calexico"))
+        assertEquals(ArtistNames.artistKey("Iron & Wine"), groupOf("Iron & Wine & Ben Bridwell"))
+    }
+
+    @Test
+    fun aCommaBeforeTheIsPartOfTheName() {
+        assertEquals(listOf("Tyler, The Creator"), ArtistNames.collaborators("Tyler, The Creator"))
+        assertEquals(listOf("Beatles, The"), ArtistNames.collaborators("Beatles, The"))
+        val groupOf = ArtistNames.grouping(listOf("Tyler", "Tyler, The Creator"))
+        assertNotEquals(groupOf("Tyler"), groupOf("Tyler, The Creator"))
+    }
+
+    @Test
+    fun anXBetweenTwoNamesIsACollaboration() {
+        assertEquals(listOf("Calvin Harris", "Dua Lipa"), ArtistNames.collaborators("Calvin Harris x Dua Lipa"))
+        assertEquals(listOf("Calvin Harris", "Dua Lipa"), ArtistNames.collaborators("Calvin Harris X Dua Lipa"))
+        assertEquals(listOf("Malcolm X"), ArtistNames.collaborators("Malcolm X"))
+
+        val alone = ArtistNames.grouping(listOf("Calvin Harris x Dua Lipa"))
+        assertEquals(ArtistNames.artistKey("Calvin Harris x Dua Lipa"), alone("Calvin Harris x Dua Lipa"))
+
+        val withSolo = ArtistNames.grouping(listOf("Calvin Harris", "Calvin Harris x Dua Lipa"))
+        assertEquals(ArtistNames.artistKey("Calvin Harris"), withSolo("Calvin Harris x Dua Lipa"))
+
+        val twice = ArtistNames.grouping(listOf("Calvin Harris x Dua Lipa", "Calvin Harris x Rihanna"))
+        assertEquals(ArtistNames.artistKey("Calvin Harris"), twice("Calvin Harris x Dua Lipa"))
+        assertEquals(ArtistNames.artistKey("Calvin Harris"), twice("Calvin Harris x Rihanna"))
+    }
+
+    @Test
+    fun guestsAfterFeatAreLeftOutOfTheCollaborators() {
+        assertEquals(listOf("Asake", "Olamide"), ArtistNames.collaborators("Asake & Olamide feat. Someone"))
+    }
 }
