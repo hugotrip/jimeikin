@@ -547,15 +547,29 @@
     <string name="library_artist_file_under">File under…</string>
     <string name="file_under_lead">Put %1$s under another artist. Each song keeps its own credit.</string>
     <string name="file_under_counting">Counting songs…</string>
-    <string name="file_under_none_on_phone">None of these songs are files on the phone. Songs from a music server have to be changed on the server.</string>
-    <plurals name="file_under_server_note">
-        <item quantity="one">%d song is from a music server and has to be changed on the server.</item>
-        <item quantity="other">%d songs are from a music server and have to be changed on the server.</item>
-    </plurals>
+    <string name="file_under_in_app_note">Songs that are not files on the phone are filed here in the app only.</string>
     <plurals name="file_under_confirm">
         <item quantity="one">Tap again to file %1$d song under %2$s</item>
         <item quantity="other">Tap again to file %1$d songs under %2$s</item>
     </plurals>
+
+    <!-- Edit name: a name shown in this app only, for a song, an album or an artist -->
+    <string name="edit_name_menu">Edit name</string>
+    <string name="edit_name_title">Edit name</string>
+    <!-- Text field label -->
+    <string name="edit_name_name">Name</string>
+    <string name="edit_name_note">Shown in this app only. Leave it empty for the name it came with.</string>
+
+    <!-- Hearted songs -->
+    <!-- Song long-press menu items -->
+    <string name="player_song_heart">Heart</string>
+    <string name="player_song_unheart">Remove heart</string>
+    <!-- Read aloud for the small heart on a hearted song's row -->
+    <string name="hearted_mark">Hearted</string>
+    <!-- The list of hearted songs, among the playlists, and its screen's title -->
+    <string name="hearted_title">Hearted</string>
+    <string name="hearted_shuffle">Shuffle hearted songs</string>
+    <string name="hearted_empty">No hearted songs. Hold a song and choose Heart.</string>
 
     <!-- Music server screen: where a Navidrome or other Subsonic server is entered -->
     <!-- Text field label: the server's address -->

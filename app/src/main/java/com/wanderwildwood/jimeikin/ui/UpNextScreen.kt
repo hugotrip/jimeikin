@@ -162,7 +162,7 @@ private fun UpNextRow(
                 .padding(vertical = 8.dp),
         ) {
             TextMMD(
-                text = song.title,
+                text = song.shownTitle(),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,

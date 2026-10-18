@@ -62,6 +62,22 @@ class CalmMusic : Application() {
         YouTubeCopies(File(filesDir, "youtube-downloads.txt"))
     }
 
+    /** Names the reader gave songs, albums and artists, laid over the library as it is read. */
+    val nameOverrides: com.wanderwildwood.jimeikin.data.NameOverrides by lazy {
+        com.wanderwildwood.jimeikin.data.NameOverrides(
+            dao = { com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(this).nameOverrideDao() },
+            recorded = { youTubeCopies.recorded.value },
+        )
+    }
+
+    /** The songs the reader has hearted. */
+    val hearts: com.wanderwildwood.jimeikin.data.Hearts by lazy {
+        com.wanderwildwood.jimeikin.data.Hearts(
+            dao = { com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(this).heartedSongDao() },
+            recorded = { youTubeCopies.recorded.value },
+        )
+    }
+
     lateinit var settingsManager: CalmMusicSettingsManager
         private set
 

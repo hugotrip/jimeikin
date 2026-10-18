@@ -133,6 +133,8 @@ fun SongItem(
     }
 
     var showMenu by remember { mutableStateOf(false) }
+    val hearts = LocalHearts.current
+    val isHearted = song.sourceType != "RADIO" && hearts?.isHearted?.invoke(song) == true
 
     // Deleting erases the file, and removing takes the song out of the library. The row asks
     // in its own face rather than stacking a dialog on the menu, and disarms itself after
@@ -188,7 +190,7 @@ fun SongItem(
                 modifier = Modifier.weight(1f),
             ) {
                 TextMMD(
-                    text = song.title,
+                    text = song.shownTitle(),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -199,7 +201,7 @@ fun SongItem(
                 // Where it plays from, when that is not the phone. This replaced a ticked box
                 // on streamed songs in the library, and a dotted rule under every streamed
                 // row: two marks for one fact, and neither said from where.
-                SubtitleLine(text = subtitle, origin = originOf(song.sourceType))
+                SubtitleLine(text = subtitle, origin = originOf(song.sourceType), hearted = isHearted)
             }
 
             // Which song is playing, at a glance. The bold number alone was not: every title
@@ -257,6 +259,23 @@ fun SongItem(
                             }
                         )
 
+                        if (hearts != null && song.sourceType != "RADIO") {
+                            HorizontalDividerMMD(thickness = 1.dp)
+                            DropdownMenuItemMMD(
+                                text = {
+                                    TextMMD(
+                                        text = stringResource(
+                                            if (isHearted) R.string.player_song_unheart else R.string.player_song_heart,
+                                        ),
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    hearts.toggle(song)
+                                }
+                            )
+                        }
+
                         // A server song or a YouTube one: a file is already here. A YouTube
                         // song downloaded already, listed again by YouTube, is here too.
                         val isDownloadedAlready = LocalIsDownloaded.current
@@ -281,6 +300,18 @@ fun SongItem(
                                 onClick = {
                                     showMenu = false
                                     editDetails(listOf(song))
+                                }
+                            )
+                        }
+
+                        val nameEditing = LocalNameEditing.current
+                        if (nameEditing != null && song.sourceType != "RADIO") {
+                            HorizontalDividerMMD(thickness = 1.dp)
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = stringResource(R.string.edit_name_menu)) },
+                                onClick = {
+                                    showMenu = false
+                                    nameEditing.edit(NameTarget.Song(song))
                                 }
                             )
                         }

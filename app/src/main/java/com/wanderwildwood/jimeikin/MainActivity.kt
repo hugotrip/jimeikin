@@ -125,6 +125,16 @@ import com.wanderwildwood.jimeikin.ui.SongUiModel
 import com.wanderwildwood.jimeikin.ui.SongsScreen
 import com.wanderwildwood.jimeikin.ui.YouTubeArtistDetailsScreen
 import com.wanderwildwood.jimeikin.ui.YouTubeLoginScreen
+import com.wanderwildwood.jimeikin.ui.EditNameDialog
+import com.wanderwildwood.jimeikin.ui.HeartActions
+import com.wanderwildwood.jimeikin.ui.HeartedScreen
+import com.wanderwildwood.jimeikin.ui.LocalHearts
+import com.wanderwildwood.jimeikin.ui.LocalNameEditing
+import com.wanderwildwood.jimeikin.ui.LocalNames
+import com.wanderwildwood.jimeikin.ui.NameEditing
+import com.wanderwildwood.jimeikin.ui.NameTarget
+import com.wanderwildwood.jimeikin.ui.toHeartedRow
+import com.wanderwildwood.jimeikin.ui.toSongUiModel
 import com.wanderwildwood.jimeikin.ui.YoutubeArtistUiModel
 import com.mudita.mmd.ThemeMMD
 import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
@@ -453,6 +463,48 @@ fun CalmMusic(
     var fileUnderProgressText by remember { mutableStateOf<String?>(null) }
     var fileUnderErrorText by remember { mutableStateOf<String?>(null) }
     var isSavingFileUnder by remember { mutableStateOf(false) }
+
+    // Edit name and hearts: kept by the app, laid over whatever the songs are.
+    var nameTarget by remember { mutableStateOf<NameTarget?>(null) }
+    val names by app.nameOverrides.names.collectAsState()
+    val albumRowIds by viewModel.albumRowIds.collectAsState()
+    val nameEditing = remember(albumRowIds) {
+        NameEditing(canEditAlbum = { it.id in albumRowIds }, edit = { nameTarget = it })
+    }
+    val hearted by app.hearts.hearted.collectAsState()
+    val heartActions = remember(hearted, recordedYouTubeCopies) {
+        HeartActions(
+            isHearted = { song -> app.hearts.entryFor(song.id, hearted) != null },
+            toggle = { song ->
+                if (app.hearts.entryFor(song.id, hearted) != null) {
+                    app.hearts.unheart(song.id)
+                } else {
+                    app.hearts.heart(song.toHeartedRow(System.currentTimeMillis()))
+                }
+            },
+        )
+    }
+    // Each hearted song as the library has it where it is there - a streamed song that has since
+    // been downloaded plays from its file - and as it was kept when hearted where it is not.
+    val heartedSongs = remember(hearted, librarySongs, recordedYouTubeCopies, names) {
+        val byId = librarySongs.associateBy { it.id }
+        hearted.map { entry ->
+            byId[entry.songId]
+                ?: recordedYouTubeCopies[entry.songId]?.let { byId[it] }
+                ?: entry.toSongUiModel(::formatDurationMillis).let { song ->
+                    names?.songTitle(song.id)?.let { song.copy(title = it) } ?: song
+                }
+        }.distinctBy { it.id }
+    }
+    // A page open on something just renamed shows its new name.
+    LaunchedEffect(libraryAlbums) {
+        val open = selectedAlbum ?: return@LaunchedEffect
+        libraryAlbums.firstOrNull { it.id == open.id }?.let { if (it != open) selectedAlbum = it }
+    }
+    LaunchedEffect(libraryArtists) {
+        val id = selectedArtistId ?: return@LaunchedEffect
+        libraryArtists.firstOrNull { it.id == id }?.let { selectedArtist = it.name }
+    }
     val subsonicConfig by settingsManager.subsonicConfig.collectAsState()
     val subsonicSendsPassword by settingsManager.subsonicSendsPassword.collectAsState()
     val subsonicMaxBitrate by settingsManager.subsonicMaxBitrate.collectAsState()
@@ -902,7 +954,17 @@ fun CalmMusic(
      * one already waiting, so pressing it twice costs nothing and finishes what a first press
      * did not. How it goes is said along the bottom of the screen and in Downloads.
      */
-    val onKeepAllOnPhone: (List<SongUiModel>) -> Unit = { songs ->
+    /**
+     * Who a YouTube download is filed under. On an album's page, or from an album's own row, the
+     * album's artist: a record with a guest on most tracks was otherwise filed under a different
+     * collaboration for each song, and showed as the same album five times. Elsewhere the
+     * library's album of that name where there is one, and otherwise the song's own artist.
+     */
+    fun albumArtistFor(song: SongUiModel, pageAlbum: AlbumUiModel?): String? =
+        pageAlbum?.artist?.takeIf { it.isNotBlank() }
+            ?: song.album?.let { title -> libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist }
+
+    fun keepAllOnPhone(songs: List<SongUiModel>, pageAlbum: AlbumUiModel?) {
         val fromYouTube = if (streamingProvider == StreamingProvider.YOUTUBE) {
             // Not one already downloaded: a listing from YouTube names its songs by video
             // even once they are here, and every one of them used to be fetched again.
@@ -927,14 +989,7 @@ fun CalmMusic(
             songs.forEach { song ->
                 when (song) {
                     in fromServer -> downloadQueue.enqueueServer(song)
-                    in fromYouTube -> {
-                        // Filed under the album's artist when the library already has the
-                        // album, as the one-song download in Now Playing does.
-                        val albumArtist = song.album?.let { title ->
-                            libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist
-                        }
-                        downloadQueue.enqueueYouTube(song, albumArtist)
-                    }
+                    in fromYouTube -> downloadQueue.enqueueYouTube(song, albumArtistFor(song, pageAlbum))
                 }
             }
             val total = fromServer.size + fromYouTube.size
@@ -948,11 +1003,13 @@ fun CalmMusic(
         }
     }
 
+    val onKeepAllOnPhone: (List<SongUiModel>) -> Unit = { songs -> keepAllOnPhone(songs, null) }
+
     /**
      * Downloads one song from its menu: a server song, or a YouTube one where YouTube is the
      * streaming provider. Into the same queue as everything else.
      */
-    val onKeepOnPhone: (SongUiModel) -> Unit = onKeepOnPhone@{ song ->
+    fun keepOnPhone(song: SongUiModel, pageAlbum: AlbumUiModel?) {
         if (song.sourceType == "YOUTUBE" && app.youTubeCopies.copyOf(song, youTubeDownloads) != null) {
             libraryScope.launch {
                 snackbarHostState.showSnackbar(
@@ -961,7 +1018,7 @@ fun CalmMusic(
                     duration = SnackbarDurationMMD.Short,
                 )
             }
-            return@onKeepOnPhone
+            return
         }
         val queued = when {
             song.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE -> {
@@ -969,10 +1026,7 @@ fun CalmMusic(
                 true
             }
             song.sourceType == "YOUTUBE" && streamingProvider == StreamingProvider.YOUTUBE -> {
-                val albumArtist = song.album?.let { title ->
-                    libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist
-                }
-                downloadQueue.enqueueYouTube(song, albumArtist)
+                downloadQueue.enqueueYouTube(song, albumArtistFor(song, pageAlbum))
                 true
             }
             else -> false
@@ -990,6 +1044,8 @@ fun CalmMusic(
             )
         }
     }
+
+    val onKeepOnPhone: (SongUiModel) -> Unit = { song -> keepOnPhone(song, null) }
 
     val onAddToPlaylist: (SongUiModel) -> Unit = { song ->
         songsToAddToPlaylist = listOf(song)
@@ -1343,6 +1399,31 @@ fun CalmMusic(
                     playlistEditSelectionIds.addAll(selectedIds)
                     playlistEditSelectionCount = selectedIds.size
                 },
+                heartedCount = heartedSongs.size,
+                onHeartedClick = {
+                    navController.navigate(Screen.Hearted.route) { launchSingleTop = true }
+                },
+            )
+        }
+
+        composable(Screen.Hearted.route) {
+            HeartedScreen(
+                songs = heartedSongs,
+                currentSongId = currentSongId,
+                librarySongIds = librarySongIds,
+                onPlaySongClick = { song, songs ->
+                    val index = songs.indexOfFirst { it.id == song.id }
+                    startPlaybackFromQueue(songs, if (index >= 0) index else 0)
+                },
+                onShuffleClick = { songs -> startShuffledPlaybackFromQueue(songs) },
+                onAddToPlaylistClick = onAddToPlaylist,
+                onPlayNextClick = onPlayNext,
+                onAddToQueueClick = onAddToQueue,
+                onRemoveFromLibraryClick = onRemoveFromLibrary,
+                onDeleteClick = onDelete,
+                onKeepOnPhoneClick = onKeepOnPhone,
+                onKeepAllClick = onKeepAllOnPhone,
+                canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
             )
         }
 
@@ -1540,7 +1621,7 @@ fun CalmMusic(
                 }
             },
             onAddToPlaylist = onAddAllToPlaylist,
-            onDownload = onKeepAllOnPhone,
+            onDownload = { album, songs -> keepAllOnPhone(songs, album) },
             onLoadFailed = {
                 libraryScope.launch {
                     snackbarHostState.showSnackbar(
@@ -1559,7 +1640,7 @@ fun CalmMusic(
             onPlayNext = { album, songs -> latestAlbumActions.onPlayNext(album, songs) },
             onAddToQueue = { album, songs -> latestAlbumActions.onAddToQueue(album, songs) },
             onAddToPlaylist = { latestAlbumActions.onAddToPlaylist(it) },
-            onDownload = { latestAlbumActions.onDownload(it) },
+            onDownload = { album, songs -> latestAlbumActions.onDownload(album, songs) },
             onLoadFailed = { latestAlbumActions.onLoadFailed() },
         )
     }
@@ -1572,6 +1653,9 @@ fun CalmMusic(
             LocalEditDetails provides openEditor,
             LocalIsDownloaded provides isDownloaded,
             LocalAlbumActions provides albumActions,
+            LocalNameEditing provides nameEditing,
+            LocalNames provides names,
+            LocalHearts provides heartActions,
         ) {
         Scaffold(
             topBar = {
@@ -1801,7 +1885,7 @@ fun CalmMusic(
                     LaunchedEffect(artist.id) {
                         val all = runCatching { viewModel.getArtistContent(artist.id).songs }.getOrDefault(emptyList())
                         fileUnderSongs = all.filter { it.isEditable() }
-                        fileUnderCounts = fileUnderSongs.size to all.count { it.sourceType.startsWith("SUBSONIC") }
+                        fileUnderCounts = fileUnderSongs.size to all.size
                     }
                     FileUnderScreen(
                         artist = artist,
@@ -1816,8 +1900,15 @@ fun CalmMusic(
                                 isSavingFileUnder = true
                                 fileUnderErrorText = null
                                 val (written, failure) = try {
-                                    viewModel.writeTags(songs, TagEditor.Fields(albumArtist = target.name)) { done, total ->
-                                        fileUnderProgressText = context.getString(R.string.edit_details_progress, done, total)
+                                    // Filed in the app for every song, streamed ones too; the
+                                    // files on the phone also carry it in their tags.
+                                    viewModel.fileArtistUnder(artist, target)
+                                    if (songs.isEmpty()) {
+                                        0 to null
+                                    } else {
+                                        viewModel.writeTags(songs, TagEditor.Fields(albumArtist = target.name)) { done, total ->
+                                            fileUnderProgressText = context.getString(R.string.edit_details_progress, done, total)
+                                        }
                                     }
                                 } finally {
                                     isSavingFileUnder = false
@@ -1956,8 +2047,8 @@ fun CalmMusic(
                 onAddToQueueClick = onAddToQueue,
                         onRemoveFromLibraryClick = onRemoveFromLibrary,
                         onDeleteClick = onDelete,
-                        onKeepOnPhoneClick = onKeepOnPhone,
-                        onKeepAllClick = onKeepAllOnPhone,
+                        onKeepOnPhoneClick = { keepOnPhone(it, selectedAlbum) },
+                        onKeepAllClick = { keepAllOnPhone(it, selectedAlbum) },
                         canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                         onRemoveAlbumClick = { songs ->
@@ -2260,6 +2351,29 @@ fun CalmMusic(
             AboutDialog(onDismiss = { showAbout = false })
         }
 
+        nameTarget?.let { target ->
+            EditNameDialog(
+                name = when (target) {
+                    is NameTarget.Song -> names?.songTitle(target.song.id) ?: target.song.title
+                    is NameTarget.Album -> target.album.title
+                    is NameTarget.Artist -> target.artist.name
+                },
+                artist = if (target is NameTarget.Album) target.album.artist.orEmpty() else null,
+                onSave = { name, artist ->
+                    nameTarget = null
+                    libraryScope.launch {
+                        when (target) {
+                            is NameTarget.Song -> viewModel.renameSong(target.song, name)
+                            is NameTarget.Album -> viewModel.renameAlbum(target.album, name, artist)
+                            is NameTarget.Artist -> viewModel.renameArtist(target.artist, name)
+                        }
+                        playlistsViewModel.refreshSongs()
+                    }
+                },
+                onDismiss = { nameTarget = null },
+            )
+        }
+
         if (showNowPlaying && playbackState.nowPlayingSong != null) {
             val song = playbackState.nowPlayingSong!!
 
@@ -2288,7 +2402,7 @@ fun CalmMusic(
             val localFileLabel = stringResource(R.string.main_local_file)
 
             NowPlayingScreen(
-                title = song.title,
+                title = names?.songTitle(song.id) ?: song.title,
                 artist = song.artist.ifBlank { if (song.sourceType == "LOCAL_FILE" || song.sourceType == "YOUTUBE_DOWNLOAD") localFileLabel else "" },
                 album = song.album,
                 isPlaying = playbackState.isPlaybackPlaying,
@@ -2454,6 +2568,7 @@ fun CalmMusic(
                     showUpNext = false
                 }
 
+                CompositionLocalProvider(LocalNames provides names) {
                 UpNextScreen(
                     queue = playbackState.playbackQueue,
                     currentIndex = playbackState.playbackQueueIndex ?: 0,
@@ -2466,6 +2581,7 @@ fun CalmMusic(
                         showAddToPlaylistDialog = true
                     },
                 )
+                }
             }
         }
 
@@ -2861,6 +2977,7 @@ fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boole
         currentDestination?.route == Screen.YouTubeLogin.route -> stringResource(R.string.main_title_connect_youtube)
         currentDestination?.route == Screen.EditDetails.route -> stringResource(R.string.main_title_edit_details)
         currentDestination?.route == Screen.FileUnder.route -> stringResource(R.string.main_title_file_under)
+        currentDestination?.route == Screen.Hearted.route -> stringResource(R.string.hearted_title)
         currentDestination?.route == Screen.PlaylistEdit.route -> if (isEditingPlaylist) stringResource(R.string.main_title_rename_playlist) else stringResource(R.string.main_title_new_playlist)
         currentDestination?.route == Screen.PlaylistAddSongs.route -> stringResource(R.string.main_title_add_songs)
         currentDestination.isPlaylistDetails() -> stringResource(R.string.main_title_playlist)

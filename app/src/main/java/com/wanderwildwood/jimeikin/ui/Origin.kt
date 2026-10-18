@@ -73,10 +73,18 @@ fun OriginMark(origin: Origin) {
     }
 }
 
-/** A row's second line, with the mark before it when there is one. */
+/** A row's second line, with the marks before it when there are any: a heart, then where it is from. */
 @Composable
-fun SubtitleLine(text: String, origin: Origin?) {
+fun SubtitleLine(text: String, origin: Origin?, hearted: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        if (hearted) {
+            Icon(
+                imageVector = Icons.Heart,
+                contentDescription = stringResource(R.string.hearted_mark),
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(if (origin != null) 4.dp else 8.dp))
+        }
         if (origin != null) {
             OriginMark(origin)
             Spacer(modifier = Modifier.width(8.dp))

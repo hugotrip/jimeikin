@@ -150,7 +150,7 @@ class AlbumActions(
     val onPlayNext: (AlbumUiModel, List<SongUiModel>) -> Unit,
     val onAddToQueue: (AlbumUiModel, List<SongUiModel>) -> Unit,
     val onAddToPlaylist: (List<SongUiModel>) -> Unit,
-    val onDownload: (List<SongUiModel>) -> Unit,
+    val onDownload: (AlbumUiModel, List<SongUiModel>) -> Unit,
     val onLoadFailed: () -> Unit,
 )
 
@@ -278,7 +278,18 @@ fun AlbumItem(
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
                                 text = { TextMMD(text = stringResource(R.string.player_song_keep_on_phone)) },
-                                onClick = { withSongs { actions.onDownload(it) } }
+                                onClick = { withSongs { actions.onDownload(album, it) } }
+                            )
+                        }
+                        val nameEditing = LocalNameEditing.current
+                        if (nameEditing != null && nameEditing.canEditAlbum(album)) {
+                            HorizontalDividerMMD(thickness = 1.dp)
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = stringResource(R.string.edit_name_menu)) },
+                                onClick = {
+                                    showMenu = false
+                                    nameEditing.edit(NameTarget.Album(album))
+                                }
                             )
                         }
                     }

@@ -38,6 +38,9 @@ fun PlaylistsScreen(
     onPlaylistClick: (PlaylistUiModel) -> Unit,
     onAddPlaylistClick: () -> Unit,
     onSelectionChanged: (Set<String>) -> Unit,
+    /** How many songs are hearted; the Hearted list heads the playlists while there are any. */
+    heartedCount: Int = 0,
+    onHeartedClick: () -> Unit = {},
 ) {
     val selectedState = remember { mutableStateMapOf<String, Boolean>() }
 
@@ -51,7 +54,8 @@ fun PlaylistsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        if (playlists.isEmpty()) {
+        val showHearted = heartedCount > 0 && !isInEditMode
+        if (playlists.isEmpty() && !showHearted) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -84,6 +88,20 @@ fun PlaylistsScreen(
                         bottom = 0.dp,
                     ),
                 ) {
+                if (showHearted) {
+                    item(key = "hearted") {
+                        PlaylistItem(
+                            playlist = PlaylistUiModel(
+                                id = "hearted",
+                                name = stringResource(R.string.hearted_title),
+                                description = null,
+                                songCount = heartedCount,
+                            ),
+                            onClick = onHeartedClick,
+                            showDivider = playlists.isNotEmpty(),
+                        )
+                    }
+                }
                 items(
                     items = playlists,
                     key = { it.id },
@@ -116,7 +134,7 @@ fun PlaylistsScreen(
         }
 
         TopBarActions {
-            if (playlists.isNotEmpty() && !isInEditMode) {
+            if ((playlists.isNotEmpty() || showHearted) && !isInEditMode) {
                 IconButton(
                     onClick = onAddPlaylistClick,
                 ) {

@@ -34,6 +34,11 @@ import com.wanderwildwood.jimeikin.ui.RepeatMode
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import com.wanderwildwood.jimeikin.ui.YoutubeArtistUiModel
 import com.wanderwildwood.jimeikin.data.ArtistNames
+import com.wanderwildwood.jimeikin.data.NameOverrideEntity
+import com.wanderwildwood.jimeikin.data.NameOverrides
+import com.wanderwildwood.jimeikin.data.NamedAlbumDao
+import com.wanderwildwood.jimeikin.data.NamedArtistDao
+import com.wanderwildwood.jimeikin.data.NamedSongDao
 import com.wanderwildwood.jimeikin.data.SubsonicAlbum
 import com.wanderwildwood.jimeikin.data.SubsonicClient
 import com.wanderwildwood.jimeikin.data.SubsonicDownloader
@@ -101,9 +106,13 @@ class CalmMusicViewModel(
         get() = getApplication() as CalmMusic
 
     private val database: CalmMusicDatabase by lazy { CalmMusicDatabase.getDatabase(app) }
-    private val songDao by lazy { database.songDao() }
-    private val albumDao by lazy { database.albumDao() }
-    private val artistDao by lazy { database.artistDao() }
+    // Read through the names the reader gave things; see NamedSongDao. The plain DAOs are for
+    // reading a row in order to write it back.
+    private val rawSongDao by lazy { database.songDao() }
+    private val rawArtistDao by lazy { database.artistDao() }
+    private val songDao by lazy { NamedSongDao(rawSongDao, app.nameOverrides) }
+    private val albumDao by lazy { NamedAlbumDao(database.albumDao(), app.nameOverrides) }
+    private val artistDao by lazy { NamedArtistDao(rawArtistDao, app.nameOverrides) }
     private val playlistDao by lazy { database.playlistDao() }
     private val libraryRepository: LibraryRepository by lazy { LibraryRepository(app) }
     private val nowPlayingStorage: NowPlayingStorage by lazy { app.nowPlayingStorage }
@@ -227,9 +236,10 @@ class CalmMusicViewModel(
             // them are read now, in id order, which puts disc folders in their own order.
             val allAlbums = albumDao.getAllAlbums()
             val opened = allAlbums.firstOrNull { it.id == albumId }
+            val albumKey = albumKeyer()
             val sameAlbum = opened?.let { o ->
-                val key = ArtistNames.albumKey(o.name, o.artist)
-                allAlbums.filter { ArtistNames.albumKey(it.name, it.artist) == key }.map { it.id }.sorted()
+                val key = albumKey(o.name, o.artist)
+                allAlbums.filter { albumKey(it.name, it.artist) == key }.map { it.id }.sorted()
             } ?: listOf(albumId)
 
             val idsToFetch = LinkedHashSet(sameAlbum)
@@ -557,7 +567,7 @@ class CalmMusicViewModel(
      * page already knows how to fill.
      */
     suspend fun albumPageFor(song: SongUiModel): AlbumUiModel? {
-        fun key(name: String, artist: String?) = ArtistNames.albumKey(name, artist)
+        val key = withContext(Dispatchers.IO) { albumKeyer() }
 
         val albumEntity = withContext(Dispatchers.IO) {
             songDao.getSongById(song.id)?.albumId?.let { albumId ->
@@ -819,22 +829,7 @@ class CalmMusicViewModel(
                 .filter { it.albumId != null }
                 .groupBy({ it.albumId!! }, { it.sourceType })
 
-            val mergedAlbums = albumEntities
-                .groupBy {
-                    ArtistNames.albumKey(it.name, it.artist)
-                }
-                .map { (_, duplicates) ->
-                    val primary = duplicates.find { it.sourceType == "LOCAL_FILE" } ?: duplicates.first()
-
-                    AlbumUiModel(
-                        id = primary.id,
-                        title = primary.name,
-                        artist = primary.artist,
-                        sourceType = primary.sourceType,
-                        releaseYear = duplicates.mapNotNull { albumIdToYear[it.id] }.maxOrNull(),
-                        origin = originOf(duplicates.flatMap { songSourcesByAlbumId[it.id].orEmpty() }),
-                    )
-                }
+            val mergedAlbums = mergeAlbums(albumEntities, allArtists.map { it.name }, albumIdToYear, songSourcesByAlbumId)
                 .sortedWith(
                     compareByDescending<AlbumUiModel> { album ->
                         album.releaseYear ?: Int.MIN_VALUE
@@ -1782,7 +1777,7 @@ class CalmMusicViewModel(
                 val albumArtistKey = effectiveAlbumArtist.toIdComponent()
                 val albumKey = albumName?.toIdComponent()
 
-                val existingArtists = artistDao.getAllArtists()
+                val existingArtists = rawArtistDao.getAllArtists()
 
                 val existingTrackArtist = existingArtists.firstOrNull { existing ->
                     existing.name.toIdComponent() == trackArtistKey
@@ -1868,7 +1863,7 @@ class CalmMusicViewModel(
                 "YOUTUBE_DOWNLOAD" -> { deleteLocalMediaSong(song); return@launch }
                 com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
                     withContext(Dispatchers.IO) {
-                        songDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
+                        rawSongDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
                     }
                 }
             }
@@ -1904,7 +1899,7 @@ class CalmMusicViewModel(
                             app.youTubeCopies.forget(song.id)
                         }
                         com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
-                            songDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
+                            rawSongDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
                         }
                     }
                     playlistDao.deleteTracksForSongId(song.id)
@@ -1921,7 +1916,7 @@ class CalmMusicViewModel(
 
     suspend fun unkeepServerSong(song: SongUiModel): Boolean {
         val done = withContext(Dispatchers.IO) {
-            val row = songDao.getSongById(song.id) ?: return@withContext false
+            val row = rawSongDao.getSongById(song.id) ?: return@withContext false
             val restored = com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, row)
             if (restored != null) songDao.upsertAll(listOf(restored)) else songDao.deleteByIds(listOf(row.id))
             true
@@ -1983,6 +1978,139 @@ class CalmMusicViewModel(
         written to firstFailure
     }
 
+    /** Album row ids in the library, so a menu offers Edit name only where it has a row to name. */
+    private val _albumRowIds = MutableStateFlow<Set<String>>(emptySet())
+    val albumRowIds: StateFlow<Set<String>> = _albumRowIds
+
+    /**
+     * Gives a song the title [title] in this app, or gives it back the one it came with when
+     * [title] is empty or is that one. Works for any song, streamed or a file: nothing is
+     * written to the song itself.
+     */
+    suspend fun renameSong(song: SongUiModel, title: String) {
+        val overrides = app.nameOverrides
+        val names = overrides.current()
+        val ids = com.wanderwildwood.jimeikin.data.sameSongIds(song.id, app.youTubeCopies.recorded.value)
+        val existing = ids.firstNotNullOfOrNull { names.get(NameOverrides.SONG, it) }
+        val original = existing?.originalName
+            ?: withContext(Dispatchers.IO) { rawSongDao.getSongById(song.id)?.title }
+            ?: song.title
+        val wanted = title.trim()
+        val set = if (wanted.isEmpty() || wanted == original) {
+            emptyList()
+        } else {
+            listOf(NameOverrideEntity(NameOverrides.SONG, song.id, wanted, null, original))
+        }
+        withContext(Dispatchers.IO) { overrides.write(set, mapOf(NameOverrides.SONG to ids)) }
+        refreshLibraryFromDatabase()
+    }
+
+    /**
+     * Names an album and its artist in this app. Every album row the Albums tab shows as this
+     * one is given the name, so a record held in parts stays one record. An empty field, or the
+     * name a row came with, gives that row its own back.
+     */
+    suspend fun renameAlbum(album: AlbumUiModel, title: String, artist: String) {
+        val overrides = app.nameOverrides
+        withContext(Dispatchers.IO) {
+            val names = overrides.current()
+            val key = albumKeyer()
+            val wanted = key(album.title, album.artist)
+            val raw = database.albumDao().getAllAlbums().associateBy { it.id }
+            val rows = albumDao.getAllAlbums().filter { it.id == album.id || key(it.name, it.artist) == wanted }
+            val newTitle = title.trim()
+            val newArtist = artist.trim()
+            val set = mutableListOf<NameOverrideEntity>()
+            val clear = mutableListOf<String>()
+            rows.forEach { row ->
+                val original = raw[row.id] ?: return@forEach
+                val existing = names.get(NameOverrides.ALBUM, row.id)
+                val name = when {
+                    newTitle.isEmpty() -> null
+                    newTitle == album.title -> existing?.name
+                    else -> newTitle
+                }?.takeUnless { it == original.name }
+                val by = when {
+                    newArtist.isEmpty() -> null
+                    newArtist == album.artist.orEmpty() -> existing?.artist
+                    else -> newArtist
+                }?.takeUnless { it == original.artist }
+                if (name == null && by == null) {
+                    clear += row.id
+                } else {
+                    set += NameOverrideEntity(NameOverrides.ALBUM, row.id, name, by, null)
+                }
+            }
+            overrides.write(set, mapOf(NameOverrides.ALBUM to clear))
+        }
+        refreshLibraryFromDatabase()
+    }
+
+    /** The artist rows the Artists tab shows as [artist], with their names as shown. */
+    private suspend fun artistRowsOf(artist: ArtistUiModel): List<ArtistWithCounts> {
+        val all = artistDao.getAllArtistsWithCounts()
+        val groupOf = ArtistNames.grouping(all.map { it.name })
+        val primary = all.firstOrNull { it.id == artist.id } ?: return emptyList()
+        val key = groupOf(primary.name)
+        return all.filter { groupOf(it.name) == key }
+    }
+
+    /**
+     * Renames an artist in this app. Their songs credited to them alone are renamed with them;
+     * a song crediting them with someone else keeps its credit and stays filed under them. An
+     * empty name gives back every name under this artist, filings included.
+     */
+    suspend fun renameArtist(artist: ArtistUiModel, name: String) {
+        val overrides = app.nameOverrides
+        withContext(Dispatchers.IO) {
+            val names = overrides.current()
+            val rows = artistRowsOf(artist).ifEmpty { return@withContext }
+            val ids = rows.map { it.id }
+            val wanted = name.trim()
+            if (wanted.isEmpty()) {
+                overrides.write(emptyList(), mapOf(NameOverrides.ARTIST to ids, NameOverrides.ARTIST_UNDER to ids))
+                return@withContext
+            }
+            if (wanted == artist.name) return@withContext
+            val raw = rawArtistDao.getAllArtists().associateBy { it.id }
+            val renamed = mutableListOf<NameOverrideEntity>()
+            val filed = mutableListOf<NameOverrideEntity>()
+            rows.forEach { row ->
+                val rawName = raw[row.id]?.name ?: row.name
+                if (ArtistNames.artistKey(row.name) == ArtistNames.artistKey(artist.name)) {
+                    val original = names.get(NameOverrides.ARTIST, row.id)?.originalName ?: row.name
+                    // Back to the name the row came with: nothing left to lay over it.
+                    if (wanted == rawName && names.get(NameOverrides.ARTIST_UNDER, row.id) == null) return@forEach
+                    renamed += NameOverrideEntity(NameOverrides.ARTIST, row.id, wanted, null, original)
+                } else {
+                    val original = names.get(NameOverrides.ARTIST_UNDER, row.id)?.originalName ?: rawName
+                    filed += NameOverrideEntity(NameOverrides.ARTIST_UNDER, row.id, wanted, null, original)
+                }
+            }
+            overrides.write(renamed + filed, mapOf(NameOverrides.ARTIST to ids))
+        }
+        refreshLibraryFromDatabase()
+    }
+
+    /**
+     * Files [artist] under [target] in this app, as File under does for files by their tags:
+     * the Artists tab shows them as one, and each song keeps its own credit.
+     */
+    suspend fun fileArtistUnder(artist: ArtistUiModel, target: ArtistUiModel) {
+        val overrides = app.nameOverrides
+        withContext(Dispatchers.IO) {
+            val names = overrides.current()
+            val rows = artistRowsOf(artist).ifEmpty { return@withContext }
+            val raw = rawArtistDao.getAllArtists().associateBy { it.id }
+            val filed = rows.map { row ->
+                val original = names.get(NameOverrides.ARTIST_UNDER, row.id)?.originalName ?: raw[row.id]?.name ?: row.name
+                NameOverrideEntity(NameOverrides.ARTIST_UNDER, row.id, target.name, null, original)
+            }
+            overrides.write(filed, mapOf(NameOverrides.ARTIST to rows.map { it.id }))
+        }
+        refreshLibraryFromDatabase()
+    }
+
     suspend fun deleteLocalMediaSong(song: SongUiModel): Boolean {
         if (song.sourceType != "LOCAL_FILE" && song.sourceType != "YOUTUBE_DOWNLOAD") return false
 
@@ -2039,6 +2167,47 @@ class CalmMusicViewModel(
         }
     }
 
+
+    /** How the Albums tab folds album rows into one album; see [ArtistNames.albumGrouping]. */
+    private suspend fun albumKeyer(): (String, String?) -> String =
+        ArtistNames.albumGrouping(artistDao.getAllArtistsWithCounts().map { it.name })
+
+    /**
+     * Album rows as the Albums tab shows them: one entry for every row that folds to the same
+     * title and artist. Where the rows credit different people - a record whose songs were filed
+     * each under its own collaboration - the entry is under the artist they all group under,
+     * not under whichever guest's row came first.
+     */
+    private fun mergeAlbums(
+        albums: List<AlbumEntity>,
+        artistNames: Collection<String>,
+        albumIdToYear: Map<String, Int?>,
+        songSourcesByAlbumId: Map<String, List<String>>,
+    ): List<AlbumUiModel> {
+        val groupOf = ArtistNames.grouping(artistNames)
+        return albums
+            .groupBy { ArtistNames.key(it.name) + "\u0000" + groupOf(it.artist.orEmpty()) }
+            .map { (key, duplicates) ->
+                val artistKey = key.substringAfter("\u0000")
+                val primary = duplicates.find { it.sourceType == "LOCAL_FILE" }
+                    ?: duplicates.find { ArtistNames.artistKey(it.artist.orEmpty()) == artistKey }
+                    ?: duplicates.first()
+                val credits = duplicates.mapNotNull { it.artist?.takeIf(String::isNotBlank) }
+                val artist = if (credits.map(ArtistNames::artistKey).distinct().size > 1) {
+                    ArtistNames.groupName(credits, artistKey)
+                } else {
+                    primary.artist
+                }
+                AlbumUiModel(
+                    id = primary.id,
+                    title = primary.name,
+                    artist = artist,
+                    sourceType = primary.sourceType,
+                    releaseYear = duplicates.mapNotNull { albumIdToYear[it.id] }.maxOrNull(),
+                    origin = originOf(duplicates.flatMap { songSourcesByAlbumId[it.id].orEmpty() }),
+                )
+            }
+    }
 
     /**
      * A song held both on this phone and on a music server is one song.
@@ -2125,25 +2294,15 @@ class CalmMusicViewModel(
                 .filter { it.albumId != null }
                 .groupBy({ it.albumId!! }, { it.sourceType })
 
-            val mergedAlbums = allAlbums
-                .filter { albumIdToYear.containsKey(it.id) }
-                .groupBy {
-                    ArtistNames.albumKey(it.name, it.artist)
-                }
-                .map { (_, duplicates) ->
-                    val primary = duplicates.find { it.sourceType == "LOCAL_FILE" } ?: duplicates.first()
-
-                    AlbumUiModel(
-                        id = primary.id,
-                        title = primary.name,
-                        artist = primary.artist,
-                        sourceType = primary.sourceType,
-                        releaseYear = duplicates.mapNotNull { albumIdToYear[it.id] }.maxOrNull(),
-                        origin = originOf(duplicates.flatMap { songSourcesByAlbumId[it.id].orEmpty() }),
-                    )
-                }
+            val mergedAlbums = mergeAlbums(
+                allAlbums.filter { albumIdToYear.containsKey(it.id) },
+                allArtistsWithCounts.map { it.name },
+                albumIdToYear,
+                songSourcesByAlbumId,
+            )
 
             val mergedArtists = mergeArtistsByName(allArtistsWithCounts, allSongs, allAlbums)
+            _albumRowIds.value = allAlbums.mapTo(HashSet()) { it.id }
 
             updateLibrary(
                 songs = songModels,
@@ -2183,7 +2342,8 @@ class CalmMusicViewModel(
         // on. The query this replaced joined on both, and counting only the first put a zero
         // beside every artist whose songs are filed under their album instead.
         val artistIdByAlbumId = albums.mapNotNull { a -> a.artistId?.let { a.id to it } }.toMap()
-        val albumKeyById = albums.associate { it.id to ArtistNames.albumKey(it.name, it.artist) }
+        val albumKey = ArtistNames.albumGrouping(allArtistsWithCounts.map { it.name })
+        val albumKeyById = albums.associate { it.id to albumKey(it.name, it.artist) }
         val songsByArtistId = mutableMapOf<String, MutableList<SongEntity>>()
         songs.forEach { song ->
             val ids = setOfNotNull(song.artistId, song.albumId?.let { artistIdByAlbumId[it] })
@@ -2281,24 +2441,10 @@ class CalmMusicViewModel(
                 .filter { it.albumId != null }
                 .groupBy({ it.albumId!! }, { it.sourceType })
 
-            val mergedAlbums = allAlbums
-                .groupBy {
-                    ArtistNames.albumKey(it.name, it.artist)
-                }
-                .map { (_, duplicates) ->
-                    val primary = duplicates.find { it.sourceType == "LOCAL_FILE" } ?: duplicates.first()
-
-                    AlbumUiModel(
-                        id = primary.id,
-                        title = primary.name,
-                        artist = primary.artist,
-                        sourceType = primary.sourceType,
-                        releaseYear = duplicates.mapNotNull { albumIdToYear[it.id] }.maxOrNull(),
-                        origin = originOf(duplicates.flatMap { songSourcesByAlbumId[it.id].orEmpty() }),
-                    )
-                }
+            val mergedAlbums = mergeAlbums(allAlbums, allArtistsWithCounts.map { it.name }, albumIdToYear, songSourcesByAlbumId)
 
             _libraryAlbums.value = mergedAlbums
+            _albumRowIds.value = allAlbums.mapTo(HashSet()) { it.id }
 
             _libraryArtists.value = mergeArtistsByName(allArtistsWithCounts, allSongs, allAlbums)
             _libraryPlaylists.value = allPlaylistsWithCounts.map { playlist ->

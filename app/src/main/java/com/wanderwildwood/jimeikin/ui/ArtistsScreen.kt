@@ -140,12 +140,17 @@ fun ArtistItem(
     onFileUnder: (() -> Unit)? = null,
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val nameEditing = LocalNameEditing.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onFileUnder?.let { { showMenu = true } },
+                onLongClick = if (onFileUnder != null || nameEditing != null) {
+                    { showMenu = true }
+                } else {
+                    null
+                },
             )
             .padding(bottom = 8.dp),
     ) {
@@ -167,7 +172,7 @@ fun ArtistItem(
                 SubtitleLine(text = subtitle, origin = artist.origin)
             }
 
-            if (showMenu && onFileUnder != null) {
+            if (showMenu && (onFileUnder != null || nameEditing != null)) {
                 Box(modifier = Modifier.wrapContentSize()) {
                     Icon(
                         imageVector = Icons.Close,
@@ -180,13 +185,25 @@ fun ArtistItem(
                         expanded = true,
                         onDismissRequest = { showMenu = false },
                     ) {
-                        DropdownMenuItemMMD(
-                            text = { TextMMD(text = stringResource(R.string.library_artist_file_under)) },
-                            onClick = {
-                                showMenu = false
-                                onFileUnder()
-                            },
-                        )
+                        if (nameEditing != null) {
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = stringResource(R.string.edit_name_menu)) },
+                                onClick = {
+                                    showMenu = false
+                                    nameEditing.edit(NameTarget.Artist(artist))
+                                },
+                            )
+                        }
+                        if (onFileUnder != null) {
+                            if (nameEditing != null) HorizontalDividerMMD(thickness = 1.dp)
+                            DropdownMenuItemMMD(
+                                text = { TextMMD(text = stringResource(R.string.library_artist_file_under)) },
+                                onClick = {
+                                    showMenu = false
+                                    onFileUnder()
+                                },
+                            )
+                        }
                     }
                 }
             }

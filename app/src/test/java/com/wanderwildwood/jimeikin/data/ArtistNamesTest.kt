@@ -124,4 +124,20 @@ class ArtistNamesTest {
     fun guestsAfterFeatAreLeftOutOfTheCollaborators() {
         assertEquals(listOf("Asake", "Olamide"), ArtistNames.collaborators("Asake & Olamide feat. Someone"))
     }
+
+    @Test
+    fun anAlbumSplitByItsGuestsIsOneAlbumUnderTheMainArtist() {
+        val artists = listOf("Mara Quill", "Mara Quill & Dov Ash", "Mara Quill & Lio Fenn", "Mara Quill, Sela Brook")
+        val key = ArtistNames.albumGrouping(artists)
+        val one = key("Lantern Road", "Mara Quill")
+        assertEquals(one, key("Lantern Road", "Mara Quill & Dov Ash"))
+        assertEquals(one, key("Lantern Road", "Mara Quill & Lio Fenn"))
+        assertEquals(one, key("Lantern Road", "Mara Quill, Sela Brook"))
+        assertEquals(one, key("Lantern Road", "Mara Quill feat. Dov Ash"))
+        // Another record of the same name by someone else stays apart.
+        assertNotEquals(one, key("Lantern Road", "Dov Ash"))
+        // A band whose name has an ampersand is not split up.
+        val band = ArtistNames.albumGrouping(listOf("Iron & Wine"))
+        assertNotEquals(band("Shepherd", "Iron & Wine"), band("Shepherd", "Iron"))
+    }
 }

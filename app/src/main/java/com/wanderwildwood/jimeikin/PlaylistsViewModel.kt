@@ -90,7 +90,8 @@ class PlaylistsViewModel(
 
     suspend fun getPlaylistSongs(playlistId: String): List<SongUiModel> {
         return withContext(Dispatchers.IO) {
-            val entities = playlistDao.getSongsForPlaylist(playlistId)
+            val names = app.nameOverrides.current()
+            val entities = playlistDao.getSongsForPlaylist(playlistId).map(names::song)
             entities.map { entity ->
                 SongUiModel(
                     id = entity.id,

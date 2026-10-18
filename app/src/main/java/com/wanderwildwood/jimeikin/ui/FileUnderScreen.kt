@@ -32,16 +32,17 @@ import kotlinx.coroutines.delay
  * "File under…": the artists another one can be put under, for a credit the automatic
  * grouping left on its own ("Asake & Tiakola" when the library holds no plain Asake).
  *
- * Choosing one writes that artist as the album artist of every song of [artist] on the phone,
- * the same tag Edit details writes. A first tap arms the row and says how many songs will
- * change; a second within four seconds does it. Songs from a music server cannot be written
- * from here, and the row says so when there are any.
+ * Choosing one files [artist] under that artist in this app, so the Artists tab shows them as
+ * one, whatever the songs are: files, a music server's, YouTube's. Songs that are files on the
+ * phone also have that artist written as their album artist, the same tag Edit details writes,
+ * so the filing travels with the files. A first tap arms the row and says how many songs will
+ * be filed; a second within four seconds does it.
  */
 @Composable
 fun FileUnderScreen(
     artist: ArtistUiModel,
     others: List<ArtistUiModel>,
-    /** How many of [artist]'s songs are files on the phone, and how many are on a server; null while counting. */
+    /** How many of [artist]'s songs are files on the phone, and how many songs they have in all; null while counting. */
     counts: Pair<Int, Int>?,
     isSaving: Boolean,
     progressText: String?,
@@ -66,8 +67,7 @@ fun FileUnderScreen(
                 progressText != null -> progressText
                 errorText != null -> errorText
                 counts == null -> stringResource(R.string.file_under_counting)
-                counts.first == 0 -> stringResource(R.string.file_under_none_on_phone)
-                counts.second > 0 -> pluralStringResource(R.plurals.file_under_server_note, counts.second, counts.second)
+                counts.first < counts.second -> stringResource(R.string.file_under_in_app_note)
                 else -> null
             }
             if (note != null) {
@@ -77,7 +77,7 @@ fun FileUnderScreen(
         }
         HorizontalDividerMMD(thickness = 1.dp)
 
-        val canWrite = counts != null && counts.first > 0 && !isSaving
+        val canWrite = counts != null && counts.second > 0 && !isSaving
         PagedColumnMMD(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -100,7 +100,7 @@ fun FileUnderScreen(
                 ) {
                     TextMMD(
                         text = if (isArmed && counts != null) {
-                            pluralStringResource(R.plurals.file_under_confirm, counts.first, counts.first, target.name)
+                            pluralStringResource(R.plurals.file_under_confirm, counts.second, counts.second, target.name)
                         } else {
                             target.name
                         },

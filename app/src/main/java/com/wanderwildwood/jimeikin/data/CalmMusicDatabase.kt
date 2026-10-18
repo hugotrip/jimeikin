@@ -15,8 +15,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
         RadioStationEntity::class,
+        NameOverrideEntity::class,
+        HeartedSongEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 abstract class CalmMusicDatabase : RoomDatabase() {
@@ -26,6 +28,8 @@ abstract class CalmMusicDatabase : RoomDatabase() {
     abstract fun artistDao(): ArtistDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun radioStationDao(): RadioStationDao
+    abstract fun nameOverrideDao(): NameOverrideDao
+    abstract fun heartedSongDao(): HeartedSongDao
 
     companion object {
         @Volatile
@@ -64,6 +68,32 @@ abstract class CalmMusicDatabase : RoomDatabase() {
             }
         }
 
+        // Two new tables and nothing else touched: names the reader gave things, and hearts.
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS name_overrides (" +
+                        "kind TEXT NOT NULL, " +
+                        "targetId TEXT NOT NULL, " +
+                        "name TEXT, " +
+                        "artist TEXT, " +
+                        "originalName TEXT, " +
+                        "PRIMARY KEY(kind, targetId))",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS hearted_songs (" +
+                        "songId TEXT NOT NULL PRIMARY KEY, " +
+                        "title TEXT NOT NULL, " +
+                        "artist TEXT NOT NULL, " +
+                        "album TEXT, " +
+                        "sourceType TEXT NOT NULL, " +
+                        "audioUri TEXT, " +
+                        "durationMillis INTEGER, " +
+                        "heartedAtMillis INTEGER NOT NULL)",
+                )
+            }
+        }
+
         fun getDatabase(context: Context): CalmMusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -71,7 +101,7 @@ abstract class CalmMusicDatabase : RoomDatabase() {
                     CalmMusicDatabase::class.java,
                     "calmmusic.db",
                 )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     // Only a database from before the migrations began may be rebuilt. The
                     // blanket fallback this was would also have erased every playlist the first
                     // time a version went out without its migration; now that refuses to open,

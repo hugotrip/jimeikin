@@ -157,7 +157,18 @@ object ArtistNames {
     fun albumKey(title: String, artist: String?): String =
         key(title) + "\u0000" + artistKey(artist.orEmpty())
 
-    private val FEATURING = Regex("""\s+[(\[]?\s*(?:feat\.?|ft\.?|featuring)\s+""", RegexOption.IGNORE_CASE)
+    /**
+     * [albumKey] with the artist grouped as the Artists screen groups them ([grouping] over
+     * [artistNames]). A record whose songs were each filed under their own credit - "Mara Quill
+     * & Dov Ash", "Mara Quill & Lio Fenn" - is one album under Mara Quill, as she is one artist
+     * there, and not one album per guest.
+     */
+    fun albumGrouping(artistNames: Collection<String>): (String, String?) -> String {
+        val groupOf = grouping(artistNames)
+        return { title, artist -> key(title) + "\u0000" + groupOf(artist.orEmpty()) }
+    }
+
+    private val FEATURING =Regex("""\s+[(\[]?\s*(?:feat\.?|ft\.?|featuring)\s+""", RegexOption.IGNORE_CASE)
     private val LEADING_THE = Regex("""^\s*the\s+""", RegexOption.IGNORE_CASE)
     private val TRAILING_THE = Regex(""",\s*the\s*$""", RegexOption.IGNORE_CASE)
     private val SEPARATOR = Regex("""\s+&\s+|\s+x\s+|,\s+""", RegexOption.IGNORE_CASE)
