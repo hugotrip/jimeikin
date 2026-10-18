@@ -225,6 +225,15 @@ fun SettingsScreen(
         }
 
         item {
+            val jumpShown by rememberListJumpShown()
+            SwitchRow(
+                label = stringResource(R.string.list_jump_setting),
+                checked = jumpShown,
+                onCheckedChange = { ListJumpPrefs.setShown(context, it) },
+            )
+        }
+
+        item {
             // Read and written here rather than passed down: nothing else on this screen, or in
             // the app, follows it. Glance asks for it each time it draws.
             val settings = (context.applicationContext as com.wanderwildwood.jimeikin.CalmMusic).settingsManager
