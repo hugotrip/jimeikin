@@ -179,6 +179,8 @@ lock screen, so that is what this has to be. It draws Music Box's controls where
 sits, listens only to the system lock screen, and reads one thing there — whether the PIN field
 is showing, so the controls can make way for it. It reads no other app, and it stands aside
 when gezimos's Katapult launcher, whose lock-screen widget this follows, is drawing its own.
+Installed from a file on Android 13 or later, Android may refuse that switch at first; the row
+then says to open App info, tap ⋮, then **Allow restricted settings**, and try again.
 
 It does not read other apps' notifications: that existed once to show controls for whatever
 else was playing, which meant this app putting a panel over its own screen about somebody

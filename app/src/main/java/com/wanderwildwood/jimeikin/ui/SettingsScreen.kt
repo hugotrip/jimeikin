@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -268,31 +269,39 @@ fun SettingsScreen(
             val context = LocalContext.current
             val lifecycleOwner = LocalLifecycleOwner.current
             var lockScreenControlsOn by remember { mutableStateOf(LockScreenControls.isEnabled(context)) }
+            // Asked for and still off on the way back: on Android 13+ that is restricted settings.
+            var asked by rememberSaveable { mutableStateOf(false) }
+            var restricted by remember { mutableStateOf(false) }
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_RESUME) {
                         lockScreenControlsOn = LockScreenControls.isEnabled(context)
+                        restricted = RestrictedSettings.blocked(context)
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
-            ValueRow(
-                label = stringResource(R.string.settings_lockscreen_controls),
-                value = if (lockScreenControlsOn) {
-                    stringResource(R.string.settings_lockscreen_controls_on)
-                } else {
-                    stringResource(R.string.settings_lockscreen_controls_off)
-                },
-                onClick = {
-                    runCatching {
-                        context.startActivity(
-                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    }
-                },
-                enabled = true,
-            )
+            Column {
+                ValueRow(
+                    label = stringResource(R.string.settings_lockscreen_controls),
+                    value = if (lockScreenControlsOn) {
+                        stringResource(R.string.settings_lockscreen_controls_on)
+                    } else {
+                        stringResource(R.string.settings_lockscreen_controls_off)
+                    },
+                    onClick = {
+                        asked = true
+                        runCatching {
+                            context.startActivity(
+                                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    },
+                    enabled = true,
+                )
+                if (asked && !lockScreenControlsOn && restricted) RestrictedHint(Modifier.padding(horizontal = 16.dp))
+            }
         }
 
         item {

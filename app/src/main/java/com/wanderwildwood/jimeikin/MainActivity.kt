@@ -1,5 +1,7 @@
 package com.wanderwildwood.jimeikin
 
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
@@ -155,6 +157,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Android 15 on draws every app targeting it edge to edge, and on a white bar left the
+        // status icons white too, an empty gap: dark icons on the white bar there. Android 12
+        // is left exactly as it was.
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+                navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            )
+        }
         // Only a fresh start: an activity rebuilt after rotating, or after Android reclaimed it,
         // is handed the same intent again, and the file was played the first time.
         if (savedInstanceState == null) {

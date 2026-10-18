@@ -129,7 +129,7 @@ fun SongsScreen(
                         start = 16.dp,
                         top = 16.dp,
                         end = 16.dp,
-                        bottom = 16.dp,
+                        bottom = 0.dp,
                     ),
                 ) {
                     items(

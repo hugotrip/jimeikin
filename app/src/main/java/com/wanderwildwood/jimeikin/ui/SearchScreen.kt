@@ -50,7 +50,7 @@ fun SearchScreen(
 ) {
     val albumKind = stringResource(R.string.library_search_kind_album)
     Column(modifier = Modifier.fillMaxSize()) {
-        PagedColumnMMD(contentPadding = PaddingValues(16.dp)) {
+        PagedColumnMMD(contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp)) {
             if (isSearching) {
                 item {
                     TextMMD(text = stringResource(R.string.library_search_searching))

@@ -99,7 +99,7 @@ fun UpNextScreen(
         PagedColumnMMD(
             modifier = Modifier.weight(1f),
             jump = ListJump.Pages,
-            contentPadding = PaddingValues(bottom = 16.dp),
+            contentPadding = PaddingValues(0.dp),
         ) {
             itemsIndexed(
                 items = shown,

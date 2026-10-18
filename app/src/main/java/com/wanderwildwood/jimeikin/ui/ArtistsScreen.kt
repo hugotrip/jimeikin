@@ -110,7 +110,7 @@ fun ArtistsScreen(
             else -> {
                 val lastArtistId = artists.lastOrNull()?.id
                 PagedColumnMMD(
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp),
                     jump = remember(artists) { ListJump.Letters(artists.map { it.name }) },
                 ) {
                     items(
