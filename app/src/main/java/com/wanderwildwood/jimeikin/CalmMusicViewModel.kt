@@ -34,7 +34,11 @@ import com.wanderwildwood.jimeikin.ui.RepeatMode
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import com.wanderwildwood.jimeikin.ui.YoutubeArtistUiModel
 import com.wanderwildwood.jimeikin.data.ArtistNames
+import com.wanderwildwood.jimeikin.data.SubsonicAlbum
+import com.wanderwildwood.jimeikin.data.SubsonicClient
 import com.wanderwildwood.jimeikin.data.SubsonicDownloader
+import com.wanderwildwood.jimeikin.data.SubsonicResult
+import com.wanderwildwood.jimeikin.data.SubsonicSong
 import com.wanderwildwood.jimeikin.data.SubsonicSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -77,6 +81,12 @@ private fun playsOnThisPhone(sourceType: String?): Boolean =
  * then forward, and on a queue of one there was no way at all.
  */
 private const val RESTART_RATHER_THAN_PREVIOUS_MS = 3_000L
+
+/**
+ * An artist page asked of the music server rather than read from the library; see
+ * [CalmMusicViewModel.serverArtistPageFor]. Never a row's id, so it cannot meet one.
+ */
+private const val SERVER_ARTIST_PREFIX = "SUBSONIC:SERVER_ARTIST:"
 
 /** How many similar songs go on the end at a time; the last of them asks for more. */
 private const val SIMILAR_BATCH = 20
@@ -314,8 +324,12 @@ class CalmMusicViewModel(
             return localSongs
         }
 
+        val serverAlbumId = SubsonicSync.serverAlbumId(album.id)
         return if (album.sourceType == "YOUTUBE") {
             getYouTubeAlbumSongs(album)
+        } else if (album.sourceType == SubsonicSync.SOURCE_TYPE && serverAlbumId != null) {
+            // Opened from a server song the library holds no album for; see serverAlbumFor.
+            serverAlbumSongs(serverAlbumId)
         } else {
             emptyList()
         }
@@ -507,6 +521,8 @@ class CalmMusicViewModel(
             }
         }
 
+        if (isFromServer(song.sourceType)) return serverArtistPageFor(song)
+
         if (song.sourceType != "YOUTUBE" || song.artist.isBlank()) return null
 
         // "A, B" and "A & B" are how YouTube credits two people; the page is the first one's.
@@ -554,6 +570,8 @@ class CalmMusicViewModel(
                     (it.artist == null || ArtistNames.artistKey(it.artist) == artistKey)
         }?.let { return it }
 
+        if (isFromServer(song.sourceType)) return serverAlbumFor(song, albumEntity, title)
+
         if (song.sourceType != "YOUTUBE") return null
         return AlbumUiModel(
             id = "",
@@ -563,7 +581,173 @@ class CalmMusicViewModel(
         )
     }
 
+    private fun isFromServer(sourceType: String?): Boolean =
+        sourceType == SubsonicSync.SOURCE_TYPE || sourceType == SubsonicDownloader.SOURCE_TYPE
+
+    /** A client for the music server set up in Settings, or null when there is none. */
+    private fun serverClient(): SubsonicClient? {
+        val settings = app.settingsManager
+        val config = settings.subsonicConfig.value?.takeIf { it.isComplete } ?: return null
+        return SubsonicClient(
+            config = config,
+            resources = app.resources,
+            initialAuth = settings.getSubsonicAuth(config),
+            onAuthLearned = { settings.setSubsonicAuth(config, it) },
+        )
+    }
+
+    /** The server's own record of a song: the album and artist ids its library row does not keep. */
+    private suspend fun serverSongFor(client: SubsonicClient, song: SongUiModel): SubsonicSong? {
+        val id = SubsonicSync.serverSongId(song.id) ?: return null
+        return (client.fetchSong(id) as? SubsonicResult.Success)?.value
+    }
+
+    /**
+     * The album page for a song streamed from the music server when the library has no album
+     * for it: the song outlived its album in the library, or the library knows the record only
+     * as its card copy under another name. The page is filled from the server - see
+     * [serverAlbumSongs] - so the rest of the record is there to play, as it is for an album
+     * in the library.
+     */
+    private suspend fun serverAlbumFor(song: SongUiModel, albumRow: AlbumEntity?, title: String): AlbumUiModel? {
+        val fromRow = albumRow?.id?.let(SubsonicSync::serverAlbumId)
+        val serverId = fromRow ?: serverClient()?.let { serverSongFor(it, song) }?.albumId ?: return null
+        return AlbumUiModel(
+            id = SubsonicSync.albumId(serverId),
+            title = albumRow?.name ?: title,
+            artist = albumRow?.artist ?: song.artist,
+            sourceType = SubsonicSync.SOURCE_TYPE,
+        )
+    }
+
+    /**
+     * The same for the artist line: their page as the server files them, under the album's
+     * artist first, the way the library files a compilation.
+     */
+    private suspend fun serverArtistPageFor(song: SongUiModel): ArtistPage? = withContext(Dispatchers.IO) {
+        val client = serverClient() ?: return@withContext null
+        val serverSong = serverSongFor(client, song) ?: return@withContext null
+        val albumArtistId = serverSong.albumId
+            ?.let { (serverAlbum(client, it) as? SubsonicResult.Success)?.value?.first?.artistId }
+        listOfNotNull(albumArtistId, serverSong.artistId).distinct().firstNotNullOfOrNull { artistId ->
+            (client.fetchArtist(artistId) as? SubsonicResult.Success)?.value?.let { (name, albums) ->
+                ArtistPage.Library(
+                    ArtistUiModel(
+                        id = SERVER_ARTIST_PREFIX + artistId,
+                        name = name,
+                        songCount = albums.sumOf { it.songCount ?: 0 },
+                        albumCount = albums.size,
+                    ),
+                )
+            }
+        }
+    }
+
+    // Each server album as first fetched for a page, as with YouTube's listings: the page is
+    // drawn again whenever the library changes, and need not ask the server again each time.
+    private val serverAlbumListings =
+        java.util.concurrent.ConcurrentHashMap<String, Pair<SubsonicAlbum, List<SubsonicSong>>>()
+
+    private suspend fun serverAlbum(
+        client: SubsonicClient,
+        serverAlbumId: String,
+    ): SubsonicResult<Pair<SubsonicAlbum, List<SubsonicSong>>> {
+        val cacheKey = (app.settingsManager.subsonicConfig.value?.normalisedBaseUrl ?: "") + "\n" + serverAlbumId
+        serverAlbumListings[cacheKey]?.let { return SubsonicResult.Success(it) }
+        return client.fetchAlbum(serverAlbumId).also { result ->
+            if (result is SubsonicResult.Success) serverAlbumListings[cacheKey] = result.value
+        }
+    }
+
+    /**
+     * A server album's songs as the server lists them, each as the library would play it: the
+     * copy on the phone where there is one, the library's own row where it has one (a song kept
+     * on the phone plays from its file), and otherwise a stream from the server.
+     *
+     * Throws with the server's reason when it cannot be asked, which the page shows.
+     */
+    private suspend fun serverAlbumSongs(serverAlbumId: String): List<SongUiModel> = withContext(Dispatchers.IO) {
+        val client = serverClient()
+            ?: throw IllegalStateException(app.getString(R.string.library_album_load_failed))
+        val listing = when (val r = serverAlbum(client, serverAlbumId)) {
+            is SubsonicResult.Failure -> throw IllegalStateException(r.message)
+            is SubsonicResult.Success -> r.value
+        }
+        asTheLibraryPlaysThem(client, listing.second)
+    }
+
+    private suspend fun asTheLibraryPlaysThem(client: SubsonicClient, songs: List<SubsonicSong>): List<SongUiModel> {
+        val all = songDao.getAllSongs()
+        val rows = all.associateBy { it.id }
+        val onThisPhone = all
+            .filter { it.sourceType == "LOCAL_FILE" || it.sourceType == "YOUTUBE_DOWNLOAD" || it.sourceType == SubsonicDownloader.SOURCE_TYPE }
+            .associateBy { ArtistNames.songKey(it.artist, it.album, it.title) }
+
+        return songs.map { s ->
+            val key = ArtistNames.songKey(s.artist, s.album, s.title)
+            val entity = onThisPhone[key] ?: rows[SubsonicSync.songId(s.id)]
+            if (entity != null) {
+                SongUiModel(
+                    id = entity.id,
+                    title = entity.title,
+                    artist = entity.artist,
+                    durationText = formatDurationMillis(entity.durationMillis),
+                    durationMillis = entity.durationMillis,
+                    trackNumber = s.trackNumber ?: entity.trackNumber,
+                    discNumber = s.discNumber ?: entity.discNumber,
+                    sourceType = entity.sourceType,
+                    audioUri = entity.audioUri,
+                    album = entity.album,
+                )
+            } else {
+                SongUiModel(
+                    id = SubsonicSync.songId(s.id),
+                    title = s.title,
+                    artist = s.artist,
+                    durationText = formatDurationMillis(s.durationMillis),
+                    durationMillis = s.durationMillis,
+                    trackNumber = s.trackNumber,
+                    discNumber = s.discNumber,
+                    sourceType = SubsonicSync.SOURCE_TYPE,
+                    audioUri = client.streamUrl(s.id, s.suffix),
+                    album = s.album,
+                )
+            }
+        }.sortedWith(compareBy({ it.discNumber ?: 1 }, { it.trackNumber ?: 0 }))
+    }
+
+    /** An artist page filled from the server, for [serverArtistPageFor]. */
+    private suspend fun serverArtistContent(serverArtistId: String): ArtistContent = withContext(Dispatchers.IO) {
+        val client = serverClient()
+            ?: throw IllegalStateException(app.getString(R.string.library_artist_load_failed))
+        val (name, albums) = when (val r = client.fetchArtist(serverArtistId)) {
+            is SubsonicResult.Failure -> throw IllegalStateException(r.message)
+            is SubsonicResult.Success -> r.value
+        }
+        val songs = albums.flatMap { album ->
+            (serverAlbum(client, album.id) as? SubsonicResult.Success)?.value?.second.orEmpty()
+        }
+        ArtistContent(
+            songs = asTheLibraryPlaysThem(client, songs).distinctBy { it.id },
+            albums = albums
+                .map { album ->
+                    AlbumUiModel(
+                        id = SubsonicSync.albumId(album.id),
+                        title = album.name,
+                        artist = album.artist,
+                        sourceType = SubsonicSync.SOURCE_TYPE,
+                        releaseYear = album.year,
+                    )
+                }
+                .sortedWith(
+                    compareByDescending<AlbumUiModel> { it.releaseYear ?: Int.MIN_VALUE }.thenBy { it.title },
+                ),
+            name = name,
+        )
+    }
+
     suspend fun getArtistContent(artistId: String): ArtistContent {
+        if (artistId.startsWith(SERVER_ARTIST_PREFIX)) return serverArtistContent(artistId.removePrefix(SERVER_ARTIST_PREFIX))
         return withContext(Dispatchers.IO) {
             // The same fold the Artists tab groups by, so the page holds every row the tab
             // put under this one name - Bjork's server songs beside Björk's on the card.

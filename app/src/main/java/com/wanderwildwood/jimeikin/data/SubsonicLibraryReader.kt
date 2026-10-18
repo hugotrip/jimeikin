@@ -94,19 +94,52 @@ class SubsonicLibraryReader(
             val array = body.optJSONObject("albumList2")?.optJSONArray("album")
             val count = array?.length() ?: 0
             for (i in 0 until count) {
-                val o = array!!.getJSONObject(i)
-                all += SubsonicAlbum(
-                    id = o.optString("id").takeIf { it.isNotBlank() } ?: continue,
-                    name = o.optString("name").ifBlank { UNKNOWN_ALBUM },
-                    artist = o.optString("artist").ifBlank { UNKNOWN_ARTIST },
-                    artistId = o.optString("artistId").takeIf { it.isNotBlank() },
-                    year = o.optInt("year").takeIf { it > 0 },
-                    songCount = o.optInt("songCount", -1).takeIf { it >= 0 },
-                )
+                array!!.getJSONObject(i).toAlbum()?.let { all += it }
             }
             if (count < PAGE_SIZE) return SubsonicResult.Success(all)
             offset += count
         }
+    }
+
+    /**
+     * One album and every song on it, as the server has it now.
+     *
+     * For a page opened on a song the library has no album for - one played from a queue
+     * kept since the album was removed, or one the library filed as its card copy under
+     * another name - so the page is the server's record rather than nothing.
+     */
+    suspend fun readAlbum(albumId: String): SubsonicResult<Pair<SubsonicAlbum, List<SubsonicSong>>> =
+        call("getAlbum", mapOf("id" to albumId)).map { body ->
+            val o = body.optJSONObject("album") ?: JSONObject()
+            val album = o.toAlbum() ?: SubsonicAlbum(albumId, UNKNOWN_ALBUM, UNKNOWN_ARTIST, null, null)
+            album to songsIn(o.optJSONArray("song"), albumId)
+        }
+
+    /** One song, for the album and artist ids its row in the library does not keep. */
+    suspend fun readSong(songId: String): SubsonicResult<SubsonicSong?> =
+        call("getSong", mapOf("id" to songId)).map { body ->
+            body.optJSONObject("song")?.toSong(null)
+        }
+
+    /** An artist's name and the albums the server files under them. */
+    suspend fun readArtist(artistId: String): SubsonicResult<Pair<String, List<SubsonicAlbum>>> =
+        call("getArtist", mapOf("id" to artistId)).map { body ->
+            val o = body.optJSONObject("artist") ?: JSONObject()
+            val array = o.optJSONArray("album")
+            val albums = (0 until (array?.length() ?: 0)).mapNotNull { array!!.getJSONObject(it).toAlbum() }
+            o.optString("name").ifBlank { UNKNOWN_ARTIST } to albums
+        }
+
+    private fun JSONObject.toAlbum(): SubsonicAlbum? {
+        val id = optString("id").takeIf { it.isNotBlank() } ?: return null
+        return SubsonicAlbum(
+            id = id,
+            name = optString("name").ifBlank { UNKNOWN_ALBUM },
+            artist = optString("artist").ifBlank { UNKNOWN_ARTIST },
+            artistId = optString("artistId").takeIf { it.isNotBlank() },
+            year = optInt("year").takeIf { it > 0 },
+            songCount = optInt("songCount", -1).takeIf { it >= 0 },
+        )
     }
 
     /**

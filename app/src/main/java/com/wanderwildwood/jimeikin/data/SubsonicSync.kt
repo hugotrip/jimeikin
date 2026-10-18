@@ -21,8 +21,12 @@ object SubsonicSync {
     const val SOURCE_TYPE = "SUBSONIC"
 
     /** Server ids are short and could collide with a document id, so they are namespaced. */
-    private fun songId(id: String) = "SUBSONIC:$id"
-    private fun albumId(id: String) = "SUBSONIC:ALBUM:$id"
+    fun songId(id: String) = "SUBSONIC:$id"
+    fun albumId(id: String) = "SUBSONIC:ALBUM:$id"
+
+    /** The server's own ids back out of the library's, for asking the server about a row. */
+    fun serverSongId(songId: String): String? = songId.removePrefix("SUBSONIC:").takeIf { it != songId && ':' !in it }
+    fun serverAlbumId(albumId: String): String? = albumId.removePrefix("SUBSONIC:ALBUM:").takeIf { it != albumId }
     private fun artistId(name: String) = "SUBSONIC:ARTIST:" + ArtistNames.artistKey(name)
 
     private fun playlistId(id: String) = "SUBSONIC:PLAYLIST:$id"

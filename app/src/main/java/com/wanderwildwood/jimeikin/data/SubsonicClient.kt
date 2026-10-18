@@ -62,6 +62,19 @@ class SubsonicClient(
     ): SubsonicResult<SubsonicLibrary> =
         SubsonicLibraryReader { method, params -> request(method, params) }.read(onProgress)
 
+    /** One album and its songs, straight from the server. See [SubsonicLibraryReader.readAlbum]. */
+    suspend fun fetchAlbum(albumId: String): SubsonicResult<Pair<SubsonicAlbum, List<SubsonicSong>>> =
+        reader.readAlbum(albumId)
+
+    /** One song, or null when the server no longer has it. */
+    suspend fun fetchSong(songId: String): SubsonicResult<SubsonicSong?> = reader.readSong(songId)
+
+    /** An artist's name and albums. */
+    suspend fun fetchArtist(artistId: String): SubsonicResult<Pair<String, List<SubsonicAlbum>>> =
+        reader.readArtist(artistId)
+
+    private val reader get() = SubsonicLibraryReader { method, params -> request(method, params) }
+
     /**
      * Where the audio actually is. Kept on the song's row when the library is read (see
      * [SubsonicSync]), so it is signed the way this client has learned the server wants.
