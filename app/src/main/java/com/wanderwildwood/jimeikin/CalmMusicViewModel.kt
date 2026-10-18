@@ -119,6 +119,14 @@ class CalmMusicViewModel(
     private val _librarySongs = MutableStateFlow<List<SongUiModel>>(emptyList())
     val librarySongs: StateFlow<List<SongUiModel>> = _librarySongs
 
+    /**
+     * Whether the queue saved at the last close has been read back yet, whatever it held. Until
+     * then the top bar keeps the Now playing button's place, so the buttons beside it do not
+     * move when it appears; after it, an empty queue means nothing is playing.
+     */
+    private val _isQueueRestored = MutableStateFlow(false)
+    val isQueueRestored: StateFlow<Boolean> = _isQueueRestored
+
     private val _libraryAlbums = MutableStateFlow<List<AlbumUiModel>>(emptyList())
     val libraryAlbums: StateFlow<List<AlbumUiModel>> = _libraryAlbums
 
@@ -2348,6 +2356,7 @@ class CalmMusicViewModel(
                     )
                 }
             }
+            _isQueueRestored.value = true
 
             _isLoadingSongs.value = false
             _isLoadingAlbums.value = false

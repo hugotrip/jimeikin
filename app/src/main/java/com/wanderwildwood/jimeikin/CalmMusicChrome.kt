@@ -56,6 +56,7 @@ fun CalmMusicTopAppBar(
     isPlaylistDetailsMenuExpanded: Boolean,
     hasLibraryPlaylists: Boolean,
     hasNowPlaying: Boolean,
+    isQueueRestored: Boolean,
     onBackClick: () -> Unit,
     onCancelPlaylistsEditClick: () -> Unit,
     onCancelPlaylistDetailsEditClick: () -> Unit,
@@ -221,6 +222,7 @@ fun CalmMusicTopAppBar(
                 isPlaylistDetailsMenuExpanded = isPlaylistDetailsMenuExpanded,
                 hasLibraryPlaylists = hasLibraryPlaylists,
                 hasNowPlaying = hasNowPlaying,
+                isQueueRestored = isQueueRestored,
                 onEnterPlaylistsEditClick = onEnterPlaylistsEditClick,
                 onNavigateToSearchClick = onNavigateToSearchClick,
                 onPlaylistDetailsMenuToggle = onPlaylistDetailsMenuToggle,
@@ -253,6 +255,7 @@ private fun CalmMusicTopAppBarActions(
     isPlaylistDetailsMenuExpanded: Boolean,
     hasLibraryPlaylists: Boolean,
     hasNowPlaying: Boolean,
+    isQueueRestored: Boolean,
     onEnterPlaylistsEditClick: () -> Unit,
     onNavigateToSearchClick: () -> Unit,
     onPlaylistDetailsMenuToggle: () -> Unit,
@@ -449,10 +452,15 @@ private fun CalmMusicTopAppBarActions(
                 contentDescription = stringResource(R.string.main_cd_now_playing),
             )
         }
-    } else if (currentDestination?.route != Screen.Search.route && currentDestination?.route in navItems.map { it.route }) {
-        // Its place is kept while nothing is loaded - at launch, before the last queue is read
-        // back - so Search and Settings beside it do not step left a moment after the screen
-        // has drawn, under a thumb already on its way to them.
+    } else if (
+        !isQueueRestored &&
+        currentDestination?.route != Screen.Search.route &&
+        currentDestination?.route in navItems.map { it.route }
+    ) {
+        // Its place is kept only at launch, until the last queue is read back, so Search and
+        // Settings beside it do not step left a moment after the screen has drawn, under a
+        // thumb already on its way to them. Kept for good, it was a hole at the end of the
+        // bar on a phone where nothing had played yet, or once the queue was emptied.
         Spacer(modifier = Modifier.size(48.dp))
     }
 }

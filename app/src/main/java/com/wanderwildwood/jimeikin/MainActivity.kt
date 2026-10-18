@@ -229,6 +229,7 @@ fun CalmMusic(
 
     val viewModel: CalmMusicViewModel = viewModel(factory = CalmMusicViewModel.factory(app))
     val playbackState by viewModel.playbackState.collectAsState()
+    val isQueueRestored by viewModel.isQueueRestored.collectAsState()
     val downloadQueue = app.downloadQueue
     val downloadStatuses by downloadQueue.items.collectAsState()
     val downloadRun by downloadQueue.run.collectAsState()
@@ -822,6 +823,35 @@ fun CalmMusic(
                     ),
                 ),
                 startIndex = 0,
+            )
+        }
+    }
+
+    /**
+     * A station added by its address, already checked to play. Kept in the same table as the
+     * radio.garden ones and played the same way; its id is its address, so adding the same
+     * stream twice keeps it once, and the line under it names the server it comes from.
+     */
+    fun keepAddressStation(name: String, streamUrl: String) {
+        libraryScope.launch {
+            val dao = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app).radioStationDao()
+            withContext(Dispatchers.IO) {
+                dao.keep(
+                    com.wanderwildwood.jimeikin.data.RadioStationEntity(
+                        id = "ADDRESS:$streamUrl",
+                        title = name,
+                        place = android.net.Uri.parse(streamUrl).host.orEmpty(),
+                        country = "",
+                        streamUrl = streamUrl,
+                        keptAtMillis = System.currentTimeMillis(),
+                    ),
+                )
+            }
+            reloadRadioStations()
+            snackbarHostState.showSnackbar(
+                message = context.getString(R.string.main_station_kept, name),
+                withDismissAction = false,
+                duration = SnackbarDurationMMD.Short,
             )
         }
     }
@@ -1558,6 +1588,7 @@ fun CalmMusic(
                         isPlaylistDetailsMenuExpanded = isPlaylistDetailsMenuExpanded,
                         hasLibraryPlaylists = libraryPlaylists.isNotEmpty(),
                         hasNowPlaying = nowPlayingSong != null,
+                        isQueueRestored = isQueueRestored,
                         onBackClick = { navController.navigateUp() },
                         onCancelPlaylistsEditClick = {
                             isPlaylistsEditMode = false
@@ -1996,7 +2027,9 @@ fun CalmMusic(
                                     SongUiModel(
                                         id = "RADIO:" + station.id,
                                         title = station.title,
-                                        artist = station.place + " • " + station.country,
+                                        artist = listOf(station.place, station.country)
+                                            .filter { it.isNotBlank() }
+                                            .joinToString(" • "),
                                         sourceType = "RADIO",
                                         audioUri = station.streamUrl,
                                     ),
@@ -2007,6 +2040,7 @@ fun CalmMusic(
                         onPlayChannel = { channel -> playRadioChannel(channel) },
                         onKeepStation = { channel -> keepRadioStation(channel) },
                         onForgetStation = { station -> forgetRadioStation(station) },
+                        onKeepAddressStation = { name, stream -> keepAddressStation(name, stream) },
                         onPausePlayback = { viewModel.togglePlayback(localMediaController) },
                         isAppPlaying = playbackState.isPlaybackPlaying
                     )
