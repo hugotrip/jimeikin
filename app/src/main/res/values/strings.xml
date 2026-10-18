@@ -393,6 +393,17 @@
     <string name="player_radio_no_stations_here">No stations here</string>
     <string name="player_radio_by_place">Stations by place</string>
     <string name="player_radio_by_place_subtitle">Somewhere else, on the air now</string>
+    <string name="player_radio_by_address">Add a station by its address</string>
+    <string name="player_radio_by_address_subtitle">For one not listed here: paste its stream</string>
+    <string name="player_radio_address_label">Stream address</string>
+    <string name="player_radio_address_name_label">Name</string>
+    <string name="player_radio_address_note">The address of the stream itself, or of a .m3u or .pls playlist that names it. It is played once, silently, before it is kept.</string>
+    <string name="player_radio_address_check">Check and keep</string>
+    <string name="player_radio_address_checking">Listening for it…</string>
+    <string name="player_radio_address_not_an_address">That is not a web address. A stream address starts with http:// or https://.</string>
+    <string name="player_radio_address_unreachable">Nothing answered at that address.</string>
+    <string name="player_radio_address_empty_playlist">That playlist names no stream.</string>
+    <string name="player_radio_address_does_not_play">Something answered, but it does not play. It was not kept.</string>
     <string name="player_radio_fm">FM radio</string>
     <string name="player_radio_fm_subtitle">Opens the phone\'s tuner. Needs headphones.</string>
     <string name="player_radio_no_favorites">No favorite stations yet</string>

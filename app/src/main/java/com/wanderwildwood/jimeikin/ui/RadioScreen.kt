@@ -34,11 +34,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.input.KeyboardType
+import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.mudita.mmd.components.text_field.TextFieldMMD
 import com.wanderwildwood.jimeikin.R
 import com.wanderwildwood.jimeikin.data.ArtistNames
+import com.wanderwildwood.jimeikin.data.RadioAddress
 import com.wanderwildwood.jimeikin.data.RadioChannel
 import com.wanderwildwood.jimeikin.data.RadioGarden
 import com.wanderwildwood.jimeikin.data.RadioPlace
@@ -69,6 +73,7 @@ fun RadioScreen(
     onPlayChannel: (RadioChannel) -> Unit,
     onKeepStation: (RadioChannel) -> Unit,
     onForgetStation: (RadioStationEntity) -> Unit,
+    onKeepAddressStation: (name: String, streamUrl: String) -> Unit,
     onPausePlayback: () -> Unit,
     isAppPlaying: Boolean,
 ) {
@@ -87,6 +92,7 @@ fun RadioScreen(
     var allPlaces by remember { mutableStateOf<List<RadioPlace>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var browsing by remember { mutableStateOf(false) }
+    var addingByAddress by remember { mutableStateOf(false) }
 
     // One box per level, cleared on the way in. Two hundred and twenty-seven countries and, in
     // France alone, over a thousand towns: a list that can only be paged through is a list you
@@ -103,8 +109,9 @@ fun RadioScreen(
     var searching by remember { mutableStateOf(false) }
     var searchedFor by remember { mutableStateOf("") }
 
-    BackHandler(enabled = browsing || searchOpen) {
+    BackHandler(enabled = browsing || searchOpen || addingByAddress) {
         when {
+            addingByAddress -> addingByAddress = false
             browsingPlace != null -> browsingPlace = null
             browsingCountry != null && !searchOpen -> browsingCountry = null
             searchOpen -> onSearchOpenChange(false)
@@ -198,6 +205,16 @@ fun RadioScreen(
         return
     }
 
+    if (addingByAddress) {
+        AddByAddress(
+            onKept = { name, stream ->
+                addingByAddress = false
+                onKeepAddressStation(name, stream)
+            },
+        )
+        return
+    }
+
     when {
         browsingPlace != null -> ChannelList(
             place = browsingPlace!!,
@@ -259,6 +276,7 @@ fun RadioScreen(
             },
             onForgetStation = onForgetStation,
             onBrowse = { browsing = true },
+            onAddByAddress = { addingByAddress = true },
             onOpenTuner = {
                 tunerPackage?.let { pkg ->
                     scope.launch {
@@ -411,6 +429,7 @@ private fun RadioHome(
     onPlayStation: (RadioStationEntity) -> Unit,
     onForgetStation: (RadioStationEntity) -> Unit,
     onBrowse: () -> Unit,
+    onAddByAddress: () -> Unit,
     onOpenTuner: () -> Unit,
 ) {
     PagedColumnMMD(
@@ -429,6 +448,16 @@ private fun RadioHome(
             ) {
                 TextMMD(stringResource(R.string.player_radio_by_place), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 TextMMD(stringResource(R.string.player_radio_by_place_subtitle), style = MaterialTheme.typography.labelSmall)
+            }
+            HorizontalDividerMMD(thickness = 1.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onAddByAddress() }
+                    .padding(vertical = 10.dp),
+            ) {
+                TextMMD(stringResource(R.string.player_radio_by_address), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                TextMMD(stringResource(R.string.player_radio_by_address_subtitle), style = MaterialTheme.typography.labelSmall)
             }
             if (hasTuner) {
                 HorizontalDividerMMD(thickness = 1.dp)
@@ -464,13 +493,87 @@ private fun RadioHome(
             val station = keptStations[index]
             StationRow(
                 title = station.title,
-                subtitle = station.place + " • " + station.country,
+                subtitle = listOf(station.place, station.country).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { null },
                 isFavourite = true,
                 onPlay = { onPlayStation(station) },
                 onToggleFavourite = { onForgetStation(station) },
             )
             if (index != keptStations.lastIndex) HorizontalDividerMMD(thickness = 1.dp)
         }
+    }
+}
+
+/**
+ * A station radio.garden does not list, added by its stream's address and a name for it.
+ *
+ * The button checks before it keeps: the address is followed through any playlist file to the
+ * stream and the stream is played, silently, until it is ready to sound - see [RadioAddress].
+ * Only then is it kept, beside the stations kept from radio.garden and played the same way.
+ * Anything short of that is said plainly and nothing is kept.
+ */
+@Composable
+private fun AddByAddress(onKept: (name: String, streamUrl: String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var address by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var checking by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<Int?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+    ) {
+        TextFieldMMD(
+            modifier = Modifier.fillMaxWidth(),
+            value = address,
+            onValueChange = { address = it; problem = null },
+            label = { TextMMD(text = stringResource(R.string.player_radio_address_label)) },
+            placeholder = { TextMMD(text = "https://") },
+            singleLine = true,
+            enabled = !checking,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+        )
+        Spacer(Modifier.height(12.dp))
+        TextFieldMMD(
+            modifier = Modifier.fillMaxWidth(),
+            value = name,
+            onValueChange = { name = it },
+            label = { TextMMD(text = stringResource(R.string.player_radio_address_name_label)) },
+            singleLine = true,
+            enabled = !checking,
+        )
+        Spacer(Modifier.height(20.dp))
+        ButtonMMD(
+            onClick = {
+                scope.launch {
+                    checking = true
+                    problem = null
+                    when (val outcome = RadioAddress.check(context, address)) {
+                        is RadioAddress.Outcome.Plays -> onKept(name.trim(), outcome.streamUrl)
+                        RadioAddress.Outcome.NotAnAddress -> problem = R.string.player_radio_address_not_an_address
+                        RadioAddress.Outcome.Unreachable -> problem = R.string.player_radio_address_unreachable
+                        RadioAddress.Outcome.EmptyPlaylist -> problem = R.string.player_radio_address_empty_playlist
+                        RadioAddress.Outcome.DoesNotPlay -> problem = R.string.player_radio_address_does_not_play
+                    }
+                    checking = false
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = address.isNotBlank() && name.isNotBlank() && !checking,
+        ) {
+            TextMMD(
+                text = stringResource(if (checking) R.string.player_radio_address_checking else R.string.player_radio_address_check),
+                style = MaterialTheme.typography.titleSmall,
+            )
+        }
+        problem?.let {
+            Spacer(Modifier.height(16.dp))
+            TextMMD(text = stringResource(it), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(24.dp))
+        TextMMD(text = stringResource(R.string.player_radio_address_note), style = MaterialTheme.typography.labelSmall)
     }
 }
 
