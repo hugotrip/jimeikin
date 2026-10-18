@@ -46,35 +46,10 @@ object SubsonicSync {
 
         val albumsById = library.albums.associateBy { it.id }
         val songs = library.songs.map { song ->
-            SongEntity(
-                id = songId(song.id),
-                title = song.title,
-                artist = song.artist,
-                album = song.album,
-                albumId = song.albumId?.let { albumId(it) },
-                discNumber = song.discNumber,
-                trackNumber = song.trackNumber,
-                durationMillis = song.durationMillis,
-                sourceType = SOURCE_TYPE,
-                audioUri = client.streamUrl(song.id, song.suffix),
-                // Filed under the album artist, the same rule the card library follows, so a
-                // compilation stays one artist rather than one per track.
-                artistId = song.albumId?.let { albumsById[it] }
-                    ?.let { artistId(it.artist) }
-                    ?: artistId(song.artist),
-                releaseYear = song.year,
-            )
+            songEntity(client, song, song.albumId?.let { albumsById[it] })
         }
 
-        val albums = library.albums.map { album ->
-            AlbumEntity(
-                id = albumId(album.id),
-                name = album.name,
-                artist = album.artist,
-                sourceType = SOURCE_TYPE,
-                artistId = artistId(album.artist),
-            )
-        }
+        val albums = library.albums.map(::albumEntity)
 
         // A server can disagree with itself the same way a folder of files can, so the
         // spelling used most is the one shown.
@@ -109,6 +84,72 @@ object SubsonicSync {
         if (playlistDao != null) syncPlaylists(client, songDao, playlistDao)
 
         return SubsonicResult.Success(songs.size)
+    }
+
+    private fun songEntity(client: SubsonicClient, song: SubsonicSong, album: SubsonicAlbum?) = SongEntity(
+        id = songId(song.id),
+        title = song.title,
+        artist = song.artist,
+        album = song.album,
+        albumId = song.albumId?.let { albumId(it) },
+        discNumber = song.discNumber,
+        trackNumber = song.trackNumber,
+        durationMillis = song.durationMillis,
+        sourceType = SOURCE_TYPE,
+        audioUri = client.streamUrl(song.id, song.suffix),
+        // Filed under the album artist, the same rule the card library follows, so a
+        // compilation stays one artist rather than one per track.
+        artistId = album?.let { artistId(it.artist) } ?: artistId(song.artist),
+        releaseYear = song.year,
+    )
+
+    private fun albumEntity(album: SubsonicAlbum) = AlbumEntity(
+        id = albumId(album.id),
+        name = album.name,
+        artist = album.artist,
+        sourceType = SOURCE_TYPE,
+        artistId = artistId(album.artist),
+    )
+
+    /**
+     * Puts a server song the library has no row for back into it, with the rest of its album
+     * as the next sync would bring it, and returns the song's row.
+     *
+     * For keeping a song opened from the server's own album page - one whose album was removed
+     * from the library, say. Keeping works on a library row, and a song kept on its own
+     * would bring its album back as that one song, so the whole album comes back with it.
+     * Rows already here are left as they are. Null when the server no longer has the song.
+     */
+    suspend fun addToLibrary(
+        client: SubsonicClient,
+        serverSongId: String,
+        songDao: SongDao,
+        albumDao: AlbumDao,
+        artistDao: ArtistDao,
+    ): SubsonicResult<SongEntity?> {
+        val song = when (val r = client.fetchSong(serverSongId)) {
+            is SubsonicResult.Failure -> return r
+            is SubsonicResult.Success -> r.value ?: return SubsonicResult.Success(null)
+        }
+        val listing = song.albumId?.let { id ->
+            when (val r = client.fetchAlbum(id)) {
+                is SubsonicResult.Failure -> return r
+                is SubsonicResult.Success -> r.value
+            }
+        }
+        val album = listing?.first
+        val rows = (listOf(song) + listing?.second.orEmpty())
+            .distinctBy { it.id }
+            .map { songEntity(client, it, album) }
+        val artistName = album?.artist ?: song.artist
+        withContext(Dispatchers.IO) {
+            songDao.insertIfAbsent(rows)
+            album?.let { albumDao.upsertAll(listOf(albumEntity(it))) }
+            if (artistDao.getAllArtists().none { it.id == artistId(artistName) }) {
+                artistDao.upsertAll(listOf(ArtistEntity(artistId(artistName), ArtistNames.lead(artistName), SOURCE_TYPE)))
+            }
+        }
+        return SubsonicResult.Success(withContext(Dispatchers.IO) { songDao.getSongById(songId(song.id)) })
     }
 
     /**

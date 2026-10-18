@@ -6,6 +6,7 @@ import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
 import com.wanderwildwood.jimeikin.data.SubsonicDownloader
 import com.wanderwildwood.jimeikin.data.SubsonicResult
 import com.wanderwildwood.jimeikin.data.SubsonicSync
+import com.wanderwildwood.jimeikin.data.serverClient
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -284,8 +285,20 @@ class DownloadQueue(private val app: CalmMusic) {
      * network off. Removing the download later puts the pointer back.
      */
     private suspend fun fetchFromServer(item: DownloadItem): Pair<DownloadState, String?> {
-        val songDao = CalmMusicDatabase.getDatabase(app).songDao()
-        val row = withContext(Dispatchers.IO) { songDao.getSongById(item.songId) }
+        val database = CalmMusicDatabase.getDatabase(app)
+        val songDao = database.songDao()
+        var row = withContext(Dispatchers.IO) { songDao.getSongById(item.songId) }
+        // A server song with no row - opened from the server's own album page, its album gone
+        // from the library - is put back in the library first, and then kept like any other.
+        val serverId = SubsonicSync.serverSongId(item.songId)
+        if (row == null && serverId != null) {
+            val client = app.settingsManager.serverClient(app.resources)
+                ?: return DownloadState.FAILED to app.getString(R.string.main_not_on_a_server)
+            when (val added = SubsonicSync.addToLibrary(client, serverId, songDao, database.albumDao(), database.artistDao())) {
+                is SubsonicResult.Failure -> return DownloadState.FAILED to added.message
+                is SubsonicResult.Success -> row = added.value
+            }
+        }
         return when {
             row?.sourceType == SubsonicDownloader.SOURCE_TYPE -> DownloadState.DOWNLOADED to null
             row == null || row.sourceType != SubsonicSync.SOURCE_TYPE ->

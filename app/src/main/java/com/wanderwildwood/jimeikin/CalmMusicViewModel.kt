@@ -39,6 +39,7 @@ import com.wanderwildwood.jimeikin.data.SubsonicClient
 import com.wanderwildwood.jimeikin.data.SubsonicDownloader
 import com.wanderwildwood.jimeikin.data.SubsonicResult
 import com.wanderwildwood.jimeikin.data.SubsonicSong
+import com.wanderwildwood.jimeikin.data.serverClient
 import com.wanderwildwood.jimeikin.data.SubsonicSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -585,16 +586,7 @@ class CalmMusicViewModel(
         sourceType == SubsonicSync.SOURCE_TYPE || sourceType == SubsonicDownloader.SOURCE_TYPE
 
     /** A client for the music server set up in Settings, or null when there is none. */
-    private fun serverClient(): SubsonicClient? {
-        val settings = app.settingsManager
-        val config = settings.subsonicConfig.value?.takeIf { it.isComplete } ?: return null
-        return SubsonicClient(
-            config = config,
-            resources = app.resources,
-            initialAuth = settings.getSubsonicAuth(config),
-            onAuthLearned = { settings.setSubsonicAuth(config, it) },
-        )
-    }
+    private fun serverClient(): SubsonicClient? = app.settingsManager.serverClient(app.resources)
 
     /** The server's own record of a song: the album and artist ids its library row does not keep. */
     private suspend fun serverSongFor(client: SubsonicClient, song: SongUiModel): SubsonicSong? {

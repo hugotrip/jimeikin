@@ -283,6 +283,17 @@ class SubsonicClient(
     }
 }
 
+/** A client for the music server set up in Settings, or null when there is none. */
+fun CalmMusicSettingsManager.serverClient(resources: Resources): SubsonicClient? {
+    val config = subsonicConfig.value?.takeIf { it.isComplete } ?: return null
+    return SubsonicClient(
+        config = config,
+        resources = resources,
+        initialAuth = getSubsonicAuth(config),
+        onAuthLearned = { setSubsonicAuth(config, it) },
+    )
+}
+
 /**
  * How a server has turned out to want its requests signed: [apiVersion] when it named an older
  * one than this speaks, [passwordForm] when it refused tokens. The default is the usual case.
