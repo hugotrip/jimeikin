@@ -173,6 +173,28 @@ class PlaybackService : MediaSessionService() {
             override fun removeListener(listener: Player.Listener) {
                 super.removeListener(wrapped.remove(listener) ?: listener)
             }
+
+            // A station picks up where it is now, not where it was paused. Resumed from the
+            // pause, it played on from that moment, so after a while in another app it ran
+            // minutes behind the same station anywhere else. Every play comes through here:
+            // the app's own button, the notification and the lock screen.
+            override fun play() {
+                catchUpIfLive()
+                super.play()
+            }
+
+            override fun setPlayWhenReady(playWhenReady: Boolean) {
+                if (playWhenReady) catchUpIfLive()
+                super.setPlayWhenReady(playWhenReady)
+            }
+
+            private fun catchUpIfLive() {
+                if (player.playWhenReady || player.playbackState == Player.STATE_IDLE) return
+                // An HLS station says it is live; a plain stream has no length to say anything.
+                val live = player.isCurrentMediaItemLive ||
+                    (player.duration == C.TIME_UNSET && !player.isCurrentMediaItemSeekable)
+                if (live) player.seekToDefaultPosition()
+            }
         }
 
         mediaSession = MediaSession.Builder(this, sessionPlayer)
