@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
-import android.graphics.BitmapFactory
 import android.graphics.PixelFormat
 import android.media.AudioManager
 import android.os.Handler
@@ -23,7 +22,6 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,16 +42,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,7 +105,7 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
     override val viewModelStore: ViewModelStore get() = store
     override val savedStateRegistry: SavedStateRegistry get() = savedState.savedStateRegistry
 
-    private data class Now(val title: String, val artist: String, val isPlaying: Boolean, val art: ByteArray?)
+    private data class Now(val title: String, val artist: String, val isPlaying: Boolean)
 
     private val handler = Handler(Looper.getMainLooper())
     private val now = mutableStateOf<Now?>(null)
@@ -197,7 +192,6 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
                 title = meta.title?.toString().orEmpty(),
                 artist = meta.artist?.toString().orEmpty(),
                 isPlaying = player.isPlaying,
-                art = meta.artworkData,
             )
         }
         evaluate()
@@ -251,7 +245,6 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
                     title = playing.title,
                     artist = playing.artist,
                     isPlaying = playing.isPlaying,
-                    art = playing.art,
                     ink = if (night) Color.White else Color.Black,
                     surface = if (night) Color.Black else Color.White,
                     onOpen = ::openApp,
@@ -402,7 +395,7 @@ class LockScreenControls : AccessibilityService(), LifecycleOwner, ViewModelStor
 
 /**
  * The same strip inkOS draws at the foot of its home screen while something plays: one row,
- * a 2dp rule with 8dp corners, the cover, then previous, play or pause, next and stop, spread
+ * a 2dp rule with 8dp corners, the music-note mark, then previous, play or pause, next and stop, spread
  * evenly. Filled in, where inkOS leaves it clear over the wallpaper, so it reads over the lock
  * screen.
  */
@@ -411,7 +404,6 @@ private fun ControlsPanel(
     title: String,
     artist: String,
     isPlaying: Boolean,
-    art: ByteArray?,
     ink: Color,
     surface: Color,
     onOpen: () -> Unit,
@@ -421,9 +413,6 @@ private fun ControlsPanel(
     onStop: () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
-    val bitmap = remember(art) {
-        art?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
-    }
     val label = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" - ")
         .ifEmpty { stringResource(R.string.lockscreen_nothing_named) }
 
@@ -443,25 +432,16 @@ private fun ControlsPanel(
                 .clickable(onClick = onOpen),
             contentAlignment = Alignment.Center,
         ) {
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
+            Box(
+                modifier = Modifier.size(36.dp).border(2.dp, ink, shape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = StripGlyphs.MusicNote,
                     contentDescription = label,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(36.dp).clip(shape),
+                    tint = ink,
+                    modifier = Modifier.size(24.dp),
                 )
-            } else {
-                Box(
-                    modifier = Modifier.size(36.dp).border(2.dp, ink, shape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = StripGlyphs.MusicNote,
-                        contentDescription = label,
-                        tint = ink,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
             }
         }
         Control(StripGlyphs.Previous, R.string.lockscreen_previous, ink, 32, onPrevious)

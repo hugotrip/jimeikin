@@ -21,7 +21,18 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.DeviceInfo
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Timeline
+import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
+import androidx.media3.common.text.Cue
+import androidx.media3.common.text.CueGroup
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -142,17 +153,25 @@ class PlaybackService : MediaSessionService() {
         // What the session publishes, which is what a launcher's now-playing widget, the lock
         // screen and the media notification all draw from. It carries no picture at all: a
         // song's cover, embedded or fetched, is stripped here, so covers stay inside the app
-        // and the home and lock screens stay calmer, each drawing its own plain look. The
-        // session, the notification and the lock-screen strip all read the song through this
-        // player, so this is the one place it has to be done.
+        // and the home and lock screens stay calmer, each drawing its own plain look.
+        //
+        // It has to be stripped twice. The notification, the platform session and the
+        // lock-screen strip ask the player for the song, so getMediaMetadata covers them. But
+        // a controller that connects to the session is sent the song as it changes, straight
+        // from the listener callback, and that would still carry the cover - so every
+        // listener is wrapped and handed the stripped song too.
         val sessionPlayer = object : ForwardingPlayer(player) {
-            override fun getMediaMetadata(): MediaMetadata {
-                val metadata = super.getMediaMetadata()
-                if (metadata.artworkData == null && metadata.artworkUri == null) return metadata
-                return metadata.buildUpon()
-                    .setArtworkData(null, null)
-                    .setArtworkUri(null)
-                    .build()
+            private val wrapped = HashMap<Player.Listener, Player.Listener>()
+
+            override fun getMediaMetadata(): MediaMetadata =
+                super.getMediaMetadata().withoutArtwork()
+
+            override fun addListener(listener: Player.Listener) {
+                super.addListener(wrapped.getOrPut(listener) { NoArtworkListener(listener) })
+            }
+
+            override fun removeListener(listener: Player.Listener) {
+                super.removeListener(wrapped.remove(listener) ?: listener)
             }
         }
 
@@ -303,4 +322,62 @@ class PlaybackService : MediaSessionService() {
         mediaSession = null
         super.onDestroy()
     }
+}
+
+/** The same song with no picture: no embedded cover and no link to one. */
+private fun MediaMetadata.withoutArtwork(): MediaMetadata {
+    if (artworkData == null && artworkUri == null) return this
+    return buildUpon()
+        .setArtworkData(null, null)
+        .setArtworkUri(null)
+        .build()
+}
+
+/**
+ * Passes every player callback on unchanged, except that a song changing arrives with no
+ * picture. Every callback is written out by hand, so none is quietly dropped: each one has a
+ * default that does nothing, and a callback left out here would never reach the session.
+ */
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+private class NoArtworkListener(private val inner: Player.Listener) : Player.Listener {
+    override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) =
+        inner.onMediaMetadataChanged(mediaMetadata.withoutArtwork())
+
+    override fun onEvents(player: Player, events: Player.Events) = inner.onEvents(player, events)
+    override fun onTimelineChanged(timeline: Timeline, reason: Int) = inner.onTimelineChanged(timeline, reason)
+    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = inner.onMediaItemTransition(mediaItem, reason)
+    override fun onTracksChanged(tracks: Tracks) = inner.onTracksChanged(tracks)
+    override fun onPlaylistMetadataChanged(mediaMetadata: MediaMetadata) = inner.onPlaylistMetadataChanged(mediaMetadata)
+    override fun onIsLoadingChanged(isLoading: Boolean) = inner.onIsLoadingChanged(isLoading)
+    override fun onLoadingChanged(isLoading: Boolean) = inner.onLoadingChanged(isLoading)
+    override fun onAvailableCommandsChanged(availableCommands: Player.Commands) = inner.onAvailableCommandsChanged(availableCommands)
+    override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) = inner.onTrackSelectionParametersChanged(parameters)
+    override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) = inner.onPlayerStateChanged(playWhenReady, playbackState)
+    override fun onPlaybackStateChanged(playbackState: Int) = inner.onPlaybackStateChanged(playbackState)
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = inner.onPlayWhenReadyChanged(playWhenReady, reason)
+    override fun onPlaybackSuppressionReasonChanged(reason: Int) = inner.onPlaybackSuppressionReasonChanged(reason)
+    override fun onIsPlayingChanged(isPlaying: Boolean) = inner.onIsPlayingChanged(isPlaying)
+    override fun onRepeatModeChanged(repeatMode: Int) = inner.onRepeatModeChanged(repeatMode)
+    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = inner.onShuffleModeEnabledChanged(shuffleModeEnabled)
+    override fun onPlayerError(error: PlaybackException) = inner.onPlayerError(error)
+    override fun onPlayerErrorChanged(error: PlaybackException?) = inner.onPlayerErrorChanged(error)
+    override fun onPositionDiscontinuity(reason: Int) = inner.onPositionDiscontinuity(reason)
+    override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) =
+        inner.onPositionDiscontinuity(oldPosition, newPosition, reason)
+    override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) = inner.onPlaybackParametersChanged(playbackParameters)
+    override fun onSeekBackIncrementChanged(seekBackIncrementMs: Long) = inner.onSeekBackIncrementChanged(seekBackIncrementMs)
+    override fun onSeekForwardIncrementChanged(seekForwardIncrementMs: Long) = inner.onSeekForwardIncrementChanged(seekForwardIncrementMs)
+    override fun onMaxSeekToPreviousPositionChanged(maxSeekToPreviousPositionMs: Long) = inner.onMaxSeekToPreviousPositionChanged(maxSeekToPreviousPositionMs)
+    override fun onAudioSessionIdChanged(audioSessionId: Int) = inner.onAudioSessionIdChanged(audioSessionId)
+    override fun onAudioAttributesChanged(audioAttributes: AudioAttributes) = inner.onAudioAttributesChanged(audioAttributes)
+    override fun onVolumeChanged(volume: Float) = inner.onVolumeChanged(volume)
+    override fun onSkipSilenceEnabledChanged(skipSilenceEnabled: Boolean) = inner.onSkipSilenceEnabledChanged(skipSilenceEnabled)
+    override fun onDeviceInfoChanged(deviceInfo: DeviceInfo) = inner.onDeviceInfoChanged(deviceInfo)
+    override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) = inner.onDeviceVolumeChanged(volume, muted)
+    override fun onVideoSizeChanged(videoSize: VideoSize) = inner.onVideoSizeChanged(videoSize)
+    override fun onSurfaceSizeChanged(width: Int, height: Int) = inner.onSurfaceSizeChanged(width, height)
+    override fun onRenderedFirstFrame() = inner.onRenderedFirstFrame()
+    override fun onCues(cues: List<Cue>) = inner.onCues(cues)
+    override fun onCues(cueGroup: CueGroup) = inner.onCues(cueGroup)
+    override fun onMetadata(metadata: Metadata) = inner.onMetadata(metadata)
 }

@@ -153,6 +153,9 @@ playing in Glance** turned on, the song playing or paused shows on its lock-scre
 "Song — Artist", and nothing once playback stops. It is off to begin with, since the app's own
 strip on the lock screen already shows the song.
 
+Album covers stay inside the app. The song goes to the lock screen, the media notification and
+a launcher's now-playing widget with no picture, so each draws its own plain look.
+
 ## Installing
 
 Android 9 (API 28) or newer. Download the APK from
