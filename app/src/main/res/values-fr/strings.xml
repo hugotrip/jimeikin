@@ -496,8 +496,7 @@
     <string name="library_album_edit">Modifier l\'album</string>
     <string name="edit_details_title">Titre</string>
     <string name="edit_details_artist">Artiste</string>
-    <string name="edit_details_album">Album
-</string>
+    <string name="edit_details_album">Album</string>
     <string name="edit_details_album_artist">Artiste d\'album</string>
     <string name="edit_details_track">N° de piste</string>
     <!-- %1$d is how many songs on the phone the change is written to -->
