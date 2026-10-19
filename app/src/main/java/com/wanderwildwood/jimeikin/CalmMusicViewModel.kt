@@ -1515,7 +1515,6 @@ class CalmMusicViewModel(
                 .setTitle(song.title)
                 .setArtist(song.artist)
                 .setAlbumTitle(song.album)
-                .setArtworkUri(Uri.parse("https://i.ytimg.com/vi/$videoId/hqdefault.jpg"))
                 .build()
 
             val mediaItem = MediaItem.Builder()

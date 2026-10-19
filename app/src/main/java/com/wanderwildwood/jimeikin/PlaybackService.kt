@@ -22,8 +22,6 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaMetadata
-import androidx.core.graphics.createBitmap
-import android.util.Log
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -141,18 +139,19 @@ class PlaybackService : MediaSessionService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        // What the session publishes, which is what a launcher's now-playing widget draws
-        // from. A track with a cover keeps its cover; a track without one is given the app's
-        // own mark rather than nothing, so the widget always has a picture to draw. inkOS
-        // draws a bitmap as a rectangle and falls back to a glyph in a pill when there is
-        // none, and most music here carries no embedded cover at all.
+        // What the session publishes, which is what a launcher's now-playing widget, the lock
+        // screen and the media notification all draw from. It carries no picture at all: a
+        // song's cover, embedded or fetched, is stripped here, so covers stay inside the app
+        // and the home and lock screens stay calmer, each drawing its own plain look. The
+        // session, the notification and the lock-screen strip all read the song through this
+        // player, so this is the one place it has to be done.
         val sessionPlayer = object : ForwardingPlayer(player) {
             override fun getMediaMetadata(): MediaMetadata {
                 val metadata = super.getMediaMetadata()
-                if (metadata.artworkData != null || metadata.artworkUri != null) return metadata
-                val fallback = appIconArtwork() ?: return metadata
+                if (metadata.artworkData == null && metadata.artworkUri == null) return metadata
                 return metadata.buildUpon()
-                    .setArtworkData(fallback, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    .setArtworkData(null, null)
+                    .setArtworkUri(null)
                     .build()
             }
         }
@@ -290,35 +289,6 @@ class PlaybackService : MediaSessionService() {
         super.onTaskRemoved(rootIntent)
     }
 
-
-    /**
-     * The launcher icon as PNG bytes, decoded once. Used only where a track has no cover of
-     * its own; it is deliberately the app's mark rather than a generic note, so the widget
-     * says which app is playing.
-     */
-    private var cachedIconArtwork: ByteArray? = null
-    private var triedIconArtwork = false
-
-    private fun appIconArtwork(): ByteArray? {
-        if (triedIconArtwork) return cachedIconArtwork
-        triedIconArtwork = true
-        cachedIconArtwork = try {
-            val drawable = packageManager.getApplicationIcon(packageName)
-            val size = 256
-            val bitmap = createBitmap(size, size)
-            val canvas = android.graphics.Canvas(bitmap)
-            drawable.setBounds(0, 0, size, size)
-            drawable.draw(canvas)
-            java.io.ByteArrayOutputStream().use { out ->
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
-                out.toByteArray()
-            }
-        } catch (e: Exception) {
-            Log.w("PlaybackService", "Could not render the app icon for the media session", e)
-            null
-        }
-        return cachedIconArtwork
-    }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
