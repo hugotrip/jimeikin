@@ -240,6 +240,7 @@ fun RadioScreen(
                 .map { place ->
                     Row3(place.title, plural(place.stationCount)) { browsingPlace = place }
                 },
+            alphabetical = true,
         )
 
         browsing -> {
@@ -264,6 +265,8 @@ fun RadioScreen(
                         browsingPlace = place
                     }
                 },
+                // The towns found by name come after the countries, busiest first.
+                alphabetical = matchingTowns.isEmpty(),
             )
         }
 
@@ -341,10 +344,16 @@ private fun RowList(
     onQueryChange: (String) -> Unit,
     hint: String,
     rows: List<Row3>,
+    /** Rows in order of their titles, so the letters can stand beside them; page dots if not. */
+    alphabetical: Boolean,
 ) {
     PagedColumnMMD(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        // The search field and the heading come first, as one item.
+        jump = remember(rows, alphabetical) {
+            if (alphabetical) ListJump.Letters(rows.map { it.title }, firstIndex = 1) else ListJump.Pages
+        },
     ) {
         item {
             TextFieldMMD(
@@ -403,6 +412,8 @@ private fun ChannelList(
     PagedColumnMMD(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        // A place's stations come in order of their names, after the place's own heading.
+        jump = remember(channels) { ListJump.Letters(channels.map { it.title }, firstIndex = 1) },
     ) {
         item {
             TextMMD(place.title, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))

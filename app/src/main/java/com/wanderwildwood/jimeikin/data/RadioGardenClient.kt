@@ -1,5 +1,6 @@
 package com.wanderwildwood.jimeikin.data
 
+import com.wanderwildwood.jimeikin.ui.jumpLetterOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -105,13 +106,13 @@ object RadioGarden {
         places()
             .groupBy { it.country }
             .map { (country, towns) -> country to towns.sumOf { it.stationCount } }
-            .sortedBy { it.first.lowercase() }
+            .sortedByName { it.first }
     }
 
     suspend fun placesIn(country: String): List<RadioPlace> = withContext(Dispatchers.IO) {
         places()
             .filter { it.country == country && it.stationCount > 0 }
-            .sortedBy { it.title.lowercase() }
+            .sortedByName { it.title }
     }
 
     suspend fun channelsIn(place: RadioPlace): List<RadioChannel> = withContext(Dispatchers.IO) {
@@ -132,7 +133,7 @@ object RadioGarden {
                     place = page.optJSONObject("place")?.optString("title") ?: place.title,
                     country = page.optJSONObject("country")?.optString("title") ?: place.country,
                 )
-            }.sortedBy { it.title.lowercase() }
+            }.sortedByName { it.title }
         } catch (e: Exception) {
             android.util.Log.w("RadioGarden", "could not read ${place.title}'s stations", e)
             emptyList()
@@ -250,3 +251,12 @@ object RadioGarden {
         }
     }
 }
+
+/**
+ * In the order the letters down the list's edge read: names in other scripts under # at the
+ * top, then by the name with its case, accents and punctuation set aside. Sorted as written,
+ * " NRJ" and "*DUUU" headed a list whose N and D were further down, and a name starting
+ * with an accented letter came after Z.
+ */
+private fun <T> List<T>.sortedByName(name: (T) -> String): List<T> =
+    sortedWith(compareBy({ jumpLetterOf(name(it)) != "#" }, { ArtistNames.key(name(it)) }))

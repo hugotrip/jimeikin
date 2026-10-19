@@ -446,9 +446,9 @@ private val DOT_SPACING = 10.dp
 private val DOT_BORDER = 2.dp
 private const val MAX_DOTS = 7
 
-// Where the rail sits: its right edge 32.5dp in from the list's, where inkOS's sits on the
-// Kompakt (x 436 of 480).
-private val RAIL_END = 32.5.dp
+// Where the rail sits: its right edge 4dp in from the list's. It sat 32.5dp in, where inkOS's
+// sits on the Kompakt (x 436 of 480), which left a strip of nothing beside it.
+private val RAIL_END = 4.dp
 private val MASK_INSET = 2.dp
 // What the rows give up for it: up to the rail and a 4dp gap, less the 16dp end padding the
 // narrowest row here already has.
@@ -466,7 +466,12 @@ private fun LazyListState.rowsToAScreen(held: IntArray): Pair<Int, Int> {
     val paged = info.afterContentPadding == PAGED_MARK_PX
     val total = info.totalItemsCount - if (paged) 1 else 0
     val viewport = info.viewportEndOffset - info.viewportStartOffset
-    val row = info.visibleItemsInfo.firstOrNull()?.size ?: 0
+    // The size most rows on screen share, so a search field or heading over the list is not
+    // taken for a row.
+    val row = info.visibleItemsInfo
+        .filter { !paged || it.index < total }
+        .groupingBy { it.size }.eachCount()
+        .maxByOrNull { it.value }?.key ?: 0
     if (held[0] != total && viewport > 0 && row > 0) {
         held[0] = total
         held[1] = if (paged) {

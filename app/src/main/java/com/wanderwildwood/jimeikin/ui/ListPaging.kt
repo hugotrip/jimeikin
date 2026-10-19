@@ -24,8 +24,12 @@ fun PagedColumnMMD(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    /** Letters down the edge of an alphabetical list, page dots beside any other; see [ListJump]. */
-    jump: ListJump? = null,
+    /**
+     * Letters down the edge of an alphabetical list, page dots beside any other; see [ListJump].
+     * Every list gets the dots unless it says otherwise: an artist's songs and the Radio lists
+     * went without them, and those are the long ones.
+     */
+    jump: ListJump? = ListJump.Pages,
     content: LazyListScope.() -> Unit,
 ) {
     val state = rememberLazyListState()
