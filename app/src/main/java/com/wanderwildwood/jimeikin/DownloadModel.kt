@@ -6,8 +6,13 @@ package com.wanderwildwood.jimeikin
  * as plain Kotlin; [DownloadQueue] is the part that does the downloading.
  */
 
-/** Where a download comes from, which decides how it is fetched and what it becomes. */
-enum class DownloadKind { YOUTUBE, SERVER }
+/**
+ * Where a download comes from, which decides how it is fetched and what it becomes. UPGRADE is
+ * a YouTube download already on the phone as Opus, fetched again as AAC (DownloadUpgrade): not
+ * asked for by the reader, so it waits behind everything that was and is not counted in the
+ * line along the bottom.
+ */
+enum class DownloadKind { YOUTUBE, SERVER, UPGRADE }
 
 enum class DownloadState {
     WAITING,

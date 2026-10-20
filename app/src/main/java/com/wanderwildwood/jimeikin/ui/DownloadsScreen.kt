@@ -135,7 +135,11 @@ private fun DownloadRow(
                         R.string.download_line_join,
                         status.artist,
                         stringResource(
-                            if (status.kind == DownloadKind.SERVER) R.string.player_downloads_from_server else R.string.player_downloads_from_youtube,
+                            when (status.kind) {
+                                DownloadKind.SERVER -> R.string.player_downloads_from_server
+                                DownloadKind.YOUTUBE -> R.string.player_downloads_from_youtube
+                                DownloadKind.UPGRADE -> R.string.player_downloads_as_aac
+                            },
                         ),
                     ),
                     style = MaterialTheme.typography.labelSmall,

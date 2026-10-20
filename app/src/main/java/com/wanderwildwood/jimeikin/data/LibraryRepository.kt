@@ -8,7 +8,6 @@ import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * How local albums are keyed. 2: an album with no Album Artist tag is its name in its folder,
@@ -67,24 +66,26 @@ class LibraryRepository(
                                 .associateBy { it.id }
                         }
 
+                        var recognisedDownloads: List<Pair<ScannedLocalAudio, String>> = emptyList()
                         val (scannedAudio, existingLocalSongs) = withContext(Dispatchers.IO) {
                             val existingLocalSongs = songDao.getSongsBySourceType("LOCAL_FILE")
                             val existingByUri = existingLocalSongs.associateBy { it.audioUri }
                             // A download is in Music/Music Box, which a chosen folder holding
                             // Music also reaches. It is already in the library as a download,
                             // so the scan passes over it rather than listing it twice.
+                            // One found again after a reinstall is a download too, named by its
+                            // address in the chosen folder; and a download being replaced is
+                            // two files for a moment (DownloadReplace).
                             val downloadDocumentIds = (
                                 songDao.getSongsBySourceType("YOUTUBE_DOWNLOAD") +
                                     songDao.getSongsBySourceType(SubsonicDownloader.SOURCE_TYPE)
                                 ).mapNotNullTo(HashSet()) { row ->
-                                    PublicDownloads.fileOf(row.audioUri)
-                                        ?.takeIf { PublicDownloads.isPublic(it.path) }
-                                        ?.let(PublicDownloads::documentIdOf)
-                                } + DownloadRemux.pendingPaths(app).mapNotNull { path ->
-                                    // A download being converted is two files for a moment.
-                                    File(path).takeIf { PublicDownloads.isPublic(it.path) }?.let(PublicDownloads::documentIdOf)
-                                }
-                            val scanned = LocalMusicScanner.scanFolders(
+                                    DownloadRecognition.documentIdOf(row.audioUri)
+                                        ?: PublicDownloads.fileOf(row.audioUri)
+                                            ?.takeIf { PublicDownloads.isPublic(it.path) }
+                                            ?.let(PublicDownloads::documentIdOf)
+                                } + DownloadReplace.pendingDocumentIds(app)
+                            val found = LocalMusicScanner.scanFolders(
                                 context = app,
                                 folderUris = folders,
                                 existingSongsByUri = existingByUri,
@@ -99,7 +100,26 @@ class LibraryRepository(
                                 }
                                 onScanProgress(progress)
                             }
-                            scanned to existingLocalSongs
+                            // Music Box's own downloads, written before a reinstall, are known
+                            // by the video their tags name and become downloads again.
+                            val inMusicBox = found.audio.mapNotNull { audio ->
+                                val documentId = DownloadRecognition.documentIdOf(audio.song.audioUri)
+                                    ?.takeIf(DownloadRecognition::isInMusicBox) ?: return@mapNotNull null
+                                DownloadRecognition.Found(
+                                    documentId = documentId,
+                                    uri = Uri.parse(audio.song.audioUri),
+                                    size = audio.song.localFileSizeBytes ?: -1L,
+                                    lastModified = audio.song.localLastModifiedMillis ?: -1L,
+                                )
+                            }
+                            val videoOf = DownloadRecognition.videoIds(app, inMusicBox)
+                            val (recognised, ordinary) = found.audio.partition {
+                                DownloadRecognition.documentIdOf(it.song.audioUri) in videoOf
+                            }
+                            recognisedDownloads = recognised.map { audio ->
+                                audio to videoOf.getValue(DownloadRecognition.documentIdOf(audio.song.audioUri)!!)
+                            }
+                            found.copy(audio = ordinary) to existingLocalSongs
                         }
 
                         onIngestProgress(0f)
@@ -112,6 +132,18 @@ class LibraryRepository(
                         val normalizedLocalEntities = scannedAudio.audio.map { it.song }
 
                         withContext(Dispatchers.IO) {
+                            // Rows of their own, keyed as the download itself keys them; the
+                            // song keeps its id, so a playlist or heart it had stays with it.
+                            if (recognisedDownloads.isNotEmpty()) {
+                                val rows = recognisedDownloads.map { (audio, _) -> downloadRowsFor(audio) }
+                                songDao.upsertAll(rows.map { it.song })
+                                artistDao.upsertAll(rows.mapNotNull { it.artist }.distinctBy { it.id })
+                                albumDao.upsertAll(rows.mapNotNull { it.album }.distinctBy { it.id })
+                                recognisedDownloads.forEach { (audio, videoId) -> app.youTubeCopies.record(videoId, audio.song.id) }
+                                android.util.Log.i("LibraryRepository", "${rows.size} songs in Music Box known again as downloads")
+                            }
+                            val recognisedIds = recognisedDownloads.mapTo(HashSet()) { it.first.song.id }
+
                             val artistEntities = mutableListOf<ArtistEntity>()
 
                             // Björk and Bjork are one artist, and so are the three ways this
@@ -220,7 +252,7 @@ class LibraryRepository(
                             val songsToDelete = if (hadUnreadableFolder) {
                                 emptySet()
                             } else {
-                                existingById.keys - scannedById.keys
+                                existingById.keys - scannedById.keys - recognisedIds
                             }
                             val songsToUpsert = scannedById.values.filter { newEntity ->
                                 val existing = existingById[newEntity.id]
@@ -334,9 +366,9 @@ class LibraryRepository(
             // and 10 - less any copy already moved and waiting to be deleted - and the public
             // Music Box folder, as far as this app can see it (see PublicDownloads.listAll).
             val moved = DownloadMove.moved(app).keys
-            // A download being converted to .m4a has two files until the old one is deleted,
-            // and only the one its row names is the song; see DownloadRemux.
-            val converting = DownloadRemux.pendingPaths(app)
+            // A download being replaced has two files until the old one is deleted, and only
+            // the one its row names is the song; see DownloadReplace.
+            val converting = DownloadReplace.pendingPaths(app)
             val privateFiles = app.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
                 ?.listFiles()
                 ?.filter { it.isFile && it.path !in moved && !it.name.endsWith(".part") && !it.name.startsWith(".") }
@@ -354,24 +386,22 @@ class LibraryRepository(
                 songDao.getSongsBySourceType(SubsonicDownloader.SOURCE_TYPE)
             val existingByUri = existingDownloads.associateBy { it.audioUri }
 
-            // After a reinstall the public files can already be in the library as the reader's
-            // own songs, through a chosen folder that holds Music; those stay as they are.
+            // After a reinstall the public files can already be in the library through a
+            // chosen folder that holds Music - as the reader's own songs, or known again as
+            // downloads (DownloadRecognition); those stay as they are.
             var localDocumentIds: Set<String>? = null
             suspend fun localDocumentIds(): Set<String> = localDocumentIds
-                ?: songDao.getSongsBySourceType("LOCAL_FILE").mapNotNullTo(HashSet()) { row ->
-                    runCatching { android.provider.DocumentsContract.getDocumentId(Uri.parse(row.audioUri)) }.getOrNull()
-                }.also { localDocumentIds = it }
+                ?: (
+                    songDao.getSongsBySourceType("LOCAL_FILE") +
+                        songDao.getSongsBySourceType("YOUTUBE_DOWNLOAD")
+                    ).mapNotNullTo(HashSet()) { row -> DownloadRecognition.documentIdOf(row.audioUri) }
+                    .plus(DownloadReplace.pendingDocumentIds(app))
+                    .also { localDocumentIds = it }
 
             val toInsert = mutableListOf<SongEntity>()
             val artistsToUpsert = mutableListOf<ArtistEntity>()
             val albumsToUpsert = mutableListOf<AlbumEntity>()
-
-            // The ids the download itself gave these rows (performYouTubeDownloadInternal), rebuilt from
-            // the file's tags. Only the song used to come back, so after a reinstall a download
-            // was in Songs and on no album and under no artist. (From upstream CalmMusic's
-            // feature/full-cleanup.)
-            fun String.toIdComponent(): String =
-                trim().replace(Regex("\\s+"), " ").lowercase()
+            val videos = mutableListOf<Pair<String, String>>()
 
             for (file in files) {
                 val uri = Uri.fromFile(file)
@@ -389,41 +419,12 @@ class LibraryRepository(
                     fileSize = file.length(),
                     existing = null,
                 )
-                val trackArtist = scanned.song.artist.takeIf { it.isNotBlank() }
-                val albumName = scanned.song.album?.takeIf { it.isNotBlank() }
-                if (trackArtist == null) {
-                    toInsert += scanned.song.copy(sourceType = "YOUTUBE_DOWNLOAD")
-                    continue
-                }
-
-                val albumArtist = scanned.albumArtist?.takeIf { it.isNotBlank() } ?: trackArtist
-                val albumArtistKey = albumArtist.toIdComponent()
-                val albumId = albumName?.let { "YOUTUBE_DOWNLOAD:$albumArtistKey:${it.toIdComponent()}" }
-                val artistId = if (albumId != null) {
-                    "YOUTUBE_DOWNLOAD:$albumArtistKey"
-                } else {
-                    "YOUTUBE_DOWNLOAD:${trackArtist.toIdComponent()}"
-                }
-
-                toInsert += scanned.song.copy(
-                    sourceType = "YOUTUBE_DOWNLOAD",
-                    artistId = artistId,
-                    albumId = albumId,
-                )
-                artistsToUpsert += ArtistEntity(
-                    id = artistId,
-                    name = if (albumId != null) albumArtist else trackArtist,
-                    sourceType = "YOUTUBE_DOWNLOAD",
-                )
-                if (albumId != null) {
-                    albumsToUpsert += AlbumEntity(
-                        id = albumId,
-                        name = albumName,
-                        artist = albumArtist,
-                        sourceType = "YOUTUBE_DOWNLOAD",
-                        artistId = artistId,
-                    )
-                }
+                val rows = downloadRowsFor(scanned)
+                toInsert += rows.song
+                rows.artist?.let { artistsToUpsert += it }
+                rows.album?.let { albumsToUpsert += it }
+                // The video it came from, so YouTube's listings know it is here.
+                Mp4Boxes.read(file)?.comment?.let(YouTubeAudioFile::videoIdOf)?.let { videos += it to rows.song.id }
             }
 
             if (toInsert.isNotEmpty()) {
@@ -435,8 +436,53 @@ class LibraryRepository(
             if (albumsToUpsert.isNotEmpty()) {
                 albumDao.upsertAll(albumsToUpsert.distinctBy { it.id })
             }
+            videos.forEach { (videoId, songId) -> app.youTubeCopies.record(videoId, songId) }
 
             toInsert.size
         }
+    }
+
+    private class DownloadRows(val song: SongEntity, val artist: ArtistEntity?, val album: AlbumEntity?)
+
+    /**
+     * A file found on the phone made a YouTube download's rows again: the ids the download
+     * itself gave them (performYouTubeDownloadInternal), rebuilt from the file's tags. Only the
+     * song used to come back, so after a reinstall a download was in Songs and on no album and
+     * under no artist. (From upstream CalmMusic's feature/full-cleanup.)
+     */
+    private fun downloadRowsFor(scanned: ScannedLocalAudio): DownloadRows {
+        fun String.toIdComponent(): String =
+            trim().replace(Regex("\\s+"), " ").lowercase()
+
+        val trackArtist = scanned.song.artist.takeIf { it.isNotBlank() }
+            ?: return DownloadRows(scanned.song.copy(sourceType = "YOUTUBE_DOWNLOAD"), null, null)
+        val albumName = scanned.song.album?.takeIf { it.isNotBlank() }
+        val albumArtist = scanned.albumArtist?.takeIf { it.isNotBlank() } ?: trackArtist
+        val albumArtistKey = albumArtist.toIdComponent()
+        val albumId = albumName?.let { "YOUTUBE_DOWNLOAD:$albumArtistKey:${it.toIdComponent()}" }
+        val artistId = if (albumId != null) {
+            "YOUTUBE_DOWNLOAD:$albumArtistKey"
+        } else {
+            "YOUTUBE_DOWNLOAD:${trackArtist.toIdComponent()}"
+        }
+        return DownloadRows(
+            song = scanned.song.copy(sourceType = "YOUTUBE_DOWNLOAD", artistId = artistId, albumId = albumId),
+            artist = ArtistEntity(
+                id = artistId,
+                name = if (albumId != null) albumArtist else trackArtist,
+                sourceType = "YOUTUBE_DOWNLOAD",
+            ),
+            album = if (albumId != null && albumName != null) {
+                AlbumEntity(
+                    id = albumId,
+                    name = albumName,
+                    artist = albumArtist,
+                    sourceType = "YOUTUBE_DOWNLOAD",
+                    artistId = artistId,
+                )
+            } else {
+                null
+            },
+        )
     }
 }

@@ -122,9 +122,12 @@ object DownloadMove {
      * the library as it was, if the database would not take it. The record of which video it
      * came from is the caller's to rename (YouTubeCopies.rename).
      */
-    internal fun repoint(database: CalmMusicDatabase, row: SongEntity, file: File): String {
+    internal fun repoint(database: CalmMusicDatabase, row: SongEntity, file: File): String =
+        repoint(database, row, Uri.fromFile(file).toString(), file.length(), file.lastModified())
+
+    /** [repoint] for a file named by [newUri], which may be a content:// address. */
+    internal fun repoint(database: CalmMusicDatabase, row: SongEntity, newUri: String, size: Long, lastModified: Long): String {
         val oldUri = row.audioUri
-        val newUri = Uri.fromFile(file).toString()
         // A YouTube download's id is its file; a kept server song keeps the server's id.
         val newId = if (row.id == oldUri) newUri else row.id
         database.runInTransaction {
@@ -147,7 +150,7 @@ object DownloadMove {
             }
             db.execSQL(
                 "UPDATE songs SET localFileSizeBytes = ?, localLastModifiedMillis = ? WHERE id = ?",
-                arrayOf<Any>(file.length(), file.lastModified(), newId),
+                arrayOf<Any>(size, lastModified, newId),
             )
         }
         return newId

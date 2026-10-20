@@ -21,7 +21,8 @@ import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
 import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.CalmMusicSettingsManager
 import com.wanderwildwood.jimeikin.data.DownloadMove
-import com.wanderwildwood.jimeikin.data.DownloadRemux
+import com.wanderwildwood.jimeikin.data.DownloadReplace
+import com.wanderwildwood.jimeikin.data.DownloadUpgrade
 import com.wanderwildwood.jimeikin.data.PublicDownloads
 import com.wanderwildwood.jimeikin.data.LibraryRepository
 import com.wanderwildwood.jimeikin.data.NowPlayingSnapshot
@@ -56,6 +57,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -1722,6 +1725,10 @@ class CalmMusicViewModel(
         )
 
         refreshLibraryFromDatabase()
+        // Downloads found again in a chosen folder may still be Opus; see DownloadUpgrade.
+        runCatching {
+            DownloadUpgrade.candidates(app, songsInUse).forEach { app.downloadQueue.enqueueUpgrade(it) }
+        }.onFailure { android.util.Log.w("CalmMusicViewModel", "making downloads AAC failed", it) }
 
         return result
     }
@@ -2582,10 +2589,24 @@ class CalmMusicViewModel(
      * the first launch is not held for it; see [DownloadMove]. The private copies are deleted
      * only after the library has been read again, so no row on screen still names one.
      */
+    private val songsInUse: () -> Set<String> = {
+        val state = _playbackState.value
+        (state.playbackQueue + state.originalPlaybackQueue).flatMapTo(HashSet()) { listOfNotNull(it.id, it.audioUri) }
+    }
+
+    /** Playing something that comes over the network: YouTube, the music server or the radio. */
+    private fun isStreaming(state: PlaybackState): Boolean =
+        state.isPlaybackPlaying && state.nowPlayingSong?.sourceType.let { it == "YOUTUBE" || it == "SUBSONIC" || it == "RADIO" }
+
     private fun moveDownloadsToMusicFolder() {
-        val inUse: () -> Set<String> = {
-            val state = _playbackState.value
-            (state.playbackQueue + state.originalPlaybackQueue).flatMapTo(HashSet()) { listOfNotNull(it.id, it.audioUri) }
+        val inUse = songsInUse
+        // A YouTube download being made AAC waits for these; see DownloadUpgrade.
+        app.downloadQueue.songsInUse = inUse
+        app.downloadQueue.isStreaming = { isStreaming(_playbackState.value) }
+        viewModelScope.launch {
+            _playbackState.map(::isStreaming).distinctUntilChanged().collect { streaming ->
+                if (!streaming) app.downloadQueue.nudge()
+            }
         }
         viewModelScope.launch {
             runCatching {
@@ -2595,14 +2616,27 @@ class CalmMusicViewModel(
                     DownloadMove.sweep(app, inUse)
                 }
             }.onFailure { android.util.Log.w("CalmMusicViewModel", "moving downloads failed", it) }
-            // Then YouTube downloads saved as WebM become real .m4a files; see DownloadRemux.
+            // Then YouTube downloads still Opus are fetched again as AAC, through the download
+            // queue, behind anything asked for; see DownloadUpgrade. A replacement left
+            // unfinished last time is finished first.
             runCatching {
-                if (DownloadRemux.sweep(app, inUse)) refreshLibraryFromDatabase()
-                if (DownloadRemux.convert(app, inUse) > 0) {
-                    refreshLibraryFromDatabase()
-                    if (DownloadRemux.sweep(app, inUse)) refreshLibraryFromDatabase()
-                }
-            }.onFailure { android.util.Log.w("CalmMusicViewModel", "converting downloads failed", it) }
+                if (DownloadReplace.sweep(app, inUse)) refreshLibraryFromDatabase()
+                DownloadUpgrade.candidates(app, inUse).forEach { app.downloadQueue.enqueueUpgrade(it) }
+            }.onFailure { android.util.Log.w("CalmMusicViewModel", "making downloads AAC failed", it) }
+        }
+    }
+
+    /**
+     * A download was made AAC: once the library on screen names the new file, the old one is
+     * deleted and the new one takes its name; see [DownloadReplace.sweep].
+     */
+    fun finishUpgrades(onDone: () -> Unit) {
+        viewModelScope.launch {
+            runCatching {
+                refreshLibraryFromDatabase()
+                if (DownloadReplace.sweep(app, songsInUse)) refreshLibraryFromDatabase()
+            }.onFailure { android.util.Log.w("CalmMusicViewModel", "finishing AAC downloads failed", it) }
+            onDone()
         }
     }
 

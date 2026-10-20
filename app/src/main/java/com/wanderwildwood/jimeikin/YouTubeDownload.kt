@@ -73,105 +73,8 @@ internal suspend fun performYouTubeDownloadInternal(
             File.createTempFile("yt-$videoId-", ".download", context.cacheDir)
         }
 
-        val downloadSuccess = withContext(Dispatchers.IO) {
-            val userAgent = YouTubeStreamResolver.NEWPIPE_USER_AGENT
+        withContext(Dispatchers.IO) { downloadAudioStream(client, streamUrl, tmpFile!!, publishProgress) }
 
-            val probeRequest = Request.Builder()
-                .url(streamUrl)
-                .header("User-Agent", userAgent)
-                .head()
-                .build()
-
-            val (contentLength, supportsRanges) = client.newCall(probeRequest).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw IllegalStateException("Probe failed: ${response.code}")
-                }
-                val length = response.header("Content-Length")?.toLongOrNull() ?: -1L
-                val acceptRanges = response.header("Accept-Ranges")?.contains("bytes", ignoreCase = true) == true
-                length to acceptRanges
-            }
-
-            if (contentLength > 0L && supportsRanges) {
-                val chunkCount = 4.coerceAtMost(((contentLength / (5L * 1024 * 1024)).toInt() + 1).coerceAtLeast(2))
-                val chunkSize = contentLength / chunkCount
-                val downloaded = AtomicLong(0L)
-
-                kotlinx.coroutines.coroutineScope {
-                    repeat(chunkCount) { index ->
-                        val start = index * chunkSize
-                        val endExclusive = if (index == chunkCount - 1) contentLength else (start + chunkSize)
-                        val end = endExclusive - 1
-
-                        launch(Dispatchers.IO) {
-                            val rangeRequest = Request.Builder()
-                                .url(streamUrl)
-                                .header("User-Agent", userAgent)
-                                .addHeader("Range", "bytes=$start-$end")
-                                .build()
-
-                            client.newCall(rangeRequest).execute().use { response ->
-                                if (!response.isSuccessful) {
-                                    throw IllegalStateException("Chunk download failed: ${response.code}")
-                                }
-                                val body = response.body ?: throw IllegalStateException("Empty body for chunk")
-
-                                RandomAccessFile(tmpFile, "rw").use { raf ->
-                                    val buffer = ByteArray(8 * 1024)
-                                    var read: Int
-                                    var offset = start
-                                    while (body.byteStream().read(buffer).also { read = it } != -1) {
-                                        // Canceled from Downloads: stop reading now, rather
-                                        // than finishing a song nobody wants and holding up
-                                        // the next one meanwhile.
-                                        ensureActive()
-                                        if (read <= 0) continue
-                                        synchronized(raf) {
-                                            raf.seek(offset)
-                                            raf.write(buffer, 0, read)
-                                        }
-                                        offset += read
-                                        val totalSoFar = downloaded.addAndGet(read.toLong())
-                                        publishProgress((totalSoFar.toDouble() / contentLength.toDouble()).toFloat())
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                val request = Request.Builder()
-                    .url(streamUrl)
-                    .header("User-Agent", userAgent)
-                    .build()
-
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        throw IllegalStateException("Download failed: ${response.code}")
-                    }
-                    val body = response.body ?: throw IllegalStateException("Empty body")
-                    val total = body.contentLength().takeIf { it > 0 } ?: -1L
-
-                    FileOutputStream(tmpFile).use { out ->
-                        body.byteStream().use { input ->
-                            val buffer = ByteArray(8 * 1024)
-                            var read: Int
-                            var readSoFar = 0L
-                            while (input.read(buffer).also { read = it } != -1) {
-                                ensureActive()
-                                out.write(buffer, 0, read)
-                                if (total > 0) {
-                                    readSoFar += read
-                                    publishProgress(readSoFar.toFloat() / total.toFloat())
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            true
-        }
-
-        if (!downloadSuccess) return false
 
         // Made an MP4 file and tagged while it is still in the cache, so the file that lands in
         // the music folder is whole and final the moment anything can see it; see
@@ -317,6 +220,113 @@ internal suspend fun performYouTubeDownloadInternal(
         preparedFile?.delete()
     }
 
+}
+
+/**
+ * Fetches the audio at [streamUrl] into [target]: in four parts at once where the server takes
+ * ranges, which YouTube's does, and in one go where it does not. Throws if any of it fails, and
+ * stops at once when the coroutine is canceled. [publishProgress] hears the fraction done.
+ */
+internal suspend fun downloadAudioStream(
+    client: OkHttpClient,
+    streamUrl: String,
+    target: File,
+    publishProgress: (Float) -> Unit,
+): Unit = withContext(Dispatchers.IO) {
+    val userAgent = YouTubeStreamResolver.NEWPIPE_USER_AGENT
+
+    val probeRequest = Request.Builder()
+        .url(streamUrl)
+        .header("User-Agent", userAgent)
+        .head()
+        .build()
+
+    val (contentLength, supportsRanges) = client.newCall(probeRequest).execute().use { response ->
+        if (!response.isSuccessful) {
+            throw IllegalStateException("Probe failed: ${response.code}")
+        }
+        val length = response.header("Content-Length")?.toLongOrNull() ?: -1L
+        val acceptRanges = response.header("Accept-Ranges")?.contains("bytes", ignoreCase = true) == true
+        length to acceptRanges
+    }
+
+    if (contentLength > 0L && supportsRanges) {
+        val chunkCount = 4.coerceAtMost(((contentLength / (5L * 1024 * 1024)).toInt() + 1).coerceAtLeast(2))
+        val chunkSize = contentLength / chunkCount
+        val downloaded = AtomicLong(0L)
+
+        kotlinx.coroutines.coroutineScope {
+            repeat(chunkCount) { index ->
+                val start = index * chunkSize
+                val endExclusive = if (index == chunkCount - 1) contentLength else (start + chunkSize)
+                val end = endExclusive - 1
+
+                launch(Dispatchers.IO) {
+                    val rangeRequest = Request.Builder()
+                        .url(streamUrl)
+                        .header("User-Agent", userAgent)
+                        .addHeader("Range", "bytes=$start-$end")
+                        .build()
+
+                    client.newCall(rangeRequest).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            throw IllegalStateException("Chunk download failed: ${response.code}")
+                        }
+                        val body = response.body ?: throw IllegalStateException("Empty body for chunk")
+
+                        RandomAccessFile(target, "rw").use { raf ->
+                            val buffer = ByteArray(8 * 1024)
+                            var read: Int
+                            var offset = start
+                            while (body.byteStream().read(buffer).also { read = it } != -1) {
+                                // Canceled from Downloads: stop reading now, rather
+                                // than finishing a song nobody wants and holding up
+                                // the next one meanwhile.
+                                ensureActive()
+                                if (read <= 0) continue
+                                synchronized(raf) {
+                                    raf.seek(offset)
+                                    raf.write(buffer, 0, read)
+                                }
+                                offset += read
+                                val totalSoFar = downloaded.addAndGet(read.toLong())
+                                publishProgress((totalSoFar.toDouble() / contentLength.toDouble()).toFloat())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        val request = Request.Builder()
+            .url(streamUrl)
+            .header("User-Agent", userAgent)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IllegalStateException("Download failed: ${response.code}")
+            }
+            val body = response.body ?: throw IllegalStateException("Empty body")
+            val total = body.contentLength().takeIf { it > 0 } ?: -1L
+
+            FileOutputStream(target).use { out ->
+                body.byteStream().use { input ->
+                    val buffer = ByteArray(8 * 1024)
+                    var read: Int
+                    var readSoFar = 0L
+                    while (input.read(buffer).also { read = it } != -1) {
+                        ensureActive()
+                        out.write(buffer, 0, read)
+                        if (total > 0) {
+                            readSoFar += read
+                            publishProgress(readSoFar.toFloat() / total.toFloat())
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**

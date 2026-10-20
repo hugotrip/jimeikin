@@ -1,8 +1,13 @@
 package com.wanderwildwood.jimeikin
 
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Environment
 import android.util.Log
 import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
+import com.wanderwildwood.jimeikin.data.DownloadUpgrade
+import com.wanderwildwood.jimeikin.data.SongEntity
 import com.wanderwildwood.jimeikin.data.SubsonicDownloader
 import com.wanderwildwood.jimeikin.data.SubsonicResult
 import com.wanderwildwood.jimeikin.data.SubsonicSync
@@ -66,8 +71,31 @@ class DownloadQueue(private val app: CalmMusic) {
 
     private var worker: Job? = null
     private var current: Pair<String, Job>? = null
+    private val startedAt = System.currentTimeMillis()
+
+    /**
+     * Told by the screen: the songs in the playback queue, which are not made AAC while they
+     * are there, and whether something is streaming, which an UPGRADE waits for to finish.
+     */
+    @Volatile var songsInUse: () -> Set<String> = { emptySet() }
+    @Volatile var isStreaming: () -> Boolean = { false }
+
+    // Moves whenever the worker stops, so the service looks again at whether to stay.
+    private val _stopped = MutableStateFlow(0)
+    val stopped: StateFlow<Int> = _stopped.asStateFlow()
 
     init {
+        // An UPGRADE waits for an unmetered network; this is how it hears one has come.
+        runCatching {
+            app.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(
+                object : ConnectivityManager.NetworkCallback() {
+                    override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                        scope.launch { nudge() }
+                    }
+                },
+            )
+        }.onFailure { Log.w(TAG, "could not listen for the network", it) }
+
         // Written whenever a download changes state, and not at each step of its percent,
         // which says nothing worth keeping across a restart.
         scope.launch {
@@ -134,6 +162,67 @@ class DownloadQueue(private val app: CalmMusic) {
         )
     }
 
+    /**
+     * A YouTube download still Opus, to be fetched again as AAC; see DownloadUpgrade. Listed
+     * in Downloads like any other, but kept out of the run the line along the bottom counts.
+     */
+    fun enqueueUpgrade(row: SongEntity) {
+        if (isUnderway(row.id)) return
+        // Once a launch: one that failed is tried again next time, or when Retry is pressed.
+        if (_items.value.any { it.songId == row.id && it.kind == DownloadKind.UPGRADE && it.updatedAt >= startedAt }) return
+        val item = DownloadItem(
+            id = UUID.randomUUID().toString(),
+            kind = DownloadKind.UPGRADE,
+            songId = row.id,
+            title = row.title,
+            artist = row.artist,
+            state = DownloadState.WAITING,
+            album = row.album,
+            updatedAt = System.currentTimeMillis(),
+        )
+        _items.update { list ->
+            Downloads.prune(list.filterNot { it.songId == item.songId && !it.state.isActive }, item.updatedAt) + item
+        }
+        startWorker()
+    }
+
+    /** Something an UPGRADE waits for may have changed: the network, or the streaming. */
+    fun nudge() {
+        startWorker()
+    }
+
+    /** Whether the service should hold the app up: something to fetch now, or being fetched. */
+    fun keepsServiceUp(items: List<DownloadItem>): Boolean = items.any {
+        it.state == DownloadState.DOWNLOADING ||
+            (it.state == DownloadState.WAITING && (it.kind != DownloadKind.UPGRADE || upgradesMayRun()))
+    }
+
+    /** Whether an UPGRADE is being fetched, or waiting and free to be. */
+    fun upgradesBusy(items: List<DownloadItem>): Boolean = items.any {
+        it.kind == DownloadKind.UPGRADE &&
+            (it.state == DownloadState.DOWNLOADING || (it.state == DownloadState.WAITING && upgradesMayRun()))
+    }
+
+    /**
+     * An UPGRADE is not something the reader asked for. It does not use a metered network -
+     * a whole library fetched again over mobile data unasked would be a bill - and it does not
+     * take the network from a song being streamed.
+     */
+    private fun upgradesMayRun(): Boolean {
+        if (runCatching { isStreaming() }.getOrDefault(true)) return false
+        val metered = runCatching {
+            app.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered
+        }.getOrNull() ?: true
+        return !metered
+    }
+
+    /** What the reader asked for first, in order; then an UPGRADE, when one may run. */
+    private fun nextToFetch(): DownloadItem? {
+        val waiting = _items.value.filter { it.state == DownloadState.WAITING }
+        return waiting.firstOrNull { it.kind != DownloadKind.UPGRADE }
+            ?: waiting.firstOrNull { it.kind == DownloadKind.UPGRADE }?.takeIf { upgradesMayRun() }
+    }
+
     private fun add(item: DownloadItem) {
         // One already waiting or underway is not asked for twice.
         if (isUnderway(item.songId)) return
@@ -149,12 +238,13 @@ class DownloadQueue(private val app: CalmMusic) {
     fun retry(id: String) {
         val item = _items.value.firstOrNull { it.id == id && it.state.canRetry } ?: return
         if (isUnderway(item.songId)) return
-        startRunIfIdle()
+        val counted = item.kind != DownloadKind.UPGRADE
+        if (counted) startRunIfIdle()
         _items.update { list ->
             val again = item.copy(state = DownloadState.WAITING, percent = null, reason = null, updatedAt = System.currentTimeMillis())
             list.filterNot { it.id == id } + again
         }
-        _run.update { it + id }
+        if (counted) _run.update { it + id }
         startWorker()
     }
 
@@ -186,7 +276,7 @@ class DownloadQueue(private val app: CalmMusic) {
 
     /** The run has been told, on the line or in a notification; the next one starts afresh. */
     fun forgetRun() {
-        if (_items.value.none { it.state.isActive }) _run.value = emptyList()
+        if (_items.value.none { it.state.isActive && it.kind != DownloadKind.UPGRADE }) _run.value = emptyList()
     }
 
     /** Held for as long as a screen showing the line is on view. */
@@ -200,21 +290,24 @@ class DownloadQueue(private val app: CalmMusic) {
     }
 
     private fun startRunIfIdle() {
-        if (_items.value.none { it.state.isActive }) _run.value = emptyList()
+        if (_items.value.none { it.state.isActive && it.kind != DownloadKind.UPGRADE }) _run.value = emptyList()
     }
 
     private fun startWorker() {
         if (worker?.isActive == true) return
+        // Not even the service for an UPGRADE that may not run yet; it is started when it may.
+        if (nextToFetch() == null) return
         DownloadService.start(app)
         worker = scope.launch {
             while (true) {
-                val next = _items.value.firstOrNull { it.state == DownloadState.WAITING } ?: break
+                val next = nextToFetch() ?: break
                 set(next.id) { it.copy(state = DownloadState.DOWNLOADING, percent = null, updatedAt = System.currentTimeMillis()) }
                 val job = scope.launch { fetch(next) }
                 current = next.id to job
                 job.join()
                 current = null
             }
+            _stopped.update { it + 1 }
         }
     }
 
@@ -223,6 +316,7 @@ class DownloadQueue(private val app: CalmMusic) {
             when (item.kind) {
                 DownloadKind.YOUTUBE -> fetchYouTube(item)
                 DownloadKind.SERVER -> fetchFromServer(item)
+                DownloadKind.UPGRADE -> fetchUpgrade(item)
             }
         } catch (e: CancellationException) {
             // Canceled: the row already says so.
@@ -278,6 +372,13 @@ class DownloadQueue(private val app: CalmMusic) {
         )
         return if (ok) DownloadState.DOWNLOADED to null else DownloadState.FAILED to null
     }
+
+    private suspend fun fetchUpgrade(item: DownloadItem): Pair<DownloadState, String?> =
+        when (val result = DownloadUpgrade.upgrade(app, item.songId, client, songsInUse) { progress(item.id, it) }) {
+            DownloadUpgrade.Result.Done -> DownloadState.DOWNLOADED to null
+            is DownloadUpgrade.Result.Failed -> DownloadState.FAILED to result.reason
+            DownloadUpgrade.Result.Later -> DownloadState.NOT_FINISHED to null
+        }
 
     /**
      * The row is not duplicated: once the file is whole the song's source changes from a

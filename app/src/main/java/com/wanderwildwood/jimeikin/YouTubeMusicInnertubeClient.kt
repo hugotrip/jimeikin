@@ -36,7 +36,17 @@ interface YouTubeMusicInnertubeClient {
      * file is a real .m4a, and the best of any kind when it does not.
      */
     suspend fun getDownloadAudioUrl(videoId: String): String
+
+    /**
+     * The best AAC stream and nothing else, for making an Opus download AAC. Throws
+     * [NoAacStream] when YouTube's answer lists no AAC stream at all, and anything else when
+     * there was no answer to go by.
+     */
+    suspend fun getAacAudioUrl(videoId: String): String
 }
+
+/** YouTube answered, and has no AAC stream for this video; see [YouTubeMusicInnertubeClient.getAacAudioUrl]. */
+class NoAacStream(videoId: String) : Exception("YouTube has no AAC stream for $videoId")
 
 
 data class InnertubeSongResult(
@@ -679,26 +689,32 @@ internal class YouTubeMusicInnertubeClientImpl(
         return InnertubeSearchResults(songs, albums)
     }
 
-    override suspend fun getBestAudioUrl(videoId: String): String = audioUrl(videoId, preferMp4 = false)
+    override suspend fun getBestAudioUrl(videoId: String): String = audioUrl(videoId, AudioChoice.BEST)
 
-    override suspend fun getDownloadAudioUrl(videoId: String): String = audioUrl(videoId, preferMp4 = true)
+    override suspend fun getDownloadAudioUrl(videoId: String): String = audioUrl(videoId, AudioChoice.PREFER_AAC)
 
-    private suspend fun audioUrl(videoId: String, preferMp4: Boolean): String = withContext(Dispatchers.IO) {
+    override suspend fun getAacAudioUrl(videoId: String): String = audioUrl(videoId, AudioChoice.AAC_ONLY)
+
+    private enum class AudioChoice { BEST, PREFER_AAC, AAC_ONLY }
+
+    private suspend fun audioUrl(videoId: String, choice: AudioChoice): String = withContext(Dispatchers.IO) {
         val visitorData = visitorData(forceRefresh = false)
             ?: error("Could not obtain a visitorData token")
 
         try {
-            requestBestAudioUrl(videoId, visitorData, preferMp4)
+            requestBestAudioUrl(videoId, visitorData, choice)
+        } catch (none: NoAacStream) {
+            throw none
         } catch (first: Exception) {
             // A stale visitorData shows up as LOGIN_REQUIRED. Harvest a fresh
             // one and try once more before falling through to the NewPipe tier.
             val refreshed = visitorData(forceRefresh = true)
             if (refreshed == null || refreshed == visitorData) throw first
-            requestBestAudioUrl(videoId, refreshed, preferMp4)
+            requestBestAudioUrl(videoId, refreshed, choice)
         }
     }
 
-    private fun requestBestAudioUrl(videoId: String, visitorData: String, preferMp4: Boolean): String {
+    private fun requestBestAudioUrl(videoId: String, visitorData: String, choice: AudioChoice): String {
         val bodyJson = JSONObject().apply {
             put("context", JSONObject().apply {
                 put("client", JSONObject().apply {
@@ -750,10 +766,12 @@ internal class YouTubeMusicInnertubeClientImpl(
             var bestBitrate = -1
             var bestMp4: JSONObject? = null
             var bestMp4Bitrate = -1
+            var anyMp4 = false
             for (i in 0 until formats.length()) {
                 val format = formats.optJSONObject(i) ?: continue
                 val mimeType = format.optString("mimeType")
                 if (!mimeType.startsWith("audio")) continue
+                if (mimeType.startsWith("audio/mp4")) anyMp4 = true
 
                 // A format with no direct `url` is signature-ciphered and would
                 // need the player JS to decode. Skip it rather than hand
@@ -775,7 +793,12 @@ internal class YouTubeMusicInnertubeClientImpl(
 
             // A download wants AAC (itag 140 and its like): the best audio is usually Opus in
             // WebM, which saved as .m4a was a file named for what it was not.
-            val chosen = if (preferMp4) bestMp4 ?: bestAudio else bestAudio
+            val chosen = when (choice) {
+                AudioChoice.BEST -> bestAudio
+                AudioChoice.PREFER_AAC -> bestMp4 ?: bestAudio
+                // One listed but ciphered is still AAC to be had, by the NewPipe tier.
+                AudioChoice.AAC_ONLY -> bestMp4 ?: if (anyMp4) null else throw NoAacStream(videoId)
+            }
             return chosen?.optString("url")?.takeIf { it.isNotBlank() }
                 ?: error("No playable audio stream in Innertube player response")
         }

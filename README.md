@@ -106,19 +106,25 @@ Downloaded songs are ordinary music files in **Music/Music Box** — on the memo
 in, and in the phone's own storage if not. They stay there if Music Box is removed, and file
 managers and other music players can see them. Deleting a download in the app deletes its file.
 A YouTube download is named by its title, a music-server one "Artist - Title". YouTube
-downloads are .m4a files (AAC when YouTube offers it, Opus otherwise, copied as it came with
-nothing re-encoded) with their title, artist and album in their tags, and the address of the
-video they came from in the comment; covers are not put in the files. After a reinstall, a
-folder chosen in Settings that holds Music brings them back as your own songs, under their
-proper names.
+downloads are AAC .m4a files, copied as YouTube sent them with nothing re-encoded, with their
+title, artist and album in their tags, and the address of the video they came from in the
+comment; covers are not put in the files. After a reinstall, choosing a folder in Settings that
+holds Music/Music Box brings them back as downloads again: the address in each file's tags
+tells the app which video it was, so YouTube's albums and search show it as on the phone, not
+to be streamed or downloaded again. A file with no address in its tags comes back as one of
+your own songs.
 Downloads made before 2.18.0 are moved there once, the first time 2.18.0 opens: each file is
 copied, checked, and only then is the old copy removed, with its playlists and hearts kept. On
 Android 9 and 10 downloads stay in the app's own folder, as before, and go with the app.
-YouTube downloads made before 2.18.1 were WebM files with a .m4a name and no tags; the first
-time 2.18.1 opens, each is copied into a real .m4a file, tagged, checked to play and to be as
-long as the original, and only then swapped in, playlists and hearts kept, and the old file
-removed. One saved before a reinstall is left as it is. On Android 9 an Opus download is saved
-as .webm, since Android 9 cannot play Opus from an .m4a file.
+YouTube downloads made before 2.18.2 could be Opus — WebM files under a .m4a name, or .m4a
+files holding Opus — which some players, Apple's among them, will not play. From 2.18.2 each is
+fetched again from YouTube as AAC, once, in the background: it waits behind anything you asked
+for, for a network that is not metered, and while nothing is streaming, and shows in Downloads
+as "From YouTube again, as AAC". The new file is tagged, checked to play and to be as long as
+the old one, and only then swapped in, playlists and hearts kept, and the old file removed.
+Only if YouTube has no AAC for a video is its Opus encoded as AAC on the phone instead, at
+160 kb/s. One saved before a reinstall is replaced only once it is known again through a
+chosen folder, as above; otherwise it is left as it is.
 
 Downloads carry on with the screen off or the app in the background: a quiet notification says
 "Downloading 4 of 12" and has a Stop button, and when the app is not on screen a last
@@ -185,7 +191,8 @@ playlists and settings.
 
 Your settings and local library stay on the phone, and so do your downloads, in
 Music/Music Box. The YouTube features talk to YouTube and
-YouTube Music, only to search and stream audio. There are no ads, no analytics and no tracking
+YouTube Music, only to search, stream and download audio, and once to fetch again as AAC a
+song downloaded as Opus before 2.18.2. There are no ads, no analytics and no tracking
 SDKs. The same is said in the app, behind the **i** in the top right.
 
 A music server's password and a connected YouTube account's cookie are sealed with a key held

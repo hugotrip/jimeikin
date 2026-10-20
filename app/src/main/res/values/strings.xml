@@ -374,6 +374,8 @@
     <!-- Downloads: where a song came from, under its artist -->
     <string name="player_downloads_from_server">From your music server</string>
     <string name="player_downloads_from_youtube">From YouTube</string>
+    <!-- Downloads: a song already on the phone, fetched again from YouTube as AAC so every player can play it -->
+    <string name="player_downloads_as_aac">From YouTube again, as AAC</string>
     <!-- Library top bar: icon description, opens Downloads -->
     <string name="main_cd_downloads">Downloads</string>
 

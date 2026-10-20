@@ -56,7 +56,7 @@ class DownloadService : Service() {
         if (!watching) {
             watching = true
             scope.launch {
-                combine(queue.items, queue.run) { items, run -> lineOf(items, run) to items.any { it.state.isActive } }
+                combine(queue.items, queue.run, queue.stopped) { items, run, _ -> lineOf(items, run) to queue.keepsServiceUp(items) }
                     .distinctUntilChanged()
                     .collect { (line, busy) ->
                         if (busy) show(notification(line)) else finish(line)

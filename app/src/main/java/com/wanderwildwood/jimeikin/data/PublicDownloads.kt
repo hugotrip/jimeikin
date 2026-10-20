@@ -278,9 +278,16 @@ object PublicDownloads {
      * kept server song was "<id>.audio"). The few kinds a server sends are told by their first
      * bytes, which needs no decoder and no name to go by.
      */
-    fun sniffMimeType(file: File): String? = runCatching {
+    fun sniffMimeType(file: File): String? = runCatching { file.inputStream().use(::sniffHead) }.getOrNull()
+
+    /** [sniffMimeType] for a file reached by a content:// address. */
+    fun sniffMimeType(context: Context, uri: Uri): String? = runCatching {
+        context.contentResolver.openInputStream(uri)?.use(::sniffHead)
+    }.getOrNull()
+
+    private fun sniffHead(input: java.io.InputStream): String? = runCatching {
         val head = ByteArray(64)
-        val read = file.inputStream().use { it.read(head) }
+        val read = input.read(head)
         if (read < 12) return null
         fun at(offset: Int, text: String) = text.indices.all { head[offset + it] == text[it].code.toByte() }
         val b0 = head[0].toInt() and 0xff
@@ -317,7 +324,7 @@ object PublicDownloads {
 
     fun sha256(file: File): Pair<String, Long> = file.inputStream().use { sha256(it) }
 
-    private fun sha256(input: java.io.InputStream): Pair<String, Long> {
+    internal fun sha256(input: java.io.InputStream): Pair<String, Long> {
         val digest = MessageDigest.getInstance("SHA-256")
         val buffer = ByteArray(64 * 1024)
         var total = 0L

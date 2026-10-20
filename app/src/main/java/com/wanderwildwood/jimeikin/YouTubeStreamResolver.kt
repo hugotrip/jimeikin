@@ -52,11 +52,23 @@ class YouTubeStreamResolver(private val client: OkHttpClient = OkHttpClient()) {
     suspend fun getDownloadAudioUrl(videoId: String, maxBitrateKbps: Int = 160): String =
         getAudioUrlWithRetry(videoId = videoId, maxBitrateKbps = maxBitrateKbps, preferMp4 = true)
 
-    private suspend fun getAudioUrlWithRetry(videoId: String, maxBitrateKbps: Int?, preferMp4: Boolean = false): String {
+    /**
+     * The best AAC stream and nothing else; throws [NoAacStream] when the video has audio but
+     * none of it AAC. See [YouTubeMusicInnertubeClient.getAacAudioUrl].
+     */
+    suspend fun getAacAudioUrl(videoId: String): String =
+        getAudioUrlWithRetry(videoId = videoId, maxBitrateKbps = null, preferMp4 = true, mp4Only = true)
+
+    private suspend fun getAudioUrlWithRetry(
+        videoId: String,
+        maxBitrateKbps: Int?,
+        preferMp4: Boolean = false,
+        mp4Only: Boolean = false,
+    ): String {
         var lastException: Exception? = null
         repeat(3) { attempt ->
             try {
-                return getAudioUrl(videoId, maxBitrateKbps, preferMp4)
+                return getAudioUrl(videoId, maxBitrateKbps, preferMp4, mp4Only)
             } catch (e: Exception) {
                 lastException = e
                 val msg = e.message ?: ""
@@ -74,7 +86,7 @@ class YouTubeStreamResolver(private val client: OkHttpClient = OkHttpClient()) {
         throw lastException ?: ExtractionException("Failed to resolve audio after retries")
     }
 
-    private suspend fun getAudioUrl(videoId: String, maxBitrateKbps: Int?, preferMp4: Boolean): String =
+    private suspend fun getAudioUrl(videoId: String, maxBitrateKbps: Int?, preferMp4: Boolean, mp4Only: Boolean): String =
         withContext(Dispatchers.IO) {
             val url = "https://www.youtube.com/watch?v=$videoId"
             ensureInitialized(client)
@@ -87,7 +99,9 @@ class YouTubeStreamResolver(private val client: OkHttpClient = OkHttpClient()) {
 
             val withBitrate = audioStreams.filter { it.averageBitrate > 0 }
             if (withBitrate.isEmpty()) error("No audio streams with valid bitrate")
-            val candidates = if (preferMp4) {
+            val candidates = if (mp4Only) {
+                withBitrate.filter { it.format == MediaFormat.M4A }.ifEmpty { throw NoAacStream(videoId) }
+            } else if (preferMp4) {
                 withBitrate.filter { it.format == MediaFormat.M4A }.ifEmpty { withBitrate }
             } else {
                 withBitrate

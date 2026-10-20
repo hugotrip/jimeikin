@@ -287,14 +287,29 @@ fun CalmMusic(
     // Null until the list has been seen once: the downloads remembered from an earlier day
     // are not news, and refreshing the library for each of them would be wasted work.
     var lastCompletedDownloadUUIDs by remember { mutableStateOf<Set<String>?>(null) }
+    // Songs made AAC since their old files were last cleared away, and every one already
+    // counted; see finishUpgrades.
+    var upgradesLanded by remember { mutableStateOf(0) }
+    var upgradesSeen by remember { mutableStateOf<Set<String>?>(null) }
 
 
     LaunchedEffect(downloadStatuses) {
         val currentCompletedDownloads = downloadStatuses
             .filter { it.state == DownloadState.DOWNLOADED }
 
+        // A song made AAC changes nothing anyone sees, so the library is not read again for
+        // each one: the old files are cleared away, after one read, when the run of them is
+        // over or every ten songs, whichever comes first, so they do not pile up meanwhile.
+        val upgraded = currentCompletedDownloads.filter { it.kind == DownloadKind.UPGRADE }.map { it.id }.toSet()
+        upgradesLanded += (upgraded - (upgradesSeen ?: upgraded)).size
+        upgradesSeen = upgraded
+        if (upgradesLanded > 0 && (upgradesLanded >= 10 || !downloadQueue.upgradesBusy(downloadStatuses))) {
+            upgradesLanded = 0
+            viewModel.finishUpgrades { playlistsViewModel.refreshSongs() }
+        }
+
         val currentCompletedUUIDs = currentCompletedDownloads.map { it.id }.toSet()
-        val newCompletedUUIDs = currentCompletedUUIDs - (lastCompletedDownloadUUIDs ?: currentCompletedUUIDs)
+        val newCompletedUUIDs = (currentCompletedUUIDs - (lastCompletedDownloadUUIDs ?: currentCompletedUUIDs)) - upgraded
 
         // Refreshed as they land, so the rules turn solid one by one rather than the whole
         // list changing at the end.
@@ -1991,14 +2006,17 @@ fun CalmMusic(
                 composable(Screen.Search.route) {
                     val searchResults = remember(
                         searchedQuery, librarySongs, libraryAlbums, libraryArtists,
-                        searchSongs, searchAlbums, searchArtists,
+                        searchSongs, searchAlbums, searchArtists, recordedYouTubeCopies,
                     ) {
                         buildSearchResults(
                             query = searchedQuery,
                             librarySongs = librarySongs,
                             libraryAlbums = libraryAlbums,
                             libraryArtists = libraryArtists,
-                            youTubeSongs = searchSongs,
+                            // A song already downloaded is its file here too, as on an album
+                            // page: found only by the video it came from, it was offered to
+                            // stream as though it were not on the phone.
+                            youTubeSongs = YouTubeCopyMatch.withCopies(searchSongs, recordedYouTubeCopies, youTubeDownloads),
                             youTubeAlbums = searchAlbums,
                             youTubeArtists = searchArtists,
                         )

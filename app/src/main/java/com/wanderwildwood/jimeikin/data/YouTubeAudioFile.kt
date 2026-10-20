@@ -1,10 +1,12 @@
 package com.wanderwildwood.jimeikin.data
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import org.jaudiotagger.audio.AudioFileIO
@@ -29,6 +31,10 @@ import kotlin.math.abs
  * Android reads it back from Android 10, so an Opus download on Android 9 stays WebM. The copy
  * is then tagged and checked before anything uses it.
  *
+ * An Opus download is still only half the way there: Apple's players, among others, will not
+ * play Opus from an .m4a file. Those are made AAC afterwards, one at a time, by fetching the
+ * song again ([DownloadUpgrade]); [transcodeToAac] is for a video YouTube has no AAC for.
+ *
  * Covers are not written into the file; the app keeps its covers to itself.
  */
 object YouTubeAudioFile {
@@ -51,6 +57,26 @@ object YouTubeAudioFile {
 
     /** Whether [file] is a WebM (Matroska) file, by its first bytes, whatever its name. */
     fun isWebm(file: File): Boolean = PublicDownloads.sniffMimeType(file) == "audio/webm"
+
+    /**
+     * Whether [file] holds Opus: a WebM download, or an MP4 one whose track is Opus. Told by
+     * what is in it, not its name; both kinds were saved as .m4a.
+     */
+    fun isOpus(file: File): Boolean = when (PublicDownloads.sniffMimeType(file)) {
+        "audio/webm" -> true
+        "audio/mp4" -> Mp4Boxes.read(file)?.codec == OPUS
+        else -> false
+    }
+
+    /** [isOpus] for a file reached by a content:// address. */
+    fun isOpus(context: Context, uri: Uri): Boolean = when (PublicDownloads.sniffMimeType(context, uri)) {
+        "audio/webm" -> true
+        "audio/mp4" -> Mp4Boxes.read(context, uri)?.codec == OPUS
+        else -> false
+    }
+
+    /** The MP4 sample entry of an Opus track, as [Mp4Boxes] reads it. */
+    private const val OPUS = "Opus"
 
     /** Whether a WebM download can be made an MP4 one on this phone: one that can play it back. */
     val canRemuxOpus: Boolean get() = Build.VERSION.SDK_INT >= 29
@@ -116,7 +142,7 @@ object YouTubeAudioFile {
                 val outTrack = muxer.addTrack(format)
                 muxer.start()
                 while (true) {
-                    buffer.clear()
+                    (buffer as java.nio.Buffer).clear()
                     val read = extractor.readSampleData(buffer, 0)
                     if (read < 0) break
                     val flags = if (extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
@@ -149,12 +175,12 @@ object YouTubeAudioFile {
         var packet = ByteArray(0)
         try {
             while (true) {
-                buffer.clear()
+                (buffer as java.nio.Buffer).clear()
                 val read = extractor.readSampleData(buffer, 0)
                 if (read < 0) break
                 if (read > 0) {
                     if (packet.size < read) packet = ByteArray(read)
-                    buffer.position(0)
+                    (buffer as java.nio.Buffer).position(0)
                     buffer.get(packet, 0, read)
                     writer.write(packet, read)
                 }
@@ -173,7 +199,7 @@ object YouTubeAudioFile {
      * Whether [file] is a whole, playable MP4 song: one track, audio, as long as [expectedUs]
      * to within a second when that is known, and its first samples decode.
      */
-    fun verify(file: File, expectedUs: Long?): Boolean {
+    fun verify(file: File, expectedUs: Long?, requireMime: String? = null): Boolean {
         if (PublicDownloads.sniffMimeType(file) != "audio/mp4") return false
         val extractor = MediaExtractor()
         try {
@@ -182,6 +208,10 @@ object YouTubeAudioFile {
             val format = extractor.getTrackFormat(0)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return false
             if (!mime.startsWith("audio/")) return false
+            if (requireMime != null && mime != requireMime) {
+                Log.w(TAG, "${file.name} is $mime, not $requireMime")
+                return false
+            }
             val durationUs = format.durationUs() ?: return false
             if (expectedUs != null && expectedUs > 0 && abs(durationUs - expectedUs) > 1_000_000L) {
                 Log.w(TAG, "${file.name} is ${durationUs / 1000} ms long, not ${expectedUs / 1000}")
@@ -234,6 +264,189 @@ object YouTubeAudioFile {
             codec.release()
         }
     }
+
+    /** The length of the audio [setSource] opens, in microseconds, or null if it cannot say. */
+    fun durationUs(setSource: (MediaExtractor) -> Unit): Long? {
+        val extractor = MediaExtractor()
+        return try {
+            setSource(extractor)
+            (0 until extractor.trackCount).asSequence()
+                .map { extractor.getTrackFormat(it) }
+                .firstOrNull { it.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+                ?.durationUs()
+        } catch (e: Exception) {
+            null
+        } finally {
+            extractor.release()
+        }
+    }
+
+    /** The bit rate a song made AAC here is encoded at: as good as YouTube's own AAC, a little over. */
+    const val TRANSCODE_BIT_RATE = 160_000
+
+    /**
+     * Decodes the audio [setSource] opens and encodes it again as AAC, into a plain MP4 file at
+     * [out]. This loses a little, as any second encoding does, and is only for an Opus download
+     * whose video YouTube has no AAC for. Returns the length of the original in microseconds,
+     * or null if it could not be done - then [out] is left for the caller to delete.
+     */
+    @SuppressLint("WrongConstant")
+    fun transcodeToAac(setSource: (MediaExtractor) -> Unit, out: File, bitRate: Int = TRANSCODE_BIT_RATE): Long? {
+        val extractor = MediaExtractor()
+        var decoder: MediaCodec? = null
+        var encoder: MediaCodec? = null
+        var muxer: MediaMuxer? = null
+        try {
+            setSource(extractor)
+            val track = (0 until extractor.trackCount).firstOrNull {
+                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+            } ?: return null
+            val inFormat = extractor.getTrackFormat(track)
+            val inMime = inFormat.getString(MediaFormat.KEY_MIME) ?: return null
+            extractor.selectTrack(track)
+            decoder = MediaCodec.createDecoderByType(inMime).apply {
+                configure(inFormat, null, null, 0)
+                start()
+            }
+            muxer = MediaMuxer(out.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+
+            val decoded = MediaCodec.BufferInfo()
+            val encoded = MediaCodec.BufferInfo()
+            var rate = 0
+            var channels = 0
+            var pcm: ByteArray? = null
+            var pcmAt = 0
+            var framesIn = 0L
+            var extractorDone = false
+            var decoderDone = false
+            var encoderEnded = false
+            var encoderDone = false
+            var outTrack = -1
+            var written = 0
+            var idle = 0
+
+            fun startEncoder(format: MediaFormat) {
+                rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                val aac = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, rate, channels).apply {
+                    setInteger(MediaFormat.KEY_AAC_PROFILE, android.media.MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                    setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
+                    setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 64 * 1024)
+                }
+                encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
+                    configure(aac, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                    start()
+                }
+            }
+
+            while (!encoderDone) {
+                var moved = false
+                // The original's packets into the decoder.
+                if (!extractorDone) {
+                    val index = decoder.dequeueInputBuffer(TIMEOUT_US)
+                    if (index >= 0) {
+                        val input = decoder.getInputBuffer(index) ?: return null
+                        val read = extractor.readSampleData(input, 0)
+                        if (read < 0) {
+                            decoder.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            extractorDone = true
+                        } else {
+                            decoder.queueInputBuffer(index, 0, read, extractor.sampleTime, 0)
+                            extractor.advance()
+                        }
+                        moved = true
+                    }
+                }
+                // Sound out of the decoder, held until the encoder has taken all of it.
+                if (!decoderDone && pcm == null) {
+                    val index = decoder.dequeueOutputBuffer(decoded, TIMEOUT_US)
+                    if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        if (encoder == null) startEncoder(decoder.outputFormat)
+                        moved = true
+                    } else if (index >= 0) {
+                        if (encoder == null) startEncoder(decoder.outputFormat)
+                        if (decoded.size > 0) {
+                            val buffer = decoder.getOutputBuffer(index) ?: return null
+                            (buffer as java.nio.Buffer).position(decoded.offset)
+                            (buffer as java.nio.Buffer).limit(decoded.offset + decoded.size)
+                            pcm = ByteArray(decoded.size).also { buffer.get(it) }
+                            pcmAt = 0
+                        }
+                        if (decoded.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) decoderDone = true
+                        decoder.releaseOutputBuffer(index, false)
+                        moved = true
+                    }
+                }
+                val enc = encoder
+                // That sound into the encoder, timed by how much has gone in.
+                if (enc != null && !encoderEnded && (pcm != null || decoderDone)) {
+                    val index = enc.dequeueInputBuffer(TIMEOUT_US)
+                    if (index >= 0) {
+                        val input = enc.getInputBuffer(index) ?: return null
+                        (input as java.nio.Buffer).clear()
+                        val chunk = pcm
+                        val timeUs = framesIn * 1_000_000L / rate
+                        if (chunk != null) {
+                            val frameBytes = 2 * channels
+                            val length = minOf(chunk.size - pcmAt, input.remaining() / frameBytes * frameBytes)
+                            input.put(chunk, pcmAt, length)
+                            enc.queueInputBuffer(index, 0, length, timeUs, 0)
+                            pcmAt += length
+                            framesIn += length / frameBytes
+                            if (pcmAt >= chunk.size) pcm = null
+                        } else {
+                            enc.queueInputBuffer(index, 0, 0, timeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            encoderEnded = true
+                        }
+                        moved = true
+                    }
+                }
+                // AAC out of the encoder, into the file.
+                if (enc != null) {
+                    val index = enc.dequeueOutputBuffer(encoded, TIMEOUT_US)
+                    if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        outTrack = muxer.addTrack(enc.outputFormat)
+                        muxer.start()
+                        moved = true
+                    } else if (index >= 0) {
+                        val config = encoded.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0
+                        if (!config && encoded.size > 0 && outTrack >= 0) {
+                            val buffer = enc.getOutputBuffer(index) ?: return null
+                            (buffer as java.nio.Buffer).position(encoded.offset)
+                            (buffer as java.nio.Buffer).limit(encoded.offset + encoded.size)
+                            muxer.writeSampleData(outTrack, buffer, encoded)
+                            written++
+                        }
+                        if (encoded.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) encoderDone = true
+                        enc.releaseOutputBuffer(index, false)
+                        moved = true
+                    }
+                }
+                if (decoderDone && encoder == null) return null
+                idle = if (moved) 0 else idle + 1
+                // A codec that has stopped answering, rather than a song still going.
+                if (idle > 2000) {
+                    Log.w(TAG, "the encoder stopped answering")
+                    return null
+                }
+            }
+            if (written == 0 || outTrack < 0) return null
+            muxer.stop()
+            return inFormat.durationUs() ?: (framesIn * 1_000_000L / rate.coerceAtLeast(1))
+        } catch (e: Exception) {
+            Log.w(TAG, "could not make AAC: ${e.message}")
+            return null
+        } finally {
+            runCatching { decoder?.stop() }
+            runCatching { decoder?.release() }
+            runCatching { encoder?.stop() }
+            runCatching { encoder?.release() }
+            runCatching { muxer?.release() }
+            extractor.release()
+        }
+    }
+
+    private const val TIMEOUT_US = 10_000L
 
     /**
      * Writes [tags] into the MP4 file [file], in place. The tag library's usual way in reads
