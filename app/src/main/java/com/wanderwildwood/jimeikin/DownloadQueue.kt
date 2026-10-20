@@ -204,12 +204,13 @@ class DownloadQueue(private val app: CalmMusic) {
     }
 
     /**
-     * An UPGRADE is not something the reader asked for. It does not use a metered network -
-     * a whole library fetched again over mobile data unasked would be a bill - and it does not
-     * take the network from a song being streamed.
+     * An UPGRADE is not something the reader asked for. It does not use a metered network unless
+     * the reader has allowed it in Settings - a whole library fetched again over mobile data
+     * unasked would be a bill - and it does not take the network from a song being streamed.
      */
     private fun upgradesMayRun(): Boolean {
         if (runCatching { isStreaming() }.getOrDefault(true)) return false
+        if (runCatching { app.settingsManager.getUpgradeOnMobileDataSync() }.getOrDefault(false)) return true
         val metered = runCatching {
             app.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered
         }.getOrNull() ?: true

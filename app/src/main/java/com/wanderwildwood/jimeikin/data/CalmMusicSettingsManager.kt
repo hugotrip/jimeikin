@@ -208,6 +208,18 @@ class CalmMusicSettingsManager(context: Context) {
         prefs.edit { putBoolean(KEY_PLAYING_ON_LOCK_SCREEN, enabled) }
     }
 
+    /**
+     * Off unless turned on: songs downloaded as Opus before 2.18.2 are fetched again as AAC only
+     * on Wi-Fi or another unmetered network. On, they may come over mobile data too.
+     */
+    fun getUpgradeOnMobileDataSync(): Boolean {
+        return prefs.getBoolean(KEY_UPGRADE_ON_MOBILE_DATA, false)
+    }
+
+    fun setUpgradeOnMobileData(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_UPGRADE_ON_MOBILE_DATA, enabled) }
+    }
+
     private fun getYouTubeAccountCookieSync(): String? {
         // A signed-in cookie is a credential like any other, and is sealed the same way.
         val stored = prefs.getString(KEY_YOUTUBE_ACCOUNT_COOKIE, null) ?: return null
@@ -268,5 +280,6 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_YOUTUBE_ACCOUNT_COOKIE = "youtube_account_cookie"
         private const val KEY_LAST_LIBRARY_TAB = "last_library_tab"
         private const val KEY_PLAYING_ON_LOCK_SCREEN = "playing_on_lock_screen"
+        private const val KEY_UPGRADE_ON_MOBILE_DATA = "upgrade_on_mobile_data"
     }
 }

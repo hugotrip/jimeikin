@@ -119,7 +119,8 @@ Android 9 and 10 downloads stay in the app's own folder, as before, and go with 
 YouTube downloads made before 2.18.2 could be Opus — WebM files under a .m4a name, or .m4a
 files holding Opus — which some players, Apple's among them, will not play. From 2.18.2 each is
 fetched again from YouTube as AAC, once, in the background: it waits behind anything you asked
-for, for a network that is not metered, and while nothing is streaming, and shows in Downloads
+for, for a network that is not metered (unless Settings > Fetch older downloads again over
+mobile data is on), and while nothing is streaming, and shows in Downloads
 as "From YouTube again, as AAC". The new file is tagged, checked to play and to be as long as
 the old one, and only then swapped in, playlists and hearts kept, and the old file removed.
 Only if YouTube has no AAC for a video is its Opus encoded as AAC on the phone instead, at

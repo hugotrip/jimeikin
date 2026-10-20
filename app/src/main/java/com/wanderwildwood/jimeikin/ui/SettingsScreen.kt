@@ -305,6 +305,23 @@ fun SettingsScreen(
         }
 
         item {
+            // Off by default: the songs fetched again as AAC wait for Wi-Fi. The note says why
+            // turning it on is worth a thought.
+            val settings = (context.applicationContext as com.wanderwildwood.jimeikin.CalmMusic).settingsManager
+            var upgradeOnMobileData by remember { mutableStateOf(settings.getUpgradeOnMobileDataSync()) }
+            SwitchRow(
+                label = stringResource(R.string.settings_upgrade_on_mobile_data),
+                note = stringResource(R.string.settings_upgrade_on_mobile_data_note),
+                checked = upgradeOnMobileData,
+                onCheckedChange = { on ->
+                    upgradeOnMobileData = on
+                    settings.setUpgradeOnMobileData(on)
+                    (context.applicationContext as com.wanderwildwood.jimeikin.CalmMusic).downloadQueue.nudge()
+                },
+            )
+        }
+
+        item {
             // Downloads is transient status about streaming rather than a place of its own;
             // it used to cost a row on a screen that existed only to hold three doors. The
             // label carries itself, so it gets no second line.
@@ -388,6 +405,7 @@ private fun SwitchRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    note: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -396,7 +414,10 @@ private fun SwitchRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextMMD(text = label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f)) {
+            TextMMD(text = label, style = MaterialTheme.typography.titleSmall)
+            if (note != null) TextMMD(text = note, style = MaterialTheme.typography.bodySmall)
+        }
         SwitchMMD(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
