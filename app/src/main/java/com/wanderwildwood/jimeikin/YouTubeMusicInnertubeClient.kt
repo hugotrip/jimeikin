@@ -30,6 +30,12 @@ interface YouTubeMusicInnertubeClient {
     suspend fun getUpNext(videoId: String): List<InnertubeSongResult>
 
     suspend fun getBestAudioUrl(videoId: String): String
+
+    /**
+     * The audio to download: the best AAC stream (audio/mp4) when YouTube offers one, so the
+     * file is a real .m4a, and the best of any kind when it does not.
+     */
+    suspend fun getDownloadAudioUrl(videoId: String): String
 }
 
 
@@ -673,22 +679,26 @@ internal class YouTubeMusicInnertubeClientImpl(
         return InnertubeSearchResults(songs, albums)
     }
 
-    override suspend fun getBestAudioUrl(videoId: String): String = withContext(Dispatchers.IO) {
+    override suspend fun getBestAudioUrl(videoId: String): String = audioUrl(videoId, preferMp4 = false)
+
+    override suspend fun getDownloadAudioUrl(videoId: String): String = audioUrl(videoId, preferMp4 = true)
+
+    private suspend fun audioUrl(videoId: String, preferMp4: Boolean): String = withContext(Dispatchers.IO) {
         val visitorData = visitorData(forceRefresh = false)
             ?: error("Could not obtain a visitorData token")
 
         try {
-            requestBestAudioUrl(videoId, visitorData)
+            requestBestAudioUrl(videoId, visitorData, preferMp4)
         } catch (first: Exception) {
             // A stale visitorData shows up as LOGIN_REQUIRED. Harvest a fresh
             // one and try once more before falling through to the NewPipe tier.
             val refreshed = visitorData(forceRefresh = true)
             if (refreshed == null || refreshed == visitorData) throw first
-            requestBestAudioUrl(videoId, refreshed)
+            requestBestAudioUrl(videoId, refreshed, preferMp4)
         }
     }
 
-    private fun requestBestAudioUrl(videoId: String, visitorData: String): String {
+    private fun requestBestAudioUrl(videoId: String, visitorData: String, preferMp4: Boolean): String {
         val bodyJson = JSONObject().apply {
             put("context", JSONObject().apply {
                 put("client", JSONObject().apply {
@@ -738,9 +748,12 @@ internal class YouTubeMusicInnertubeClientImpl(
 
             var bestAudio: JSONObject? = null
             var bestBitrate = -1
+            var bestMp4: JSONObject? = null
+            var bestMp4Bitrate = -1
             for (i in 0 until formats.length()) {
                 val format = formats.optJSONObject(i) ?: continue
-                if (!format.optString("mimeType").startsWith("audio")) continue
+                val mimeType = format.optString("mimeType")
+                if (!mimeType.startsWith("audio")) continue
 
                 // A format with no direct `url` is signature-ciphered and would
                 // need the player JS to decode. Skip it rather than hand
@@ -754,9 +767,16 @@ internal class YouTubeMusicInnertubeClientImpl(
                     bestBitrate = bitrate
                     bestAudio = format
                 }
+                if (mimeType.startsWith("audio/mp4") && bitrate > bestMp4Bitrate) {
+                    bestMp4Bitrate = bitrate
+                    bestMp4 = format
+                }
             }
 
-            return bestAudio?.optString("url")?.takeIf { it.isNotBlank() }
+            // A download wants AAC (itag 140 and its like): the best audio is usually Opus in
+            // WebM, which saved as .m4a was a file named for what it was not.
+            val chosen = if (preferMp4) bestMp4 ?: bestAudio else bestAudio
+            return chosen?.optString("url")?.takeIf { it.isNotBlank() }
                 ?: error("No playable audio stream in Innertube player response")
         }
     }

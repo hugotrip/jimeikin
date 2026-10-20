@@ -11,15 +11,14 @@ import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.LocalMusicScanner
 import com.wanderwildwood.jimeikin.data.PublicDownloads
 import com.wanderwildwood.jimeikin.data.SongEntity
+import com.wanderwildwood.jimeikin.data.YouTubeAudioFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
-import org.jaudiotagger.tag.TagOptionSingleton
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -50,13 +49,14 @@ internal suspend fun performYouTubeDownloadInternal(
         }
     }
     var tmpFile: File? = null
+    var preparedFile: File? = null
     try {
         val videoId = song.id
         val TAG = "YouTubeDownload"
 
         val streamUrl = withContext(Dispatchers.IO) {
             try {
-                val url = app.youTubeInnertubeClient.getBestAudioUrl(videoId)
+                val url = app.youTubeInnertubeClient.getDownloadAudioUrl(videoId)
                 Log.i(TAG, "[$videoId] Resolved URL via InnerTube")
                 url
             } catch (e: Exception) {
@@ -70,7 +70,7 @@ internal suspend fun performYouTubeDownloadInternal(
         val safeTitle = (song.title.ifBlank { videoId })
             .replace(Regex("""[\\\\/:*?\"<>|]"""), "_")
         tmpFile = withContext(Dispatchers.IO) {
-            File.createTempFile("yt-$videoId-", ".m4a", context.cacheDir)
+            File.createTempFile("yt-$videoId-", ".download", context.cacheDir)
         }
 
         val downloadSuccess = withContext(Dispatchers.IO) {
@@ -173,36 +173,32 @@ internal suspend fun performYouTubeDownloadInternal(
 
         if (!downloadSuccess) return false
 
-        // Tagged while it is still in the cache, so the file that lands in the music folder is
-        // whole and final the moment anything can see it.
-        withContext(Dispatchers.IO) {
-            try {
-                TagOptionSingleton.getInstance().isAndroid = true
-                val audioFile = AudioFileIO.read(tmpFile)
-                val tag = audioFile.tagAndConvertOrCreateAndSetDefault
-
-                tag.setField(FieldKey.TITLE, song.title)
-                tag.setField(FieldKey.ARTIST, song.artist)
-                if (!song.album.isNullOrBlank()) tag.setField(FieldKey.ALBUM, song.album)
-
-                if (!albumArtist.isNullOrBlank()) {
-                    tag.setField(FieldKey.ALBUM_ARTIST, albumArtist)
-                }
-
-                song.trackNumber?.let { tag.setField(FieldKey.TRACK, it.toString()) }
-                song.discNumber?.let { tag.setField(FieldKey.DISC_NO, it.toString()) }
-
-                audioFile.commit()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+        // Made an MP4 file and tagged while it is still in the cache, so the file that lands in
+        // the music folder is whole and final the moment anything can see it; see
+        // [YouTubeAudioFile].
+        val prepared = withContext(Dispatchers.IO) {
+            YouTubeAudioFile.prepare(
+                tmpFile!!,
+                context.cacheDir,
+                YouTubeAudioFile.Tags(
+                    title = song.title,
+                    artist = song.artist,
+                    album = song.album,
+                    albumArtist = albumArtist,
+                    trackNumber = song.trackNumber,
+                    discNumber = song.discNumber,
+                    videoId = videoId,
+                ),
+            )
         }
+        if (prepared.file != tmpFile) preparedFile = prepared.file
+        Log.i(TAG, "[$videoId] saved as .${prepared.extension}")
 
         val targetFile = withContext(Dispatchers.IO) {
             if (PublicDownloads.isAvailable) {
-                placePublic(context, tmpFile!!, safeTitle, song.artist, song.title)
+                placePublic(context, prepared, safeTitle, song.artist, song.title)
             } else {
-                placePrivate(tmpFile!!, targetDir, safeTitle, song.artist, song.title)
+                placePrivate(prepared.file, targetDir, safeTitle, prepared.extension, song.artist, song.title)
             }
         }
 
@@ -318,6 +314,7 @@ internal suspend fun performYouTubeDownloadInternal(
         return true
     } finally {
         tmpFile?.delete()
+        preparedFile?.delete()
     }
 
 }
@@ -327,13 +324,13 @@ internal suspend fun performYouTubeDownloadInternal(
  * [PublicDownloads]). Written beside its place and renamed into it, so an existing copy is only
  * replaced by a whole one: a kill or a full card part way through leaves the old file as it was.
  */
-private fun placePrivate(tmp: File, dir: File, base: String, artist: String?, title: String): File {
+private fun placePrivate(tmp: File, dir: File, base: String, extension: String, artist: String?, title: String): File {
     // ⚠ Never deleted up front, which is what this did: the file was named from the title
     // alone and whatever already had that name was removed before the download began. A
     // second song called "Intro" erased the first -- its file, and through the row keyed on
     // the file, the song itself, so its playlist entries played the new one -- and a
     // re-download that then failed had already thrown away the good copy.
-    val targetFile = chooseTarget(dir, base, artist, title)
+    val targetFile = chooseTarget(dir, base, extension, artist, title)
     val part = File(targetFile.parentFile, targetFile.name + ".part")
     FileInputStream(tmp).use { input ->
         FileOutputStream(part).use { output ->
@@ -354,9 +351,9 @@ private fun placePrivate(tmp: File, dir: File, base: String, artist: String?, ti
  * takes its name, so the song keeps its id and its place in playlists.
  */
 @androidx.annotation.RequiresApi(30)
-private fun placePublic(context: Context, tmp: File, base: String, artist: String?, title: String): File {
-    val wanted = "$base.m4a"
-    val saved = PublicDownloads.save(context, tmp, wanted, "audio/mp4")
+private fun placePublic(context: Context, prepared: YouTubeAudioFile.Prepared, base: String, artist: String?, title: String): File {
+    val wanted = "$base.${prepared.extension}"
+    val saved = PublicDownloads.save(context, prepared.file, wanted, prepared.mimeType)
     if (saved.file.name == wanted) return saved.file
     val earlier = File(saved.file.parentFile, wanted)
     if (!earlier.exists() || !isSameSong(earlier, artist, title)) return saved.file
@@ -369,10 +366,10 @@ private fun placePublic(context: Context, tmp: File, base: String, artist: Strin
  * song already has it. A file with the same title *and* artist is taken to be this song and is
  * the one case replaced -- and only once the new copy is whole; see [placePrivate].
  */
-private fun chooseTarget(dir: File, base: String, artist: String?, title: String): File {
+private fun chooseTarget(dir: File, base: String, extension: String, artist: String?, title: String): File {
     var n = 1
     while (true) {
-        val name = if (n == 1) "$base.m4a" else "$base ($n).m4a"
+        val name = if (n == 1) "$base.$extension" else "$base ($n).$extension"
         val candidate = File(dir, name)
         if (!candidate.exists() || isSameSong(candidate, artist, title)) return candidate
         n++
@@ -380,7 +377,6 @@ private fun chooseTarget(dir: File, base: String, artist: String?, title: String
 }
 
 private fun isSameSong(file: File, artist: String?, title: String): Boolean = runCatching {
-    TagOptionSingleton.getInstance().isAndroid = true
-    val tag = AudioFileIO.read(file).tag ?: return false
+    val tag = YouTubeAudioFile.readTag(file) ?: return false
     tag.getFirst(FieldKey.TITLE) == title && tag.getFirst(FieldKey.ARTIST) == artist.orEmpty()
 }.getOrDefault(false)

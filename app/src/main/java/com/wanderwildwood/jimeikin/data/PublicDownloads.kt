@@ -125,6 +125,13 @@ object PublicDownloads {
         if (file.name != name || !file.exists()) null else Saved(file, saved.uri)
     }.getOrNull()
 
+    /** [rename] for a file found by its path; see there. */
+    @RequiresApi(30)
+    fun rename(context: Context, file: File, name: String): File? {
+        val uri = uriOf(context, file) ?: return null
+        return rename(context, Saved(file, uri), name)?.file
+    }
+
     sealed class Deletion {
         /** The file is gone, or was never there. */
         object Done : Deletion()
@@ -215,6 +222,20 @@ object PublicDownloads {
         val (volume, rest) = match.destructured
         if (volume == "emulated" || volume == "self") return null
         return "$volume:$rest"
+    }
+
+    /**
+     * Whether this install wrote [file] and may replace it without asking. A file in the
+     * private folder always is; one in Music Box only if MediaStore names this app as its
+     * owner, which it does not for a file written before a reinstall.
+     */
+    fun isOwn(context: Context, file: File): Boolean {
+        if (Build.VERSION.SDK_INT < 30 || !isPublic(file.path)) return true
+        val uri = uriOf(context, file) ?: return false
+        return runCatching {
+            context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.OWNER_PACKAGE_NAME), null, null, null)
+                ?.use { if (it.moveToFirst()) it.getString(0) else null } == context.packageName
+        }.getOrDefault(false)
     }
 
     private fun pathOf(context: Context, uri: Uri): String? =

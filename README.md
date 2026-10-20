@@ -105,11 +105,20 @@ downloads, and tried again if it failed, was canceled, or was cut off when the a
 Downloaded songs are ordinary music files in **Music/Music Box** — on the memory card if one is
 in, and in the phone's own storage if not. They stay there if Music Box is removed, and file
 managers and other music players can see them. Deleting a download in the app deletes its file.
-A YouTube download is named by its title, a music-server one "Artist - Title". After a
-reinstall, a folder chosen in Settings that holds Music brings them back as your own songs.
+A YouTube download is named by its title, a music-server one "Artist - Title". YouTube
+downloads are .m4a files (AAC when YouTube offers it, Opus otherwise, copied as it came with
+nothing re-encoded) with their title, artist and album in their tags, and the address of the
+video they came from in the comment; covers are not put in the files. After a reinstall, a
+folder chosen in Settings that holds Music brings them back as your own songs, under their
+proper names.
 Downloads made before 2.18.0 are moved there once, the first time 2.18.0 opens: each file is
 copied, checked, and only then is the old copy removed, with its playlists and hearts kept. On
 Android 9 and 10 downloads stay in the app's own folder, as before, and go with the app.
+YouTube downloads made before 2.18.1 were WebM files with a .m4a name and no tags; the first
+time 2.18.1 opens, each is copied into a real .m4a file, tagged, checked to play and to be as
+long as the original, and only then swapped in, playlists and hearts kept, and the old file
+removed. One saved before a reinstall is left as it is. On Android 9 an Opus download is saved
+as .webm, since Android 9 cannot play Opus from an .m4a file.
 
 Downloads carry on with the screen off or the app in the background: a quiet notification says
 "Downloading 4 of 12" and has a Stop button, and when the app is not on screen a last

@@ -5,6 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
+import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
@@ -47,14 +48,15 @@ class YouTubeStreamResolver(private val client: OkHttpClient = OkHttpClient()) {
     suspend fun getBestAudioUrl(videoId: String): String =
         getAudioUrlWithRetry(videoId = videoId, maxBitrateKbps = null)
 
+    /** For a download: AAC in MP4 when there is one; see [YouTubeMusicInnertubeClient.getDownloadAudioUrl]. */
     suspend fun getDownloadAudioUrl(videoId: String, maxBitrateKbps: Int = 160): String =
-        getAudioUrlWithRetry(videoId = videoId, maxBitrateKbps = maxBitrateKbps)
+        getAudioUrlWithRetry(videoId = videoId, maxBitrateKbps = maxBitrateKbps, preferMp4 = true)
 
-    private suspend fun getAudioUrlWithRetry(videoId: String, maxBitrateKbps: Int?): String {
+    private suspend fun getAudioUrlWithRetry(videoId: String, maxBitrateKbps: Int?, preferMp4: Boolean = false): String {
         var lastException: Exception? = null
         repeat(3) { attempt ->
             try {
-                return getAudioUrl(videoId, maxBitrateKbps)
+                return getAudioUrl(videoId, maxBitrateKbps, preferMp4)
             } catch (e: Exception) {
                 lastException = e
                 val msg = e.message ?: ""
@@ -72,7 +74,7 @@ class YouTubeStreamResolver(private val client: OkHttpClient = OkHttpClient()) {
         throw lastException ?: ExtractionException("Failed to resolve audio after retries")
     }
 
-    private suspend fun getAudioUrl(videoId: String, maxBitrateKbps: Int?): String =
+    private suspend fun getAudioUrl(videoId: String, maxBitrateKbps: Int?, preferMp4: Boolean): String =
         withContext(Dispatchers.IO) {
             val url = "https://www.youtube.com/watch?v=$videoId"
             ensureInitialized(client)
@@ -83,8 +85,13 @@ class YouTubeStreamResolver(private val client: OkHttpClient = OkHttpClient()) {
             val audioStreams = streamInfo.audioStreams
             if (audioStreams.isEmpty()) error("No audio streams found")
 
-            val candidates = audioStreams.filter { it.averageBitrate > 0 }
-            if (candidates.isEmpty()) error("No audio streams with valid bitrate")
+            val withBitrate = audioStreams.filter { it.averageBitrate > 0 }
+            if (withBitrate.isEmpty()) error("No audio streams with valid bitrate")
+            val candidates = if (preferMp4) {
+                withBitrate.filter { it.format == MediaFormat.M4A }.ifEmpty { withBitrate }
+            } else {
+                withBitrate
+            }
 
             val chosen = if (maxBitrateKbps == null) {
                 candidates.maxByOrNull { it.averageBitrate }!!

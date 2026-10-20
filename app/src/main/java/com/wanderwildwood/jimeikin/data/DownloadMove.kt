@@ -101,30 +101,8 @@ object DownloadMove {
             return false
         }
 
-        val oldUri = row.audioUri
-        val newUri = Uri.fromFile(saved.file).toString()
-        // A YouTube download's id is its file; a kept server song keeps the server's id.
-        val newId = if (row.id == oldUri) newUri else row.id
-        try {
-            database.runInTransaction {
-                val db = database.openHelper.writableDatabase
-                if (newId != row.id) {
-                    db.execSQL("DELETE FROM songs WHERE id = ?", arrayOf(newId))
-                    db.execSQL("UPDATE songs SET id = ?, audioUri = ? WHERE id = ?", arrayOf(newId, newUri, row.id))
-                    db.execSQL("UPDATE OR REPLACE playlist_tracks SET songId = ? WHERE songId = ?", arrayOf(newId, row.id))
-                    db.execSQL(
-                        "UPDATE OR REPLACE hearted_songs SET songId = ?, audioUri = ? WHERE songId = ?",
-                        arrayOf(newId, newUri, row.id),
-                    )
-                    db.execSQL(
-                        "UPDATE OR REPLACE name_overrides SET targetId = ? WHERE kind = ? AND targetId = ?",
-                        arrayOf(newId, NameOverrides.SONG, row.id),
-                    )
-                } else {
-                    db.execSQL("UPDATE songs SET audioUri = ? WHERE id = ?", arrayOf(newUri, row.id))
-                    db.execSQL("UPDATE hearted_songs SET audioUri = ? WHERE songId = ?", arrayOf(newUri, row.id))
-                }
-            }
+        val newId = try {
+            repoint(database, row, saved.file)
         } catch (e: Exception) {
             // The row still names the private copy, which is untouched; the new copy goes.
             PublicDownloads.delete(app, saved.file)
@@ -135,6 +113,44 @@ object DownloadMove {
         writeMoved(app, moved(app) + (old.path to saved.file.path))
         Log.i(TAG, "moved ${old.name} to ${saved.file.path}")
         return true
+    }
+
+    /**
+     * Points [row] at [file] in one transaction, with everything that names the song by its id
+     * - playlists, hearts, a name the reader gave it - when the id changes with it, as a YouTube
+     * download's does: its id is its file. Returns the song's id from now on. Throws, leaving
+     * the library as it was, if the database would not take it. The record of which video it
+     * came from is the caller's to rename (YouTubeCopies.rename).
+     */
+    internal fun repoint(database: CalmMusicDatabase, row: SongEntity, file: File): String {
+        val oldUri = row.audioUri
+        val newUri = Uri.fromFile(file).toString()
+        // A YouTube download's id is its file; a kept server song keeps the server's id.
+        val newId = if (row.id == oldUri) newUri else row.id
+        database.runInTransaction {
+            val db = database.openHelper.writableDatabase
+            if (newId != row.id) {
+                db.execSQL("DELETE FROM songs WHERE id = ?", arrayOf(newId))
+                db.execSQL("UPDATE songs SET id = ?, audioUri = ? WHERE id = ?", arrayOf(newId, newUri, row.id))
+                db.execSQL("UPDATE OR REPLACE playlist_tracks SET songId = ? WHERE songId = ?", arrayOf(newId, row.id))
+                db.execSQL(
+                    "UPDATE OR REPLACE hearted_songs SET songId = ?, audioUri = ? WHERE songId = ?",
+                    arrayOf(newId, newUri, row.id),
+                )
+                db.execSQL(
+                    "UPDATE OR REPLACE name_overrides SET targetId = ? WHERE kind = ? AND targetId = ?",
+                    arrayOf(newId, NameOverrides.SONG, row.id),
+                )
+            } else {
+                db.execSQL("UPDATE songs SET audioUri = ? WHERE id = ?", arrayOf(newUri, row.id))
+                db.execSQL("UPDATE hearted_songs SET audioUri = ? WHERE songId = ?", arrayOf(newUri, row.id))
+            }
+            db.execSQL(
+                "UPDATE songs SET localFileSizeBytes = ?, localLastModifiedMillis = ? WHERE id = ?",
+                arrayOf<Any>(file.length(), file.lastModified(), newId),
+            )
+        }
+        return newId
     }
 
     /**

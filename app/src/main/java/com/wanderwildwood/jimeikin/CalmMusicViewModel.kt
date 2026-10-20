@@ -21,6 +21,7 @@ import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
 import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.CalmMusicSettingsManager
 import com.wanderwildwood.jimeikin.data.DownloadMove
+import com.wanderwildwood.jimeikin.data.DownloadRemux
 import com.wanderwildwood.jimeikin.data.PublicDownloads
 import com.wanderwildwood.jimeikin.data.LibraryRepository
 import com.wanderwildwood.jimeikin.data.NowPlayingSnapshot
@@ -2594,6 +2595,14 @@ class CalmMusicViewModel(
                     DownloadMove.sweep(app, inUse)
                 }
             }.onFailure { android.util.Log.w("CalmMusicViewModel", "moving downloads failed", it) }
+            // Then YouTube downloads saved as WebM become real .m4a files; see DownloadRemux.
+            runCatching {
+                if (DownloadRemux.sweep(app, inUse)) refreshLibraryFromDatabase()
+                if (DownloadRemux.convert(app, inUse) > 0) {
+                    refreshLibraryFromDatabase()
+                    if (DownloadRemux.sweep(app, inUse)) refreshLibraryFromDatabase()
+                }
+            }.onFailure { android.util.Log.w("CalmMusicViewModel", "converting downloads failed", it) }
         }
     }
 

@@ -8,6 +8,7 @@ import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * How local albums are keyed. 2: an album with no Album Artist tag is its name in its folder,
@@ -79,6 +80,9 @@ class LibraryRepository(
                                     PublicDownloads.fileOf(row.audioUri)
                                         ?.takeIf { PublicDownloads.isPublic(it.path) }
                                         ?.let(PublicDownloads::documentIdOf)
+                                } + DownloadRemux.pendingPaths(app).mapNotNull { path ->
+                                    // A download being converted is two files for a moment.
+                                    File(path).takeIf { PublicDownloads.isPublic(it.path) }?.let(PublicDownloads::documentIdOf)
                                 }
                             val scanned = LocalMusicScanner.scanFolders(
                                 context = app,
@@ -330,6 +334,9 @@ class LibraryRepository(
             // and 10 - less any copy already moved and waiting to be deleted - and the public
             // Music Box folder, as far as this app can see it (see PublicDownloads.listAll).
             val moved = DownloadMove.moved(app).keys
+            // A download being converted to .m4a has two files until the old one is deleted,
+            // and only the one its row names is the song; see DownloadRemux.
+            val converting = DownloadRemux.pendingPaths(app)
             val privateFiles = app.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
                 ?.listFiles()
                 ?.filter { it.isFile && it.path !in moved && !it.name.endsWith(".part") && !it.name.startsWith(".") }
@@ -338,7 +345,7 @@ class LibraryRepository(
             // lost one here; the public folder waits while anything is downloading.
             val downloading = app.downloadQueue.items.value.any { it.state == com.wanderwildwood.jimeikin.DownloadState.DOWNLOADING }
             val publicFiles = if (downloading) emptyList() else PublicDownloads.listAll(app)
-            val files = privateFiles + publicFiles
+            val files = (privateFiles + publicFiles).filter { it.path !in converting }
             if (files.isEmpty()) return@withContext 0
 
             // Every row that names a file, whatever kind: a kept server song is in the public
