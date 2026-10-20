@@ -9,6 +9,7 @@ import com.wanderwildwood.jimeikin.data.ArtistEntity
 import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
 import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.LocalMusicScanner
+import com.wanderwildwood.jimeikin.data.PublicDownloads
 import com.wanderwildwood.jimeikin.data.SongEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -68,13 +69,6 @@ internal suspend fun performYouTubeDownloadInternal(
 
         val safeTitle = (song.title.ifBlank { videoId })
             .replace(Regex("""[\\\\/:*?\"<>|]"""), "_")
-        // ⚠ Never deleted up front, which is what this did: the file was named from the title
-        // alone and whatever already had that name was removed before the download began. A
-        // second song called "Intro" erased the first -- its file, and through the row keyed on
-        // the file, the song itself, so its playlist entries played the new one -- and a
-        // re-download that then failed had already thrown away the good copy.
-        val targetFile = withContext(Dispatchers.IO) { chooseTarget(targetDir, safeTitle, song.artist, song.title) }
-
         tmpFile = withContext(Dispatchers.IO) {
             File.createTempFile("yt-$videoId-", ".m4a", context.cacheDir)
         }
@@ -179,25 +173,12 @@ internal suspend fun performYouTubeDownloadInternal(
 
         if (!downloadSuccess) return false
 
-        withContext(Dispatchers.IO) {
-            // Written beside it and renamed over it, so an existing copy is only replaced by a
-            // whole one: a kill or a full card part way through leaves the old file as it was.
-            val part = File(targetFile.parentFile, targetFile.name + ".part")
-            FileInputStream(tmpFile).use { input ->
-                FileOutputStream(part).use { output ->
-                    input.copyTo(output)
-                }
-            }
-            if (!part.renameTo(targetFile)) {
-                part.delete()
-                throw java.io.IOException("could not put ${targetFile.name} in place")
-            }
-        }
-
+        // Tagged while it is still in the cache, so the file that lands in the music folder is
+        // whole and final the moment anything can see it.
         withContext(Dispatchers.IO) {
             try {
                 TagOptionSingleton.getInstance().isAndroid = true
-                val audioFile = AudioFileIO.read(targetFile)
+                val audioFile = AudioFileIO.read(tmpFile)
                 val tag = audioFile.tagAndConvertOrCreateAndSetDefault
 
                 tag.setField(FieldKey.TITLE, song.title)
@@ -214,6 +195,14 @@ internal suspend fun performYouTubeDownloadInternal(
                 audioFile.commit()
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+
+        val targetFile = withContext(Dispatchers.IO) {
+            if (PublicDownloads.isAvailable) {
+                placePublic(context, tmpFile!!, safeTitle, song.artist, song.title)
+            } else {
+                placePrivate(tmpFile!!, targetDir, safeTitle, song.artist, song.title)
             }
         }
 
@@ -334,9 +323,51 @@ internal suspend fun performYouTubeDownloadInternal(
 }
 
 /**
- * Where a download goes: its title, or the title numbered, "Intro (2)", when another song
- * already has it. A file with the same title *and* artist is taken to be this song and is
- * the one case replaced -- and only once the new copy is whole; see the rename above.
+ * Puts a finished download in the app's private music folder (Android 9 and 10; see
+ * [PublicDownloads]). Written beside its place and renamed into it, so an existing copy is only
+ * replaced by a whole one: a kill or a full card part way through leaves the old file as it was.
+ */
+private fun placePrivate(tmp: File, dir: File, base: String, artist: String?, title: String): File {
+    // ⚠ Never deleted up front, which is what this did: the file was named from the title
+    // alone and whatever already had that name was removed before the download began. A
+    // second song called "Intro" erased the first -- its file, and through the row keyed on
+    // the file, the song itself, so its playlist entries played the new one -- and a
+    // re-download that then failed had already thrown away the good copy.
+    val targetFile = chooseTarget(dir, base, artist, title)
+    val part = File(targetFile.parentFile, targetFile.name + ".part")
+    FileInputStream(tmp).use { input ->
+        FileOutputStream(part).use { output ->
+            input.copyTo(output)
+        }
+    }
+    if (!part.renameTo(targetFile)) {
+        part.delete()
+        throw java.io.IOException("could not put ${targetFile.name} in place")
+    }
+    return targetFile
+}
+
+/**
+ * Puts a finished download in Music/Music Box, where it outlasts the app. MediaStore numbers
+ * the name when the folder already has one; if the file it would have had is this same song --
+ * a download asked for again -- the old copy goes once the new one is whole, and the new one
+ * takes its name, so the song keeps its id and its place in playlists.
+ */
+@androidx.annotation.RequiresApi(30)
+private fun placePublic(context: Context, tmp: File, base: String, artist: String?, title: String): File {
+    val wanted = "$base.m4a"
+    val saved = PublicDownloads.save(context, tmp, wanted, "audio/mp4")
+    if (saved.file.name == wanted) return saved.file
+    val earlier = File(saved.file.parentFile, wanted)
+    if (!earlier.exists() || !isSameSong(earlier, artist, title)) return saved.file
+    if (PublicDownloads.delete(context, earlier) != PublicDownloads.Deletion.Done) return saved.file
+    return PublicDownloads.rename(context, saved, wanted)?.file ?: saved.file
+}
+
+/**
+ * Where a private download goes: its title, or the title numbered, "Intro (2)", when another
+ * song already has it. A file with the same title *and* artist is taken to be this song and is
+ * the one case replaced -- and only once the new copy is whole; see [placePrivate].
  */
 private fun chooseTarget(dir: File, base: String, artist: String?, title: String): File {
     var n = 1

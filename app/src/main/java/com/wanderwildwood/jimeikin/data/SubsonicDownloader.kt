@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Downloads a song from a music server to the phone, so it plays away from the network.
  *
- * The file lands in the app's own music folder, and the song's row changes source: it stops
+ * The file lands in Music/Music Box (see [PublicDownloads]), and the song's row changes source: it stops
  * being a pointer to the server and becomes a file, which is what makes its rule solid and
  * what lets it play with the wifi off. It is still the same row — the library does not gain a
  * second copy — and forgetting the server or a later sync leaves it alone.
@@ -28,7 +28,11 @@ object SubsonicDownloader {
         .readTimeout(120, TimeUnit.SECONDS)
         .build()
 
-    /** Where downloaded songs live: the app's own folder, so removing the app removes them too. */
+    /**
+     * The app's own folder. Downloads lived here until 2.18.0 and still do on Android 9 and 10;
+     * the address each kept song streamed from is written here beside it either way, since it
+     * is the app's to remember and no business of a music folder.
+     */
     private fun folder(context: Context): File? =
         context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)?.resolve("server")?.apply { mkdirs() }
 
@@ -37,6 +41,9 @@ object SubsonicDownloader {
         val safe = songRowId.replace(Regex("[^A-Za-z0-9_.-]"), "_")
         return folder(context)?.resolve("$safe.audio")
     }
+
+    private fun streamFileFor(context: Context, songRowId: String): File? =
+        fileFor(context, songRowId)?.let { File(it.path + STREAM_SUFFIX) }
 
     /**
      * Fetches one song. Downloads to a temporary name and moves it into place only once it is
@@ -57,7 +64,13 @@ object SubsonicDownloader {
         }
         if (target.exists() && target.length() > 0) return@withContext SubsonicResult.Success(target)
 
-        val partial = File(target.absolutePath + ".part")
+        // Fetched into the cache when it is going to the music folder, and copied there whole.
+        val partial = if (PublicDownloads.isAvailable) {
+            File(context.cacheDir, target.name + ".part")
+        } else {
+            File(target.absolutePath + ".part")
+        }
+        var contentType: String? = null
         try {
             // The row already carries the url playback would use, which is the file
             // untouched where this phone can decode it and a transcode where it cannot.
@@ -69,6 +82,7 @@ object SubsonicDownloader {
                 }
                 val body = response.body
                     ?: return@withContext SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_empty))
+                contentType = body.contentType()?.toString()
                 val total = body.contentLength()
                 var written = 0L
                 var lastPercent = -1
@@ -94,7 +108,24 @@ object SubsonicDownloader {
                     }
                 }
             }
-            if (!partial.renameTo(target)) {
+            if (PublicDownloads.isAvailable) {
+                val saved = runCatching { savePublic(context, song, partial, contentType) }
+                    .onFailure { android.util.Log.w("SubsonicDownloader", "could not put ${song.id} in the music folder", it) }
+                    .getOrNull()
+                if (saved != null) {
+                    partial.delete()
+                    onProgress(1f)
+                    return@withContext SubsonicResult.Success(saved.file)
+                }
+                // A file whose kind cannot be told is not let into the music folder; it is
+                // kept in the app's own, as every download was before.
+            }
+            // From the cache that is another filesystem, where a rename cannot reach.
+            val placed = partial.renameTo(target) ||
+                runCatching { partial.copyTo(target, overwrite = true).length() == partial.length() }.getOrDefault(false)
+            partial.delete()
+            if (!placed) {
+                target.delete()
                 partial.delete()
                 return@withContext SubsonicResult.Failure(context.getString(R.string.service_subsonic_download_not_saved))
             }
@@ -110,9 +141,21 @@ object SubsonicDownloader {
         }
     }
 
-    /** Removes the kept copy. The song stays in the library, as a pointer to the server again. */
-    fun remove(context: Context, songRowId: String): Boolean =
-        fileFor(context, songRowId)?.takeIf { it.exists() }?.delete() ?: false
+    /**
+     * Copies a finished download into Music/Music Box as "Artist - Title", with the extension
+     * of what it really is: its first bytes are read first, then the server's word is taken.
+     * Null when neither says it is a kind of audio the phone knows.
+     */
+    @androidx.annotation.RequiresApi(30)
+    internal fun savePublic(context: Context, song: SongEntity, file: File, contentType: String?): PublicDownloads.Saved? {
+        val sniffed = PublicDownloads.sniffMimeType(file)
+        val ext = PublicDownloads.extensionOf(sniffed) ?: PublicDownloads.extensionOf(contentType) ?: return null
+        val mime = PublicDownloads.mimeTypeOf("x.$ext") ?: return null
+        val base = PublicDownloads.safeName(
+            listOf(song.artist, song.title).filter { it.isNotBlank() }.joinToString(" - "),
+        ).ifBlank { "Song" }
+        return PublicDownloads.save(context, file, "$base.$ext", mime)
+    }
 
     /**
      * Takes a kept song off the phone: its copy goes, and the row it becomes -- streamed from
@@ -124,9 +167,11 @@ object SubsonicDownloader {
      * delete", so the server folder only ever grew.
      */
     fun unkeep(context: Context, row: SongEntity): SongEntity? {
-        val file = fileFor(context, row.id)
-        file?.takeIf { it.exists() }?.delete()
-        val stream = file?.let { File(it.path + STREAM_SUFFIX) }
+        // The copy is wherever the row says: the music folder, or the app's own for one kept
+        // before 2.18.0 or on Android 9 and 10.
+        PublicDownloads.fileOf(row.audioUri)?.let { PublicDownloads.delete(context, it) }
+        fileFor(context, row.id)?.takeIf { it.exists() }?.delete()
+        val stream = streamFileFor(context, row.id)
         val url = stream?.takeIf { it.exists() }?.let { runCatching { it.readText() }.getOrNull() }
         stream?.delete()
         return url?.takeIf { it.isNotBlank() }?.let { row.copy(sourceType = SubsonicSync.SOURCE_TYPE, audioUri = it) }

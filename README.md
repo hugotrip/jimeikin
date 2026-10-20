@@ -102,6 +102,15 @@ hundred), with the reason when one did not download. Each can be canceled while 
 downloads, and tried again if it failed, was canceled, or was cut off when the app was closed.
 **Clear** forgets the finished ones.
 
+Downloaded songs are ordinary music files in **Music/Music Box** — on the memory card if one is
+in, and in the phone's own storage if not. They stay there if Music Box is removed, and file
+managers and other music players can see them. Deleting a download in the app deletes its file.
+A YouTube download is named by its title, a music-server one "Artist - Title". After a
+reinstall, a folder chosen in Settings that holds Music brings them back as your own songs.
+Downloads made before 2.18.0 are moved there once, the first time 2.18.0 opens: each file is
+copied, checked, and only then is the old copy removed, with its playlists and hearts kept. On
+Android 9 and 10 downloads stay in the app's own folder, as before, and go with the app.
+
 Downloads carry on with the screen off or the app in the background: a quiet notification says
 "Downloading 4 of 12" and has a Stop button, and when the app is not on screen a last
 notification says how the run ended. On Android 13 and later the app asks once, the first time
@@ -165,7 +174,8 @@ playlists and settings.
 
 ## What it sends
 
-Your settings and local library stay on the phone. The YouTube features talk to YouTube and
+Your settings and local library stay on the phone, and so do your downloads, in
+Music/Music Box. The YouTube features talk to YouTube and
 YouTube Music, only to search and stream audio. There are no ads, no analytics and no tracking
 SDKs. The same is said in the app, behind the **i** in the top right.
 

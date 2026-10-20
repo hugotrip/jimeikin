@@ -48,6 +48,13 @@ class YouTubeCopies(private val file: File) {
         save()
     }
 
+    /** The downloaded song is known by a new id now: its file moved. */
+    fun rename(oldSongId: String, newSongId: String) {
+        if (oldSongId !in _recorded.value.values) return
+        _recorded.update { map -> map.mapValues { (_, id) -> if (id == oldSongId) newSongId else id } }
+        save()
+    }
+
     /** The song has gone - deleted, or its file removed - and its video is not here any more. */
     fun forget(songId: String) {
         if (songId !in _recorded.value.values) return

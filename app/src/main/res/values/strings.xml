@@ -162,6 +162,7 @@
     <string name="main_could_not_delete_file">Couldn\'t delete file</string>
     <string name="main_removed_download">Removed the download</string>
     <string name="main_could_not_remove_download">Couldn\'t remove the download</string>
+    <string name="main_download_file_kept">The download is still here: Android did not allow its file to be deleted</string>
     <string name="main_streamed_nothing_to_delete">This one is streamed, so there is nothing on the phone to delete</string>
 
     <!-- Downloading songs from the music server or YouTube (snackbars, and the line along the bottom) -->

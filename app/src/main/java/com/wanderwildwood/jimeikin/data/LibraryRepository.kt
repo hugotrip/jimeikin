@@ -69,10 +69,22 @@ class LibraryRepository(
                         val (scannedAudio, existingLocalSongs) = withContext(Dispatchers.IO) {
                             val existingLocalSongs = songDao.getSongsBySourceType("LOCAL_FILE")
                             val existingByUri = existingLocalSongs.associateBy { it.audioUri }
+                            // A download is in Music/Music Box, which a chosen folder holding
+                            // Music also reaches. It is already in the library as a download,
+                            // so the scan passes over it rather than listing it twice.
+                            val downloadDocumentIds = (
+                                songDao.getSongsBySourceType("YOUTUBE_DOWNLOAD") +
+                                    songDao.getSongsBySourceType(SubsonicDownloader.SOURCE_TYPE)
+                                ).mapNotNullTo(HashSet()) { row ->
+                                    PublicDownloads.fileOf(row.audioUri)
+                                        ?.takeIf { PublicDownloads.isPublic(it.path) }
+                                        ?.let(PublicDownloads::documentIdOf)
+                                }
                             val scanned = LocalMusicScanner.scanFolders(
                                 context = app,
                                 folderUris = folders,
                                 existingSongsByUri = existingByUri,
+                                skipDocumentIds = downloadDocumentIds,
                                 lastScanMillis = lastScanMillis,
                                 rereadTags = rereadTags,
                             ) { processed, total ->
@@ -314,12 +326,34 @@ class LibraryRepository(
 
     suspend fun ingestAppDownloadsIfMissing(): Int {
         return withContext(Dispatchers.IO) {
-            val downloadsDir = app.getExternalFilesDir(Environment.DIRECTORY_MUSIC) ?: return@withContext 0
-            val files = downloadsDir.listFiles()?.filter { it.isFile } ?: emptyList()
+            // The private folder, where downloads went before 2.18.0 and still go on Android 9
+            // and 10 - less any copy already moved and waiting to be deleted - and the public
+            // Music Box folder, as far as this app can see it (see PublicDownloads.listAll).
+            val moved = DownloadMove.moved(app).keys
+            val privateFiles = app.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+                ?.listFiles()
+                ?.filter { it.isFile && it.path !in moved && !it.name.endsWith(".part") && !it.name.startsWith(".") }
+                .orEmpty()
+            // A download just finished may not have its row yet, and would be taken for a
+            // lost one here; the public folder waits while anything is downloading.
+            val downloading = app.downloadQueue.items.value.any { it.state == com.wanderwildwood.jimeikin.DownloadState.DOWNLOADING }
+            val publicFiles = if (downloading) emptyList() else PublicDownloads.listAll(app)
+            val files = privateFiles + publicFiles
             if (files.isEmpty()) return@withContext 0
 
-            val existingDownloads = songDao.getSongsBySourceType("YOUTUBE_DOWNLOAD")
+            // Every row that names a file, whatever kind: a kept server song is in the public
+            // folder too, and must not come back a second time as a YouTube download.
+            val existingDownloads = songDao.getSongsBySourceType("YOUTUBE_DOWNLOAD") +
+                songDao.getSongsBySourceType(SubsonicDownloader.SOURCE_TYPE)
             val existingByUri = existingDownloads.associateBy { it.audioUri }
+
+            // After a reinstall the public files can already be in the library as the reader's
+            // own songs, through a chosen folder that holds Music; those stay as they are.
+            var localDocumentIds: Set<String>? = null
+            suspend fun localDocumentIds(): Set<String> = localDocumentIds
+                ?: songDao.getSongsBySourceType("LOCAL_FILE").mapNotNullTo(HashSet()) { row ->
+                    runCatching { android.provider.DocumentsContract.getDocumentId(Uri.parse(row.audioUri)) }.getOrNull()
+                }.also { localDocumentIds = it }
 
             val toInsert = mutableListOf<SongEntity>()
             val artistsToUpsert = mutableListOf<ArtistEntity>()
@@ -336,6 +370,9 @@ class LibraryRepository(
                 val uri = Uri.fromFile(file)
                 val uriString = uri.toString()
                 if (existingByUri.containsKey(uriString)) continue
+                if (PublicDownloads.isPublic(file.path) &&
+                    PublicDownloads.documentIdOf(file)?.let { it in localDocumentIds() } == true
+                ) continue
 
                 val scanned = LocalMusicScanner.buildSongEntityFromFile(
                     context = app,

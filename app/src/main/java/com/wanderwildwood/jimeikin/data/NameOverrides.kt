@@ -180,6 +180,11 @@ class NameOverrides(
     private suspend fun load(): Names =
         Names(runCatching { dao().getAll() }.getOrDefault(emptyList()).associateBy { it.kind to it.targetId }, recorded)
 
+    /** Reads them again, after something other than [write] changed the table. */
+    suspend fun refresh() {
+        mutex.withLock { _names.value = load() }
+    }
+
     suspend fun write(set: List<NameOverrideEntity>, clear: Map<String, List<String>> = emptyMap()) {
         mutex.withLock {
             clear.forEach { (kind, ids) -> if (ids.isNotEmpty()) dao().delete(kind, ids) }
@@ -210,6 +215,11 @@ class Hearts(
 
     init {
         scope.launch { mutex.withLock { reload() } }
+    }
+
+    /** Reads them again, after something other than this changed the table. */
+    suspend fun refresh() {
+        mutex.withLock { reload() }
     }
 
     private suspend fun reload() {

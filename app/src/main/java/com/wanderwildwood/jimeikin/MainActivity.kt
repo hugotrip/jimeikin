@@ -1087,9 +1087,9 @@ fun CalmMusic(
     val onRemoveFromLibrary: (SongUiModel) -> Unit = { song ->
         libraryScope.launch {
             try {
-                viewModel.removeSongFromLibrary(song)
+                val removed = viewModel.removeSongFromLibrary(song)
                 snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.main_removed_from_library),
+                    message = context.getString(if (removed) R.string.main_removed_from_library else R.string.main_download_file_kept),
                     withDismissAction = false,
                     duration = SnackbarDurationMMD.Short,
                 )
@@ -1137,7 +1137,7 @@ fun CalmMusic(
                     snackbarHostState.showSnackbar(
                         message = when {
                             isDownload && success -> context.getString(R.string.main_removed_download)
-                            isDownload -> context.getString(R.string.main_could_not_remove_download)
+                            isDownload -> context.getString(R.string.main_download_file_kept)
                             success -> context.getString(R.string.main_deleted_file)
                             else -> context.getString(R.string.main_could_not_delete_file)
                         },
@@ -1243,6 +1243,19 @@ fun CalmMusic(
             fileToOpen = openedFile
             onOpenedFileTaken()
         }
+    }
+    // Android's own question before a download another install wrote can be deleted.
+    val deleteConsent by viewModel.deleteConsent.collectAsState()
+    val askToDelete = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        viewModel.answerDeleteConsent(result.resultCode == android.app.Activity.RESULT_OK)
+    }
+    LaunchedEffect(deleteConsent) {
+        val asked = deleteConsent ?: return@LaunchedEffect
+        runCatching {
+            askToDelete.launch(androidx.activity.result.IntentSenderRequest.Builder(asked.request).build())
+        }.onFailure { viewModel.answerDeleteConsent(false) }
     }
     var fileWaitingForAccess by remember { mutableStateOf<Uri?>(null) }
     val askForMediaAccess = rememberLauncherForActivityResult(

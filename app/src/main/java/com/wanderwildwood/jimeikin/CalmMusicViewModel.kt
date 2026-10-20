@@ -20,6 +20,8 @@ import com.wanderwildwood.jimeikin.data.ArtistWithCounts
 import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
 import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
 import com.wanderwildwood.jimeikin.data.CalmMusicSettingsManager
+import com.wanderwildwood.jimeikin.data.DownloadMove
+import com.wanderwildwood.jimeikin.data.PublicDownloads
 import com.wanderwildwood.jimeikin.data.LibraryRepository
 import com.wanderwildwood.jimeikin.data.NowPlayingSnapshot
 import com.wanderwildwood.jimeikin.data.NowPlayingStorage
@@ -46,6 +48,7 @@ import com.wanderwildwood.jimeikin.data.SubsonicResult
 import com.wanderwildwood.jimeikin.data.SubsonicSong
 import com.wanderwildwood.jimeikin.data.serverClient
 import com.wanderwildwood.jimeikin.data.SubsonicSync
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -1853,25 +1856,25 @@ class CalmMusicViewModel(
         }
     }
 
-    fun removeSongFromLibrary(song: SongUiModel) {
-        viewModelScope.launch {
-            // A song this app downloaded or kept is its file: taking it out of the library and
-            // leaving the file meant a download came straight back at the next launch, and a
-            // kept server song left its copy in a folder nothing would ever clear.
-            when (song.sourceType) {
-                "YOUTUBE_DOWNLOAD" -> { deleteLocalMediaSong(song); return@launch }
-                com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
-                    withContext(Dispatchers.IO) {
-                        rawSongDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
-                    }
+    /** False when the song is still there: a download whose file could not be deleted. */
+    suspend fun removeSongFromLibrary(song: SongUiModel): Boolean {
+        // A song this app downloaded or kept is its file: taking it out of the library and
+        // leaving the file meant a download came straight back at the next launch, and a
+        // kept server song left its copy in a folder nothing would ever clear.
+        when (song.sourceType) {
+            "YOUTUBE_DOWNLOAD" -> return deleteLocalMediaSong(song)
+            com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
+                withContext(Dispatchers.IO) {
+                    rawSongDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
                 }
             }
-            withContext(Dispatchers.IO) {
-                songDao.deleteByIds(listOf(song.id))
-                database.dropOrphanedYouTubeRows()
-            }
-            refreshLibraryFromDatabase()
         }
+        withContext(Dispatchers.IO) {
+            songDao.deleteByIds(listOf(song.id))
+            database.dropOrphanedYouTubeRows()
+        }
+        refreshLibraryFromDatabase()
+        return true
     }
 
     /** A kept server song, taken off the phone and back to streaming. See [SubsonicDownloader.unkeep]. */
@@ -1882,6 +1885,7 @@ class CalmMusicViewModel(
      * The reader's own files are never passed here. Returns how many went.
      */
     suspend fun removeSongsFromLibrary(songs: List<SongUiModel>): Int {
+        val needConsent = mutableListOf<Pair<SongUiModel, Uri>>()
         val removed = withContext(Dispatchers.IO) {
             var count = 0
             for (song in songs) {
@@ -1891,7 +1895,18 @@ class CalmMusicViewModel(
                         "YOUTUBE_DOWNLOAD" -> {
                             val uri = Uri.parse(song.audioUri ?: song.id)
                             if (uri.scheme == null || uri.scheme == "file") {
-                                uri.path?.let { java.io.File(it).delete() }
+                                uri.path?.let { path ->
+                                    val file = java.io.File(path)
+                                    when (val deletion = PublicDownloads.delete(app, file)) {
+                                        PublicDownloads.Deletion.Done -> Unit
+                                        // Asked about all together once the rest are done.
+                                        is PublicDownloads.Deletion.NeedsConsent -> {
+                                            needConsent += song to deletion.uri
+                                            return@runCatching
+                                        }
+                                        PublicDownloads.Deletion.Failed -> return@runCatching
+                                    }
+                                }
                             } else {
                                 DocumentFile.fromSingleUri(app, uri)?.delete()
                             }
@@ -1909,8 +1924,52 @@ class CalmMusicViewModel(
             database.dropOrphanedYouTubeRows()
             count
         }
+        // Downloads written before a reinstall are not this app's to delete, and Android asks
+        // once for all of them. Those it is not allowed stay, file and row.
+        var consented = 0
+        if (needConsent.isNotEmpty()) {
+            val request = PublicDownloads.consentFor(app, needConsent.map { it.second })
+            if (request != null && askToDelete(request)) {
+                consented = withContext(Dispatchers.IO) {
+                    needConsent.count { (song, _) ->
+                        val gone = PublicDownloads.fileOf(song.audioUri ?: song.id)?.exists() != true
+                        if (gone) forgetDownloadRow(song)
+                        gone
+                    }.also { database.dropOrphanedYouTubeRows() }
+                }
+            }
+        }
         refreshLibraryFromDatabase()
-        return removed
+        return removed + consented
+    }
+
+    private suspend fun forgetDownloadRow(song: SongUiModel) {
+        playlistDao.deleteTracksForSongId(song.id)
+        songDao.deleteByIds(listOf(song.id))
+        app.youTubeCopies.forget(song.id)
+    }
+
+    /**
+     * Android's question before a file another install of this app wrote can be deleted; see
+     * [PublicDownloads.Deletion.NeedsConsent]. The screen shows it and answers through
+     * [answerDeleteConsent].
+     */
+    class DeleteConsent(val request: android.content.IntentSender, internal val answer: CompletableDeferred<Boolean>)
+
+    private val _deleteConsent = MutableStateFlow<DeleteConsent?>(null)
+    val deleteConsent: StateFlow<DeleteConsent?> = _deleteConsent
+
+    fun answerDeleteConsent(allowed: Boolean) {
+        val asked = _deleteConsent.value ?: return
+        _deleteConsent.value = null
+        asked.answer.complete(allowed)
+    }
+
+    private suspend fun askToDelete(request: android.content.IntentSender): Boolean {
+        val asked = DeleteConsent(request, CompletableDeferred())
+        _deleteConsent.value?.answer?.complete(false)
+        _deleteConsent.value = asked
+        return asked.answer.await()
     }
 
     suspend fun unkeepServerSong(song: SongUiModel): Boolean {
@@ -2114,20 +2173,25 @@ class CalmMusicViewModel(
         if (song.sourceType != "LOCAL_FILE" && song.sourceType != "YOUTUBE_DOWNLOAD") return false
 
         return try {
-            withContext(Dispatchers.IO) {
+            val removed = withContext(Dispatchers.IO) {
                 val uriString = song.audioUri ?: song.id
                 if (uriString.isNotBlank()) {
                     try {
                         val uri = Uri.parse(uriString)
                         if (song.sourceType == "YOUTUBE_DOWNLOAD") {
-                            // Downloads live under app-specific storage and are usually file:// URIs.
+                            // Downloads are file:// paths: in Music/Music Box, or the app's
+                            // own folder for one made before 2.18.0 or on Android 9 and 10.
+                            // The row goes only with the file, so a download is never left on
+                            // the phone with nothing in the app to find it by.
                             if (uri.scheme == null || uri.scheme == "file") {
-                                uri.path?.let { path ->
-                                    try {
-                                        java.io.File(path).delete()
-                                    } catch (_: Exception) {
-                                    }
+                                val file = uri.path?.let { java.io.File(it) }
+                                val gone = when (val deletion = file?.let { PublicDownloads.delete(app, it) }) {
+                                    null, PublicDownloads.Deletion.Done -> true
+                                    is PublicDownloads.Deletion.NeedsConsent ->
+                                        askToDelete(deletion.request) && file?.exists() != true
+                                    PublicDownloads.Deletion.Failed -> false
                                 }
+                                if (!gone) return@withContext false
                             } else {
                                 try {
                                     DocumentFile.fromSingleUri(app, uri)?.delete()
@@ -2156,7 +2220,9 @@ class CalmMusicViewModel(
                 playlistDao.deleteTracksForSongId(song.id)
                 songDao.deleteByIds(listOf(song.id))
                 database.dropOrphanedYouTubeRows()
+                true
             }
+            if (!removed) return false
             if (song.sourceType == "YOUTUBE_DOWNLOAD") app.youTubeCopies.forget(song.id)
 
             refreshLibraryFromDatabase()
@@ -2505,6 +2571,29 @@ class CalmMusicViewModel(
 
             _isLoadingSongs.value = false
             _isLoadingAlbums.value = false
+
+            moveDownloadsToMusicFolder()
+        }
+    }
+
+    /**
+     * Downloads made before 2.18.0 go to Music/Music Box, once, after the library is up so
+     * the first launch is not held for it; see [DownloadMove]. The private copies are deleted
+     * only after the library has been read again, so no row on screen still names one.
+     */
+    private fun moveDownloadsToMusicFolder() {
+        val inUse: () -> Set<String> = {
+            val state = _playbackState.value
+            (state.playbackQueue + state.originalPlaybackQueue).flatMapTo(HashSet()) { listOfNotNull(it.id, it.audioUri) }
+        }
+        viewModelScope.launch {
+            runCatching {
+                DownloadMove.sweep(app, inUse)
+                if (DownloadMove.move(app, inUse) > 0) {
+                    refreshLibraryFromDatabase()
+                    DownloadMove.sweep(app, inUse)
+                }
+            }.onFailure { android.util.Log.w("CalmMusicViewModel", "moving downloads failed", it) }
         }
     }
 

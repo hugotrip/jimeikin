@@ -63,6 +63,8 @@ object LocalMusicScanner {
         existingSongsByUri: Map<String, SongEntity> = emptyMap(),
         lastScanMillis: Long = 0L,
         rereadTags: Boolean = false,
+        /** Files to pass over: the app's own downloads, already in the library as downloads. */
+        skipDocumentIds: Set<String> = emptySet(),
         onProgress: suspend (processed: Int, total: Int) -> Unit = { _, _ -> },
     ): LocalScanResult {
         val result = mutableListOf<ScannedLocalAudio>()
@@ -218,6 +220,7 @@ object LocalMusicScanner {
                     }
 
                     if (ext in AUDIO_EXTENSIONS) {
+                        if (child.id in skipDocumentIds) continue
                         if (!seenDocumentIds.add(child.id)) continue
                         val uriString2 = uri.toString()
                         val relativePath = if (dirPath.isEmpty()) name else "$dirPath/$name"
