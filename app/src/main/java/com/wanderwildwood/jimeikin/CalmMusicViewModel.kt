@@ -1,6 +1,8 @@
 package com.wanderwildwood.jimeikin
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.documentfile.provider.DocumentFile
@@ -1272,11 +1274,17 @@ class CalmMusicViewModel(
     }
 
     /**
-     * With "Keep playing similar songs" on, the last song in the queue being a YouTube song is
-     * the moment to ask YouTube Music what it would play next, and add that to the end. It is
-     * asked while the song plays rather than when it ends, so the next one follows without a
-     * gap, and the songs it adds show in the queue like any other. The last of those, in its
-     * turn, asks again.
+     * With "Keep playing similar songs" on, the last song in the queue being a YouTube song -
+     * streamed, or downloaded from YouTube - is the moment to ask YouTube Music what it would
+     * play next, and add that to the end. A download is asked about by the video it came from,
+     * as the download record knows it; one the record does not know is left to end the queue,
+     * and so is a song from a folder or the music server. It is asked while the song plays
+     * rather than when it ends, so the next one follows without a gap, and the songs it adds
+     * show in the queue like any other. The last of those, in its turn, asks again.
+     *
+     * Nothing is asked while the phone is offline; the song is asked about again once a
+     * network is back, if it is still playing. A lookup that fails adds nothing and leaves the
+     * playing song alone.
      *
      * Nothing is added under repeat: the listener has said what to play after the end.
      */
@@ -1285,21 +1293,20 @@ class CalmMusicViewModel(
         val index = state.playbackQueueIndex ?: return
         if (index != queue.lastIndex) return
         val seed = queue[index]
-        if (seed.sourceType != "YOUTUBE" || state.repeatMode != RepeatMode.OFF) return
+        if (state.repeatMode != RepeatMode.OFF) return
         if (seed.id == lastSimilarSeedId) return
         if (!app.settingsManager.getKeepPlayingSimilarSync()) return
+        val videoId = SimilarSongs.seedVideoId(seed, app.youTubeCopies.recorded.value) ?: return
+        if (!isOnline()) return
         lastSimilarSeedId = seed.id
 
         viewModelScope.launch {
-            val found = app.youTubeInnertubeClient.getUpNext(seed.audioUri ?: seed.id)
+            val found = app.youTubeInnertubeClient.getUpNext(videoId)
             val current = _playbackState.value
             // The listener may have started something else while YouTube answered.
             if (current.playbackQueue.lastOrNull()?.id != seed.id) return@launch
-            val inQueue = current.playbackQueue.map { it.id }.toSet()
-            val songs = found
-                .filter { it.videoId !in inQueue }
-                .distinctBy { it.videoId }
-                .take(SIMILAR_BATCH)
+            val songs = SimilarSongs
+                .pick(found, current.playbackQueue, app.youTubeCopies.recorded.value, videoId, SIMILAR_BATCH)
                 .map { item ->
                     SongUiModel(
                         id = item.videoId,
@@ -1315,6 +1322,14 @@ class CalmMusicViewModel(
             if (songs.isNotEmpty()) enqueue(songs, playNext = false, localController = controller)
         }
     }
+
+    /** Whether the phone has a network that reaches the internet just now. */
+    private fun isOnline(): Boolean = runCatching {
+        val connectivity = app.getSystemService(ConnectivityManager::class.java) ?: return@runCatching false
+        val network = connectivity.activeNetwork ?: return@runCatching false
+        connectivity.getNetworkCapabilities(network)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    }.getOrDefault(false)
 
     fun playNextInQueue(localController: MediaController?) {
         val state = _playbackState.value
@@ -1635,7 +1650,7 @@ class CalmMusicViewModel(
                     }
                 }
 
-                if (isYouTube) addSimilarIfLast(state, controller)
+                if (isYouTube || currentSong?.sourceType == "YOUTUBE_DOWNLOAD") addSimilarIfLast(state, controller)
 
                 // Handle End-of-Track / End-of-Segment Auto-Advance
                 if (playbackState == Player.STATE_ENDED && currentSong != null) {
