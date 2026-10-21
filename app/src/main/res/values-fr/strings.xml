@@ -674,4 +674,8 @@
          and the default phone/texting roles until App info, then ⋮, then Allow restricted settings. -->
     <string name="restricted_hint">Android bloque ceci pour les applications installées à partir d\'un fichier. Ouvrez les infos de l\'application, appuyez sur ⋮, puis autorisez les paramètres restreints, puis réessayez.</string>
     <string name="restricted_app_info">Info de l’application</string>
+    <!-- One line above a library list after a swipe down on its first page -->
+    <string name="main_pull_checking_server">Interrogation du serveur…</string>
+    <string name="main_pull_reading_folders">Lecture de la musique du téléphone…</string>
+    <string name="main_pull_up_to_date">À jour</string>
 </resources>

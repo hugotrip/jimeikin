@@ -817,9 +817,66 @@ fun CalmMusic(
                 }
             }
             viewModel.refreshLibraryFromDatabase()
+            // The server's playlists came across too; without this they showed only after a restart.
+            playlistsViewModel.refreshPlaylists()
             isServerBusy = false
         }
     }
+
+    // What a swipe down on a library list set going, said in one line above the list: what it is
+    // doing while it does it, then how it went for a few seconds.
+    var pullSaid by remember { mutableStateOf<String?>(null) }
+    var pullDone by remember { mutableIntStateOf(0) }
+    LaunchedEffect(pullDone) { if (pullDone > 0) { delay(3000L); pullSaid = null } }
+
+    /**
+     * A swipe down at the top of Artists, Albums, Songs or Playlists: the server's library is read
+     * again where one is connected, and the music folders on the phone after it -- that walk skips
+     * every file it has seen unchanged, so it is the same cheap pass Settings' "Read them again" is.
+     */
+    fun refreshLibraryFromPull() {
+        if (isServerBusy || isRescanningLocal) return
+        val config = subsonicConfig
+        val folders = localMusicFolders
+        if (config == null && folders.isEmpty()) return
+        libraryScope.launch {
+            var failure: String? = null
+            if (config != null) {
+                isServerBusy = true
+                pullSaid = context.getString(R.string.main_pull_checking_server)
+                val client = com.wanderwildwood.jimeikin.data.SubsonicClient(
+                    config = config,
+                    resources = context.resources,
+                    initialAuth = settingsManager.getSubsonicAuth(config),
+                    onAuthLearned = { settingsManager.setSubsonicAuth(config, it) },
+                )
+                val database = com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(app)
+                val result = com.wanderwildwood.jimeikin.data.SubsonicSync.sync(
+                    client = client,
+                    songDao = database.songDao(),
+                    albumDao = database.albumDao(),
+                    artistDao = database.artistDao(),
+                    playlistDao = database.playlistDao(),
+                    onProgress = {},
+                )
+                if (result is com.wanderwildwood.jimeikin.data.SubsonicResult.Failure) failure = result.message
+                viewModel.refreshLibraryFromDatabase()
+                playlistsViewModel.refreshPlaylists()
+                isServerBusy = false
+            }
+            if (folders.isNotEmpty()) {
+                pullSaid = context.getString(R.string.main_pull_reading_folders)
+                resyncLocalLibrary(folders)
+                if (failure == null) failure = songsError
+            }
+            // The card's .m3u files are read by the walk too.
+            if (folders.isNotEmpty()) playlistsViewModel.refreshPlaylists()
+            pullSaid = failure ?: context.getString(R.string.main_pull_up_to_date)
+            pullDone++
+        }
+    }
+    val libraryPull: (() -> Unit)? =
+        if (subsonicConfig != null || localMusicFolders.isNotEmpty()) ({ refreshLibraryFromPull() }) else null
 
     // The stations kept from radio.garden. They are not in the library and never join a queue
     // of songs: a live stream has no length, cannot be shuffled, and would be the one row in a
@@ -1431,6 +1488,7 @@ fun CalmMusic(
                 onHeartedClick = {
                     navController.navigate(Screen.Hearted.route) { launchSingleTop = true }
                 },
+                onPullAtTop = libraryPull,
             )
         }
 
@@ -1869,10 +1927,21 @@ fun CalmMusic(
             },
             snackbarHost = {},
         ) { paddingValues ->
+            Column(Modifier.padding(paddingValues)) {
+            pullSaid?.let { said ->
+                TextMMD(
+                    text = said,
+                    style = MaterialTheme.typography.labelSmall,
+                    // Two, for a server's answer when something went wrong.
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
             NavHost(
                 navController = navController,
                 startDestination = startTabRoute,
-                modifier = Modifier.padding(paddingValues),
+                modifier = Modifier.weight(1f),
             ) {
                 playlistsNavGraph()
 
@@ -1902,6 +1971,7 @@ fun CalmMusic(
                             fileUnderErrorText = null
                             navController.navigate(Screen.FileUnder.route) { launchSingleTop = true }
                         },
+                        onPullAtTop = libraryPull,
                     )
                 }
                 composable(Screen.FileUnder.route) {
@@ -1983,6 +2053,7 @@ fun CalmMusic(
                         onOpenStreamingSettingsClick = openStreamingSettings,
                         onOpenLocalSettingsClick = openLocalSettings,
                         onOpenMusicServerClick = openMusicServer,
+                        onPullAtTop = libraryPull,
                     )
                 }
                 composable(Screen.Albums.route) {
@@ -2001,6 +2072,7 @@ fun CalmMusic(
                                 launchSingleTop = true
                             }
                         },
+                        onPullAtTop = libraryPull,
                     )
                 }
                 composable(Screen.Search.route) {
@@ -2374,6 +2446,7 @@ fun CalmMusic(
                         onBackClick = { navController.navigateUp() },
                     )
                 }
+            }
             }
         }
         }

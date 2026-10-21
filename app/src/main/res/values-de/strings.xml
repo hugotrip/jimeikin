@@ -528,4 +528,8 @@
     <string name="service_subsonic_not_allowed">Diesem Account wurde nicht erlaubt, die Bibliothek auszulesen.</string>
     <string name="service_subsonic_refused">Der Server hat die Anfrage verweigert.</string>
     <string name="service_subsonic_unreachable">Der Server konnte nicht erreicht werden.</string>
+    <!-- One line above a library list after a swipe down on its first page -->
+    <string name="main_pull_checking_server">Frage den Server…</string>
+    <string name="main_pull_reading_folders">Lese die Musik auf dem Telefon…</string>
+    <string name="main_pull_up_to_date">Auf dem neuesten Stand</string>
 </resources>

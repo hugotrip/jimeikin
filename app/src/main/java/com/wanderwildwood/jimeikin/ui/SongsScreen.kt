@@ -68,6 +68,8 @@ fun SongsScreen(
     onOpenStreamingSettingsClick: () -> Unit,
     onOpenLocalSettingsClick: () -> Unit,
     onOpenMusicServerClick: () -> Unit = {},
+    /** Reads the library again from where it comes from; a swipe down on the list's first page. */
+    onPullAtTop: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -124,6 +126,7 @@ fun SongsScreen(
 
             else -> {
                 PagedColumnMMD(
+                    onPullAtTop = onPullAtTop,
                     jump = remember(songs) { ListJump.Letters(songs.map { it.title }) },
                     contentPadding = PaddingValues(
                         start = 16.dp,

@@ -58,6 +58,8 @@ fun ArtistsScreen(
     onArtistClick: (ArtistUiModel) -> Unit,
     /** Long-pressing a row offers "File under…" when this is given. */
     onFileUnderClick: ((ArtistUiModel) -> Unit)? = null,
+    /** Reads the library again from where it comes from; a swipe down on the list's first page. */
+    onPullAtTop: (() -> Unit)? = null,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -110,6 +112,7 @@ fun ArtistsScreen(
             else -> {
                 val lastArtistId = artists.lastOrNull()?.id
                 PagedColumnMMD(
+                    onPullAtTop = onPullAtTop,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp),
                     jump = remember(artists) { ListJump.Letters(artists.map { it.name }) },
                 ) {

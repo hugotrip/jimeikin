@@ -63,6 +63,8 @@ fun AlbumsScreen(
     onOpenLocalSettingsClick: () -> Unit,
     onOpenMusicServerClick: () -> Unit = {},
     onAlbumClick: (AlbumUiModel) -> Unit = {},
+    /** Reads the library again from where it comes from; a swipe down on the list's first page. */
+    onPullAtTop: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -117,6 +119,7 @@ fun AlbumsScreen(
             else -> {
                 val lastAlbumId = albums.lastOrNull()?.id
                 PagedColumnMMD(
+                    onPullAtTop = onPullAtTop,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp),
                     jump = remember(albums) { ListJump.Letters(albums.map { it.title }) },
                 ) {

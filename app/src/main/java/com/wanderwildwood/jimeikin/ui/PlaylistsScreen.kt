@@ -41,6 +41,8 @@ fun PlaylistsScreen(
     /** How many songs are hearted; the Hearted list heads the playlists while there are any. */
     heartedCount: Int = 0,
     onHeartedClick: () -> Unit = {},
+    /** Reads the library again from where it comes from; a swipe down on the list's first page. */
+    onPullAtTop: (() -> Unit)? = null,
 ) {
     val selectedState = remember { mutableStateMapOf<String, Boolean>() }
 
@@ -81,6 +83,7 @@ fun PlaylistsScreen(
         } else {
             val lastPlaylistId = playlists.lastOrNull()?.id
             PagedColumnMMD(
+                    onPullAtTop = onPullAtTop.takeIf { !isInEditMode },
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

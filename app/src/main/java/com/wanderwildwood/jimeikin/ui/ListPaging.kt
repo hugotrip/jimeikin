@@ -30,6 +30,8 @@ fun PagedColumnMMD(
      * went without them, and those are the long ones.
      */
     jump: ListJump? = ListJump.Pages,
+    /** A swipe down on the first page; see [PagedColumn]. Null where the list lives on the phone. */
+    onPullAtTop: (() -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val state = rememberLazyListState()
@@ -40,6 +42,7 @@ fun PagedColumnMMD(
             contentPadding = contentPadding,
             verticalArrangement = verticalArrangement,
             horizontalAlignment = horizontalAlignment,
+            onPullAtTop = onPullAtTop,
             content = content,
         )
     }

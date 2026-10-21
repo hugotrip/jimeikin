@@ -55,6 +55,7 @@ is reported as unread, and nothing under it leaves the library.
 Settings → **Music server**. Address, username, password, and it reads the whole library in
 one go — artists, albums and songs appear beside the music on the card rather than in a room
 of their own. Anything Subsonic answers works: Navidrome, Airsonic, Gonic.
+A swipe down at the top of Artists, Albums, Songs or Playlists reads the server again, where there is one, and the music folders on the phone.
 
 A song held both on the server and on the card is shown once, and it is the copy on the card
 that survives, because that one plays with no network. The server goes on earning its place
