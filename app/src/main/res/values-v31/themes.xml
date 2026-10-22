@@ -13,6 +13,8 @@
       below that the theme is the plain one in values/themes.xml.
     -->
     <style name="Theme.CalmMusic" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
         <!-- No scrollbars: a list moves a page to a swipe, and nothing else needs one. -->
         <item name="android:scrollbarThumbVertical">@android:color/transparent</item>
         <item name="android:scrollbarThumbHorizontal">@android:color/transparent</item>

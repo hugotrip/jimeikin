@@ -1,6 +1,8 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- MMD provides composable theme; this is a minimal placeholder. -->
     <style name="Theme.CalmMusic" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
         <!-- No scrollbars: a list moves a page to a swipe, and nothing else needs one. -->
         <item name="android:scrollbarThumbVertical">@android:color/transparent</item>
         <item name="android:scrollbarThumbHorizontal">@android:color/transparent</item>
