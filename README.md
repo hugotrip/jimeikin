@@ -187,7 +187,14 @@ a launcher's now-playing widget with no picture, so each draws its own plain loo
 Android 9 (API 28) or newer. Download the APK from
 [Releases](https://github.com/wanderwildwood/jimeikin/releases/latest) and open it; every
 release is signed with the same key, so later ones install over it and keep your library,
-playlists and settings.
+playlists and settings. The newest release is always at
+<https://github.com/wanderwildwood/jimeikin/releases/latest/download/jimeikin.apk>, with a
+`.sha256` beside it.
+
+For updates without doing this by hand, add this repository to
+[Obtainium](https://github.com/ImranR98/Obtainium):
+
+    https://github.com/wanderwildwood/jimeikin
 
 ## What it sends
 
