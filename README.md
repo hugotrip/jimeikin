@@ -254,6 +254,10 @@ Releases.
 - YouTube stream resolution via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) by TeamNewPipe (GPL-3.0).
 - UI built with Mudita's MMD component library for Kompakt.
 
+## Privacy
+
+Privacy: what the app stores and what it sends is set out in [PRIVACY.md](PRIVACY.md).
+
 ## Licence
 
 GPL-3.0, the same as upstream CalmMusic. See [LICENSE](LICENSE).
