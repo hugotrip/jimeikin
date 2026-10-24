@@ -112,6 +112,7 @@ import com.wanderwildwood.jimeikin.ui.DownloadLineBar
 import com.wanderwildwood.jimeikin.ui.DownloadsScreen
 import com.wanderwildwood.jimeikin.ui.NowPlayingScreen
 import com.wanderwildwood.jimeikin.playback.OpenedFile
+import com.wanderwildwood.jimeikin.playback.SongLink
 import com.wanderwildwood.jimeikin.ui.PlaylistAddSongsScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistDetailsScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistEditScreen
@@ -153,6 +154,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import androidx.media3.common.Player
+import androidx.media3.datasource.HttpDataSource
+import com.wanderwildwood.jimeikin.playback.PlaybackTrouble
+import com.wanderwildwood.jimeikin.playback.Trouble
+import com.wanderwildwood.jimeikin.ui.TroubleDialog
 
 class MainActivity : ComponentActivity() {
 
@@ -248,6 +256,9 @@ fun CalmMusic(
     val snackbarHostState = remember { SnackbarHostStateMMD() }
 
     val settingsManager = app.settingsManager
+
+    // Why a song is not playing, when it isn't: a dialog rather than silence (PlaybackTrouble).
+    var playbackTrouble by remember { mutableStateOf<Trouble?>(null) }
 
     val viewModel: CalmMusicViewModel = viewModel(factory = CalmMusicViewModel.factory(app))
     val playbackState by viewModel.playbackState.collectAsState()
@@ -1354,7 +1365,9 @@ fun CalmMusic(
         // key, which cancels the effect, and would cancel the reading with it.
         fileToOpen = null
         libraryScope.launch {
-            val song = withContext(Dispatchers.IO) { OpenedFile.read(appContext, uri) }
+            val song = withContext(Dispatchers.IO) {
+                if (SongLink.isLink(uri)) SongLink.read(appContext, uri) else OpenedFile.read(appContext, uri)
+            }
             if (song != null) {
                 startPlaybackFromQueue(queue = listOf(song), startIndex = 0)
                 return@launch
@@ -1385,6 +1398,10 @@ fun CalmMusic(
         val controller = localMediaController ?: return@LaunchedEffect
         viewModel.startLocalPlaybackMonitoring(controller)
 
+        // The song stopped for want of a login has already said why, and still raises a player
+        // error a moment later; that one is not said twice. Cleared when play is pressed again.
+        var stoppedFor: String? = null
+        var wasPlaying = false
         PlaybackService.registerErrorCallback { error ->
             var cause: Throwable? = error
             var lastCause: Throwable? = null
@@ -1410,7 +1427,69 @@ fun CalmMusic(
                     )
                 }
                 viewModel.playNextInQueue(controller)
+            } else {
+                val failedId = controller.currentMediaItem?.mediaId
+                if (failedId != null && failedId == stoppedFor) return@registerErrorCallback
+                val status = generateSequence<Throwable>(error) { it.cause }
+                    .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+                    .firstOrNull()?.responseCode
+                playbackTrouble = PlaybackTrouble.fromError(
+                    errorCode = error.errorCode,
+                    httpStatus = status,
+                    streamsFromServer = streamsFromServer(viewModel, controller.currentMediaItem?.mediaId),
+                    online = isOnline(appContext),
+                    serverSignedIn = settingsManager.subsonicConfig.value != null,
+                )
             }
+        }
+
+        // Two failures raise no error at all: a server song with no login, which sat "playing"
+        // at 0:00, and a server song that never finishes loading. Both are watched for on the
+        // player's own events, not on a timer, so nothing runs while it is idle.
+        var stalledFor: String? = null
+        var stallWatch: Job? = null
+        fun check() {
+            val id = controller.currentMediaItem?.mediaId
+            if (!controller.playWhenReady) stalledFor = null
+            if (controller.playWhenReady && !wasPlaying) stoppedFor = null
+            wasPlaying = controller.playWhenReady
+            val server = streamsFromServer(viewModel, id)
+            val signedIn = settingsManager.subsonicConfig.value != null
+            if (controller.playWhenReady && id != null && id != stoppedFor) {
+                PlaybackTrouble.beforePlaying(server, signedIn)?.let { trouble ->
+                    stoppedFor = id
+                    controller.pause()
+                    playbackTrouble = trouble
+                    return
+                }
+            }
+            stallWatch?.cancel()
+            if (server && controller.playWhenReady && controller.playbackState == Player.STATE_BUFFERING) {
+                stallWatch = launch {
+                    delay(PlaybackTrouble.STALL_MS)
+                    val stillId = controller.currentMediaItem?.mediaId
+                    if (controller.playWhenReady && controller.playbackState == Player.STATE_BUFFERING &&
+                        stillId == id && id != stalledFor
+                    ) {
+                        stalledFor = id
+                        playbackTrouble = PlaybackTrouble.stalled(
+                            online = isOnline(appContext),
+                            serverSignedIn = settingsManager.subsonicConfig.value != null,
+                        )
+                    }
+                }
+            }
+        }
+        val watcher = object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) = check()
+        }
+        controller.addListener(watcher)
+        check()
+        try {
+            awaitCancellation()
+        } finally {
+            controller.removeListener(watcher)
+            stallWatch?.cancel()
         }
     }
 
@@ -1460,6 +1539,32 @@ fun CalmMusic(
 
     val openMusicServer: () -> Unit = {
         navController.navigate(Screen.MusicServer.route) { launchSingleTop = true }
+    }
+
+    playbackTrouble?.let { trouble ->
+        TroubleDialog(
+            trouble = trouble,
+            onFix = { t ->
+                playbackTrouble = null
+                when (t) {
+                    Trouble.SERVER_SIGNED_OUT, Trouble.SERVER_REFUSED, Trouble.SERVER_UNREACHABLE -> {
+                        // The server page sits under the full-screen player, so the player goes first.
+                        showNowPlaying = false
+                        openMusicServer()
+                    }
+                    Trouble.NO_INTERNET -> openSystemPage(context, Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                    Trouble.NO_FILE_ACCESS -> openSystemPage(
+                        context,
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.fromParts("package", context.packageName, null),
+                        ),
+                    )
+                    else -> Unit
+                }
+            },
+            onDismiss = { playbackTrouble = null },
+        )
     }
 
     fun NavGraphBuilder.playlistsNavGraph() {
@@ -3120,5 +3225,30 @@ private fun initialFolderPickerUri(context: Context): Uri? {
         )
     } catch (_: Exception) {
         null
+    }
+}
+
+
+/**
+ * Whether the song with this id plays from the music server just now: a server song that has
+ * not been kept on the phone. One that has been kept is a file and needs no server.
+ */
+private fun streamsFromServer(viewModel: CalmMusicViewModel, mediaId: String?): Boolean {
+    val song = viewModel.playbackState.value.nowPlayingSong ?: return false
+    return mediaId != null && song.id == mediaId && song.sourceType == "SUBSONIC"
+}
+
+/** Whether the phone has a network that reaches the internet. For [PlaybackTrouble]. */
+private fun isOnline(context: Context): Boolean = runCatching {
+    val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return@runCatching false
+    val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return@runCatching false
+    caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}.getOrDefault(false)
+
+/** Opens one of Android's own settings pages; a phone without that page says nothing. */
+private fun openSystemPage(context: Context, intent: Intent) {
+    try {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: Exception) {
     }
 }

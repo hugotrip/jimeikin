@@ -253,6 +253,7 @@ Releases.
 - Station listings from [radio.garden](https://radio.garden), used as a directory only.
 - YouTube stream resolution via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) by TeamNewPipe (GPL-3.0).
 - UI built with Mudita's MMD component library for Kompakt.
+- The dialog that says why a song is not playing, and the `jimeikin://song` link, began as an idea and a first version by [heavencanthandle](https://github.com/heavencanthandle/Music-box).
 
 ## Privacy
 

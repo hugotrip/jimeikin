@@ -532,4 +532,26 @@
     <string name="main_pull_checking_server">Frage den Server…</string>
     <string name="main_pull_reading_folders">Lese die Musik auf dem Telefon…</string>
     <string name="main_pull_up_to_date">Auf dem neuesten Stand</string>
+
+    <!-- Warum ein Titel nicht spielt: ein Dialog statt Stille -->
+    <string name="trouble_signed_out_title">Nicht bei deinem Musik-Server angemeldet</string>
+    <string name="trouble_signed_out">Dieser Titel liegt auf deinem Musik-Server, und Music Box hat keine Anmeldedaten dafür. Nach einer Neuinstallation lässt sich das gespeicherte Passwort nicht mehr lesen. Gib es unter Musik-Server erneut ein.</string>
+    <string name="trouble_unreachable_title">Musik-Server nicht erreichbar</string>
+    <string name="trouble_unreachable">Das Telefon ist online, aber der Server antwortet nicht. Er ist vielleicht aus, oder seine Adresse hat sich geändert.</string>
+    <string name="trouble_refused_title">Dein Musik-Server hat abgelehnt</string>
+    <string name="trouble_refused">Der Server hat geantwortet, den Titel aber nicht geschickt. Die Anmeldung ist vielleicht falsch oder veraltet. Prüfe sie unter Musik-Server.</string>
+    <string name="trouble_no_internet_title">Kein Internet</string>
+    <string name="trouble_no_internet">Dieser Titel wird gestreamt, und das Telefon ist nicht verbunden. Auf dem Telefon gespeicherte Titel spielen weiterhin.</string>
+    <string name="trouble_file_missing_title">Titeldatei fehlt</string>
+    <string name="trouble_file_missing">Die Datei dieses Titels liegt nicht dort, wo die Bibliothek sie vermutet. Sie wurde vielleicht verschoben oder gelöscht.</string>
+    <string name="trouble_no_access_title">Music Box kann deine Musik nicht lesen</string>
+    <string name="trouble_no_access">Android erlaubt Music Box nicht, die Titel auf dem Telefon zu lesen. Erlaube Musik und Audio in den Berechtigungen von Music Box.</string>
+    <string name="trouble_still_loading_title">Wartet noch auf den Start</string>
+    <string name="trouble_still_loading">Dieser Titel lädt schon eine Weile, ohne zu starten.</string>
+    <string name="trouble_cant_play_title">Titel kann nicht gespielt werden</string>
+    <string name="trouble_cant_play">Beim Abspielen ist etwas schiefgegangen. Versuche einen anderen Titel oder diesen später noch einmal.</string>
+    <string name="trouble_fix_server">Musik-Server</string>
+    <string name="trouble_fix_internet">Interneteinstellungen</string>
+    <string name="trouble_fix_access">Berechtigungen</string>
+    <string name="trouble_close">OK</string>
 </resources>

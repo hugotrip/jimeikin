@@ -69,6 +69,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- jimeikin://song?id=<library song id>: plays that song from the library (playback/SongLink.kt).
+                 Not BROWSABLE, so a web page cannot open it; only another app can. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="jimeikin" android:host="song" />
+            </intent-filter>
             <!-- "Open with": one audio file from a file manager or anywhere else, played now. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

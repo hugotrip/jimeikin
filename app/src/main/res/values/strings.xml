@@ -737,4 +737,26 @@
     <string name="main_pull_checking_server">Checking the server…</string>
     <string name="main_pull_reading_folders">Reading the music on the phone…</string>
     <string name="main_pull_up_to_date">Up to date</string>
+
+    <!-- Why a song is not playing: a dialog in place of silence. Idea by heavencanthandle. -->
+    <string name="trouble_signed_out_title">Not signed in to your music server</string>
+    <string name="trouble_signed_out">This song is on your music server, and Music Box has no login for it. After a reinstall the saved password can\'t be read any more. Enter it again under Music server.</string>
+    <string name="trouble_unreachable_title">Can\'t reach your music server</string>
+    <string name="trouble_unreachable">The phone is online, but the server isn\'t answering. It may be off, or its address may have changed.</string>
+    <string name="trouble_refused_title">Your music server said no</string>
+    <string name="trouble_refused">The server answered but wouldn\'t send the song. The login may be wrong or out of date. Check it under Music server.</string>
+    <string name="trouble_no_internet_title">No internet</string>
+    <string name="trouble_no_internet">This song streams, and the phone isn\'t connected. Songs saved on the phone still play.</string>
+    <string name="trouble_file_missing_title">Song file is missing</string>
+    <string name="trouble_file_missing">The file for this song isn\'t where the library says it is. It may have been moved or deleted.</string>
+    <string name="trouble_no_access_title">Music Box can\'t read your music</string>
+    <string name="trouble_no_access">Android isn\'t letting Music Box read the songs on the phone. Allow music and audio in Music Box\'s permissions.</string>
+    <string name="trouble_still_loading_title">Still waiting to play</string>
+    <string name="trouble_still_loading">This song has been loading for a while without starting.</string>
+    <string name="trouble_cant_play_title">Can\'t play this song</string>
+    <string name="trouble_cant_play">Something went wrong playing it. Try another song, or this one again later.</string>
+    <string name="trouble_fix_server">Music server</string>
+    <string name="trouble_fix_internet">Internet settings</string>
+    <string name="trouble_fix_access">Permissions</string>
+    <string name="trouble_close">OK</string>
 </resources>

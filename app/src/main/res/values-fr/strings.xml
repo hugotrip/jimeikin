@@ -678,4 +678,26 @@
     <string name="main_pull_checking_server">Interrogation du serveur…</string>
     <string name="main_pull_reading_folders">Lecture de la musique du téléphone…</string>
     <string name="main_pull_up_to_date">À jour</string>
+
+    <!-- Pourquoi une piste ne se lit pas : une boîte de dialogue plutôt que le silence -->
+    <string name="trouble_signed_out_title">Non connecté à votre serveur de musique</string>
+    <string name="trouble_signed_out">Cette piste est sur votre serveur de musique, et Music Box n\'a pas d\'identifiants pour y accéder. Après une réinstallation, le mot de passe enregistré n\'est plus lisible. Saisissez-le de nouveau dans Serveur de musique.</string>
+    <string name="trouble_unreachable_title">Serveur de musique injoignable</string>
+    <string name="trouble_unreachable">Le téléphone est en ligne, mais le serveur ne répond pas. Il est peut-être éteint, ou son adresse a changé.</string>
+    <string name="trouble_refused_title">Votre serveur de musique a refusé</string>
+    <string name="trouble_refused">Le serveur a répondu mais n\'a pas envoyé la piste. L\'identifiant ou le mot de passe est peut-être erroné ou périmé. Vérifiez-les dans Serveur de musique.</string>
+    <string name="trouble_no_internet_title">Pas d\'internet</string>
+    <string name="trouble_no_internet">Cette piste est lue en continu, et le téléphone n\'est pas connecté. Les pistes enregistrées sur le téléphone se lisent toujours.</string>
+    <string name="trouble_file_missing_title">Fichier de la piste introuvable</string>
+    <string name="trouble_file_missing">Le fichier de cette piste n\'est pas là où la bibliothèque l\'indique. Il a peut-être été déplacé ou supprimé.</string>
+    <string name="trouble_no_access_title">Music Box ne peut pas lire votre musique</string>
+    <string name="trouble_no_access">Android n\'autorise pas Music Box à lire les pistes du téléphone. Autorisez la musique et l\'audio dans les permissions de Music Box.</string>
+    <string name="trouble_still_loading_title">Toujours en attente de lecture</string>
+    <string name="trouble_still_loading">Cette piste se charge depuis un moment sans démarrer.</string>
+    <string name="trouble_cant_play_title">Impossible de lire cette piste</string>
+    <string name="trouble_cant_play">Un problème est survenu pendant la lecture. Essayez une autre piste, ou celle-ci plus tard.</string>
+    <string name="trouble_fix_server">Serveur de musique</string>
+    <string name="trouble_fix_internet">Réglages internet</string>
+    <string name="trouble_fix_access">Permissions</string>
+    <string name="trouble_close">OK</string>
 </resources>
