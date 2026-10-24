@@ -151,23 +151,29 @@ class PlaybackService : MediaSessionService() {
         )
 
         // What the session publishes, which is what a launcher's now-playing widget, the lock
-        // screen and the media notification all draw from. It carries no picture at all: a
-        // song's cover, embedded or fetched, is stripped here, so covers stay inside the app
-        // and the home and lock screens stay calmer, each drawing its own plain look.
+        // screen and the media notification all draw from. A song's cover, embedded or fetched,
+        // is stripped here, so covers stay inside the app and the home and lock screens stay
+        // calmer, each drawing its own plain look. The one picture it carries is this app's own
+        // icon, and only while a radio station plays: a station has no cover to keep inside, and
+        // the icon is what tells a glance at the home screen which app the sound is coming from.
         //
         // It has to be stripped twice. The notification, the platform session and the
         // lock-screen strip ask the player for the song, so getMediaMetadata covers them. But
         // a controller that connects to the session is sent the song as it changes, straight
         // from the listener callback, and that would still carry the cover - so every
         // listener is wrapped and handed the stripped song too.
+        val stationIcon = runCatching { assets.open("station-icon.png").use { it.readBytes() } }.getOrNull()
         val sessionPlayer = object : ForwardingPlayer(player) {
             private val wrapped = HashMap<Player.Listener, Player.Listener>()
 
+            private fun publishable(metadata: MediaMetadata): MediaMetadata =
+                metadata.forSession(isRadio(player.currentMediaItem?.mediaId), stationIcon)
+
             override fun getMediaMetadata(): MediaMetadata =
-                super.getMediaMetadata().withoutArtwork()
+                publishable(super.getMediaMetadata())
 
             override fun addListener(listener: Player.Listener) {
-                super.addListener(wrapped.getOrPut(listener) { NoArtworkListener(listener) })
+                super.addListener(wrapped.getOrPut(listener) { NoArtworkListener(listener, ::publishable) })
             }
 
             override fun removeListener(listener: Player.Listener) {
@@ -346,8 +352,20 @@ class PlaybackService : MediaSessionService() {
     }
 }
 
-/** The same song with no picture: no embedded cover and no link to one. */
-private fun MediaMetadata.withoutArtwork(): MediaMetadata {
+/** A radio station's queue entry is the only one whose id starts this way. */
+internal fun isRadio(mediaId: String?): Boolean = mediaId?.startsWith("RADIO:") == true
+
+/**
+ * What the session may show of this song. A radio station gets this app's own icon as its
+ * picture; everything else gets none - no embedded cover and no link to one.
+ */
+internal fun MediaMetadata.forSession(radio: Boolean, icon: ByteArray?): MediaMetadata {
+    if (radio && icon != null) {
+        return buildUpon()
+            .setArtworkData(icon, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            .setArtworkUri(null)
+            .build()
+    }
     if (artworkData == null && artworkUri == null) return this
     return buildUpon()
         .setArtworkData(null, null)
@@ -361,9 +379,12 @@ private fun MediaMetadata.withoutArtwork(): MediaMetadata {
  * default that does nothing, and a callback left out here would never reach the session.
  */
 @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
-private class NoArtworkListener(private val inner: Player.Listener) : Player.Listener {
+private class NoArtworkListener(
+    private val inner: Player.Listener,
+    private val publishable: (MediaMetadata) -> MediaMetadata,
+) : Player.Listener {
     override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) =
-        inner.onMediaMetadataChanged(mediaMetadata.withoutArtwork())
+        inner.onMediaMetadataChanged(publishable(mediaMetadata))
 
     override fun onEvents(player: Player, events: Player.Events) = inner.onEvents(player, events)
     override fun onTimelineChanged(timeline: Timeline, reason: Int) = inner.onTimelineChanged(timeline, reason)

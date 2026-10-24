@@ -180,7 +180,8 @@ playing in Glance** turned on, the song playing or paused shows on its lock-scre
 strip on the lock screen already shows the song.
 
 Album covers stay inside the app. The song goes to the lock screen, the media notification and
-a launcher's now-playing widget with no picture, so each draws its own plain look.
+a launcher's now-playing widget with no cover, so each draws its own plain look. A radio station
+has no cover, so it goes out with this app's own icon, which says which app is playing.
 
 ## Installing
 
