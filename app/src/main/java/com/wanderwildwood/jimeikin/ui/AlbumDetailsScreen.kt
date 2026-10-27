@@ -223,13 +223,13 @@ fun AlbumDetailsScreen(
         }
     }
 }
-/** Pressed once it says what it will do; pressed again within four seconds it does it. */
+/** Pressed once it says what it will do; pressed again within six seconds it does it. */
 @Composable
 private fun RemoveAlbumButton(count: Int, onConfirmed: () -> Unit) {
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(armed) {
         if (armed) {
-            delay(4000)
+            delay(ARMED_MS)
             armed = false
         }
     }

@@ -63,8 +63,7 @@ fun PlaylistEditScreen(
             Spacer(modifier = Modifier.width(8.dp))
 
             ButtonMMD(
-                onClick = { onConfirm(name.trim()) },
-                enabled = name.isNotBlank(),
+                onClick = { if (name.isNotBlank()) onConfirm(name.trim()) },
                 modifier = Modifier.weight(1f),
             ) {
                 TextMMD(text = if (isEditing) stringResource(R.string.player_save) else stringResource(R.string.player_create))

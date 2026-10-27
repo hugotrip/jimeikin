@@ -36,7 +36,7 @@ import kotlinx.coroutines.delay
  * one, whatever the songs are: files, a music server's, YouTube's. Songs that are files on the
  * phone also have that artist written as their album artist, the same tag Edit details writes,
  * so the filing travels with the files. A first tap arms the row and says how many songs will
- * be filed; a second within four seconds does it.
+ * be filed; a second within six seconds does it.
  */
 @Composable
 fun FileUnderScreen(
@@ -52,7 +52,7 @@ fun FileUnderScreen(
     var armedId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(armedId) {
         if (armedId != null) {
-            delay(4000)
+            delay(ARMED_MS)
             armedId = null
         }
     }
@@ -81,7 +81,6 @@ fun FileUnderScreen(
         PagedColumnMMD(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            jump = remember(others) { ListJump.Letters(others.map { it.name }) },
         ) {
             items(items = others, key = { it.id }) { target ->
                 val isArmed = armedId == target.id

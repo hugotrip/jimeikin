@@ -200,10 +200,14 @@ For updates without doing this by hand, add this repository to
 ## What it sends
 
 Your settings and local library stay on the phone, and so do your downloads, in
-Music/Music Box. The YouTube features talk to YouTube and
-YouTube Music, only to search, stream and download audio, and once to fetch again as AAC a
-song downloaded as Opus before 2.18.2. There are no ads, no analytics and no tracking
-SDKs. The same is said in the app, behind the **i** in the top right.
+Music/Music Box. The app goes online only for what you use: your own music server, at the
+address you type in; radio.garden, to browse stations, and each station's own stream while it
+plays; api.zippopotam.us, only for a US or Canadian postcode typed into the radio search; and
+YouTube and YouTube Music, to search, stream and download audio, to ask what plays next when
+Keep playing similar songs is on, and once to fetch again as AAC a song downloaded as Opus
+before 2.18.2. There are no ads, no analytics and no tracking SDKs. The same is said in the
+app, under **Privacy** and **Terms** in About (the **i** at the top right of Settings), which
+also lists the open-source parts it is built with and links to this source.
 
 A music server's password and a connected YouTube account's cookie are sealed with a key held
 in the phone's keystore, which cannot be exported and is not itself backed up, and the file
@@ -253,7 +257,8 @@ Releases.
 - Built on [CalmMusic](https://github.com/davidraywilson/CalmMusic) by David Ray Wilson (GPL-3.0).
 - Station listings from [radio.garden](https://radio.garden), used as a directory only.
 - YouTube stream resolution via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) by TeamNewPipe (GPL-3.0).
-- UI built with Mudita's MMD component library for Kompakt.
+- UI built with Mudita's MMD component library for Kompakt (Apache 2.0), with the Lato typeface (SIL OFL 1.1) and Material Symbols icons (Apache 2.0).
+- Tags read and written with [jaudiotagger](https://bitbucket.org/ijabz/jaudiotagger) (LGPL 2.1). NewPipeExtractor brings jsoup (MIT), nanojson (MIT or Apache 2.0) and Rhino (MPL 2.0). AndroidX, Jetpack Compose, Media3, Room, OkHttp, Kotlin and kotlinx.coroutines are Apache 2.0.
 - The dialog that says why a song is not playing, and the `jimeikin://song` link, began as an idea and a first version by [heavencanthandle](https://github.com/heavencanthandle/Music-box).
 
 ## Privacy

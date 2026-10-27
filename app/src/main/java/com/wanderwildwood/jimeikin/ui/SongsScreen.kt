@@ -127,7 +127,6 @@ fun SongsScreen(
             else -> {
                 PagedColumnMMD(
                     onPullAtTop = onPullAtTop,
-                    jump = remember(songs) { ListJump.Letters(songs.map { it.title }) },
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

@@ -85,7 +85,7 @@ fun MusicServerScreen(
                 label = { TextMMD(text = stringResource(R.string.library_server_address)) },
                 placeholder = { TextMMD(text = "192.168.1.10:4533") },
                 singleLine = true,
-                enabled = !isBusy,
+                readOnly = isBusy,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -96,7 +96,7 @@ fun MusicServerScreen(
                 onValueChange = { user = it },
                 label = { TextMMD(text = stringResource(R.string.library_server_username)) },
                 singleLine = true,
-                enabled = !isBusy,
+                readOnly = isBusy,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -107,7 +107,7 @@ fun MusicServerScreen(
                 onValueChange = { password = it },
                 label = { TextMMD(text = stringResource(R.string.library_server_password)) },
                 singleLine = true,
-                enabled = !isBusy,
+                readOnly = isBusy,
                 visualTransformation = PasswordVisualTransformation(),
             )
 
@@ -115,9 +115,8 @@ fun MusicServerScreen(
 
             val entered = SubsonicConfig(address, user, password)
             ButtonMMD(
-                onClick = { onConnectClick(entered) },
+                onClick = { if (entered.isComplete && !isBusy) onConnectClick(entered) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = entered.isComplete && !isBusy,
             ) {
                 TextMMD(
                     text = if (config == null) stringResource(R.string.library_server_connect) else stringResource(R.string.library_server_connect_again),
@@ -154,7 +153,7 @@ private fun ForgetServerRow(onForget: () -> Unit) {
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(armed) {
         if (armed) {
-            delay(4000)
+            delay(ARMED_MS)
             armed = false
         }
     }

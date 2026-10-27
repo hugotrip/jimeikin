@@ -167,7 +167,6 @@ fun PlaylistDetailsScreen(
 
             else -> {
                 PagedColumnMMD(
-                    jump = ListJump.Pages,
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,
@@ -330,9 +329,9 @@ private fun EditablePlaylistSongItem(
                         imageVector = Icons.ArrowUp,
                         contentDescription = stringResource(R.string.player_playlist_move_up),
                         modifier = Modifier
-                            .size(24.dp)
-                            .padding(4.dp)
-                            .clickable(onClick = onMoveUp),
+                            .size(48.dp)
+                            .clickable(onClick = onMoveUp)
+                            .padding(12.dp),
                     )
                 }
                 if (canMoveDown) {
@@ -340,9 +339,9 @@ private fun EditablePlaylistSongItem(
                         imageVector = Icons.ArrowDown,
                         contentDescription = stringResource(R.string.player_playlist_move_down),
                         modifier = Modifier
-                            .size(24.dp)
-                            .padding(4.dp)
-                            .clickable(onClick = onMoveDown),
+                            .size(48.dp)
+                            .clickable(onClick = onMoveDown)
+                            .padding(12.dp),
                     )
                 }
             }

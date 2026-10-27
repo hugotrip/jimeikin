@@ -43,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalCursorBlinkEnabled
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -193,7 +194,12 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             ThemeMMD(colorScheme = monochrome) {
-                CompositionLocalProvider(LocalTopBarActions provides remember { TopBarActionsSlot() }) {
+                // A steady cursor: a blinking one repaints the panel twice a second for as long
+                // as a field has focus. Dialogs and sheets inherit it.
+                CompositionLocalProvider(
+                    LocalTopBarActions provides remember { TopBarActionsSlot() },
+                    LocalCursorBlinkEnabled provides false,
+                ) {
                     CalmMusic(
                         app,
                         openedFile = opened.value,
@@ -1537,6 +1543,27 @@ fun CalmMusic(
         }
     }
 
+    // The picker itself, from the empty library as from Settings: a "Choose a folder" that only
+    // led to Settings left the choosing still to find. The new folder is read at once, by the
+    // LaunchedEffect on the folder list.
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            val flags =
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            } catch (_: SecurityException) {
+            }
+            settingsManager.addLocalMusicFolder(uri.toString())
+        }
+    }
+    val chooseFolder: () -> Unit = {
+        runCatching { folderPickerLauncher.launch(initialFolderPickerUri(context)) }
+            .onFailure { openLocalSettings() }
+    }
+
     val openMusicServer: () -> Unit = {
         navController.navigate(Screen.MusicServer.route) { launchSingleTop = true }
     }
@@ -2058,7 +2085,7 @@ fun CalmMusic(
                         isSyncInProgress = isLibrarySyncInProgress,
                         hasAnySongs = hasAnySongs,
                         onOpenStreamingSettingsClick = openStreamingSettings,
-                        onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenLocalSettingsClick = chooseFolder,
                         onOpenMusicServerClick = openMusicServer,
                         onArtistClick = { artist ->
                             val artistName = artist.name
@@ -2156,7 +2183,7 @@ fun CalmMusic(
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
                         onOpenStreamingSettingsClick = openStreamingSettings,
-                        onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenLocalSettingsClick = chooseFolder,
                         onOpenMusicServerClick = openMusicServer,
                         onPullAtTop = libraryPull,
                     )
@@ -2169,7 +2196,7 @@ fun CalmMusic(
                         isSyncInProgress = isLibrarySyncInProgress,
                         hasAnySongs = hasAnySongs,
                         onOpenStreamingSettingsClick = openStreamingSettings,
-                        onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenLocalSettingsClick = chooseFolder,
                         onOpenMusicServerClick = openMusicServer,
                         onAlbumClick = { album ->
                             selectedAlbum = album
@@ -2395,20 +2422,6 @@ fun CalmMusic(
                         }
                     }
 
-                    val folderPickerLauncher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.OpenDocumentTree(),
-                    ) { uri ->
-                        if (uri != null) {
-                            val flags =
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            try {
-                                context.contentResolver.takePersistableUriPermission(uri, flags)
-                            } catch (_: SecurityException) {
-                            }
-                            settingsManager.addLocalMusicFolder(uri.toString())
-                        }
-                    }
-
                     fun requestBatteryOptimizationExemption() {
                         val powerManager = context.getSystemService(PowerManager::class.java)
                         if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
@@ -2439,9 +2452,7 @@ fun CalmMusic(
                         },
                         hasBatteryOptimizationExemption = hasBatteryOptimizationExemption,
                         onRequestBatteryOptimizationExemption = { requestBatteryOptimizationExemption() },
-                        onAddFolderClick = {
-                            folderPickerLauncher.launch(initialFolderPickerUri(context))
-                        },
+                        onAddFolderClick = chooseFolder,
                         onRemoveFolderClick = { uri ->
                             settingsManager.removeLocalMusicFolder(uri)
                         },

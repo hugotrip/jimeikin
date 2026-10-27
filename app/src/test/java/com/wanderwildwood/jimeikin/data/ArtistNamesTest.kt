@@ -1,6 +1,5 @@
 package com.wanderwildwood.jimeikin.data
 
-import com.wanderwildwood.jimeikin.ui.jumpLetterOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -57,12 +56,12 @@ class ArtistNamesTest {
 
     @Test
     fun lettersFollowTheSortedName() {
-        assertEquals("T", jumpLetterOf("The Beatles"))
-        assertEquals("O", jumpLetterOf("Ödland"))
-        assertEquals("#", jumpLetterOf("10,000 Maniacs"))
-        assertEquals("#", jumpLetterOf("たゆたう"))
-        assertEquals("A", jumpLetterOf("(a) Song"))
-        assertEquals("#", jumpLetterOf(""))
+        assertEquals("T", firstLetterOf("The Beatles"))
+        assertEquals("O", firstLetterOf("Ödland"))
+        assertEquals("#", firstLetterOf("10,000 Maniacs"))
+        assertEquals("#", firstLetterOf("たゆたう"))
+        assertEquals("A", firstLetterOf("(a) Song"))
+        assertEquals("#", firstLetterOf(""))
     }
 
     @Test

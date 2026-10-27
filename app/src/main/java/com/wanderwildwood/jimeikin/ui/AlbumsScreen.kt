@@ -121,7 +121,6 @@ fun AlbumsScreen(
                 PagedColumnMMD(
                     onPullAtTop = onPullAtTop,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp),
-                    jump = remember(albums) { ListJump.Letters(albums.map { it.title }) },
                 ) {
                     items(
                         items = albums,
@@ -255,8 +254,9 @@ fun AlbumItem(
                         imageVector = Icons.Close,
                         contentDescription = stringResource(R.string.player_song_close_menu),
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(48.dp)
                             .clickable { showMenu = false }
+                            .padding(12.dp)
                     )
 
                     DropdownMenuMMD(

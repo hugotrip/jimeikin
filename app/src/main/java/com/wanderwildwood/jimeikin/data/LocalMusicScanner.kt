@@ -391,7 +391,10 @@ object LocalMusicScanner {
 
             val rawTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
             val rawArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-            val rawAlbumArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+            val rawAlbumArtist = albumArtistOrCompilation(
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST).normalizeTagString(),
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPILATION),
+            )
             val rawAlbum = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
 
             val discStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)
@@ -429,7 +432,10 @@ object LocalMusicScanner {
                     val audioFile = AudioFileIO.read(tempFile)
                     val tag = audioFile.tag
                     if (tag != null) {
-                        val deepAlbumArtist = tag.getFirst(FieldKey.ALBUM_ARTIST)
+                        val deepAlbumArtist = albumArtistOrCompilation(
+                            tag.getFirst(FieldKey.ALBUM_ARTIST).normalizeTagString(),
+                            runCatching { tag.getFirst(FieldKey.IS_COMPILATION) }.getOrNull(),
+                        )
 
                         if (!deepAlbumArtist.isNullOrBlank()) {
                             meta = meta.copy(albumArtist = deepAlbumArtist.normalizeTagString())
@@ -522,4 +528,18 @@ private fun folderOf(uri: Uri): String {
         uri.path
     } ?: return ""
     return path.substringBeforeLast('/', "").lowercase()
+}
+
+/** What a compilation is filed under when no Album Artist tag says otherwise. */
+const val COMPILATION_ARTIST = "Various Artists"
+
+/**
+ * The album artist a file's tags give it. A compilation (iTunes' cpil, ID3 TCMP, Vorbis
+ * COMPILATION) with no Album Artist tag is filed under [COMPILATION_ARTIST]: keyed by each
+ * track's own artist it fell apart, one album a song, and the album page showed one song.
+ */
+fun albumArtistOrCompilation(albumArtist: String?, compilationFlag: String?): String? {
+    if (!albumArtist.isNullOrBlank()) return albumArtist
+    val flag = compilationFlag?.trim()?.lowercase() ?: return albumArtist
+    return if (flag == "1" || flag == "true" || flag == "yes") COMPILATION_ARTIST else albumArtist
 }

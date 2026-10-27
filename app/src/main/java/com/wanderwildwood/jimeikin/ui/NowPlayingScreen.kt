@@ -539,7 +539,7 @@ private fun SeekBar(positionMs: Long, durationMs: Long, onSeekTo: (Long) -> Unit
                 .fillMaxWidth()
                 .padding(horizontal = KnobSize / 2)
                 .height(2.dp)
-                .background(TrackGrey),
+                .background(Color.Black),
         )
         Box(
             modifier = Modifier
@@ -554,9 +554,7 @@ private fun SeekBar(positionMs: Long, durationMs: Long, onSeekTo: (Long) -> Unit
 private val KnobSize = 16.dp
 
 /** How much of the screen listens for the bar. Twice a fingertip, and all of it pressable. */
-private val SeekBarHeight = 44.dp
-
-private val TrackGrey = Color(0xFFB2B2B2)
+private val SeekBarHeight = 48.dp
 
 private fun formatDurationMillisNonNull(millis: Long): String {
     return com.wanderwildwood.jimeikin.formatDurationMillis(millis) ?: "0:00"

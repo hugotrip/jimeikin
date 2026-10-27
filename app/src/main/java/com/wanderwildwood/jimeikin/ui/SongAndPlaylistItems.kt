@@ -41,6 +41,12 @@ import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
 
+/**
+ * How long an armed row waits for its second tap: six seconds, for every "— tap again" in the
+ * app. The panel takes a second or two just to show the prompt.
+ */
+const val ARMED_MS = 6_000L
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SongItem(
@@ -138,18 +144,18 @@ fun SongItem(
 
     // Deleting erases the file, and removing takes the song out of the library. The row asks
     // in its own face rather than stacking a dialog on the menu, and disarms itself after
-    // four seconds so a stray tap leaves nothing live.
+    // six seconds so a stray tap leaves nothing live.
     var armedDelete by remember { mutableStateOf(false) }
     var armedRemove by remember { mutableStateOf(false) }
     LaunchedEffect(armedDelete) {
         if (armedDelete) {
-            delay(4000)
+            delay(ARMED_MS)
             armedDelete = false
         }
     }
     LaunchedEffect(armedRemove) {
         if (armedRemove) {
-            delay(4000)
+            delay(ARMED_MS)
             armedRemove = false
         }
     }
@@ -222,8 +228,9 @@ fun SongItem(
                         imageVector = Icons.Close,
                         contentDescription = stringResource(R.string.player_song_close_menu),
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(48.dp)
                             .clickable { showMenu = false }
+                            .padding(12.dp)
                     )
 
                     DropdownMenuMMD(

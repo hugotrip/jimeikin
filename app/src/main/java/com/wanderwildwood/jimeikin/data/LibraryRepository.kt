@@ -13,8 +13,9 @@ import kotlinx.coroutines.withContext
  * How local albums are keyed. 2: an album with no Album Artist tag is its name in its folder,
  * where it used to be split by each track's artist. 3: artists are keyed without their guests
  * (feat./ft.) and without a leading "The", so one artist is one id however a track credits them.
+ * 4: a compilation with no Album Artist tag is filed under Various Artists, whole.
  */
-private const val LOCAL_ALBUM_KEY_VERSION = 3
+private const val LOCAL_ALBUM_KEY_VERSION = 4
 
 /**
  * Repository responsible for performing library-related data work against the

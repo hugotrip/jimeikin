@@ -1,6 +1,6 @@
 # Music Box — Privacy Policy
 
-Version 2.18.7. Last reviewed 23 October 2026.
+Version 2.18.10. Last reviewed 27 October 2026.
 
 ## The short version
 
@@ -67,7 +67,7 @@ Hosts contacted:
 
 On the phone: with Glance (`com.wanderwildwood.hitome`, the author's lock-screen app) installed, and Settings, "Show what is playing in Glance", turned on (it is off to begin with), the song playing is handed to Glance, and only to Glance, to show on the lock screen, where anyone holding the phone can read it.
 
-In About, "feed the llamas" opens a donation page (square.link) and wanderthe.dev opens the author's website, in your browser and only when you press them. The app does not fetch either page and learns nothing about whether you went.
+In About, "feed the llamas" opens a donation page (square.link), wanderthe.dev opens the author's website and the source code link opens this app's page on GitHub, in your browser and only when you press them. The app does not fetch any of these pages and learns nothing about whether you went.
 
 No data is sold, rented, or shared for advertising. There is no profiling, no personalization, and no automated decision-making about you.
 

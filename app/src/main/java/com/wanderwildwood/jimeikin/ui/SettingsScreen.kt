@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -121,10 +122,10 @@ fun SettingsScreen(
                     ) { TextMMD(text = stringResource(R.string.settings_add_folder), style = MaterialTheme.typography.titleSmall) }
 
                     if (localFolders.isNotEmpty()) {
+                        // Never faded: while a scan runs the line below says so, and a press waits.
                         OutlinedButtonMMD(
-                            onClick = onRescanLocalMusicClick,
+                            onClick = { if (!isRescanningLocal && !isIngestingLocal) onRescanLocalMusicClick() },
                             modifier = Modifier.weight(1f),
-                            enabled = !isRescanningLocal && !isIngestingLocal,
                         ) { TextMMD(text = stringResource(R.string.settings_rescan_folders), style = MaterialTheme.typography.titleSmall) }
                     }
                 }
@@ -207,7 +208,8 @@ fun SettingsScreen(
             }
         }
 
-        item { Separator() }
+        // Room, not a rule, between the folders and the switches.
+        item { Spacer(Modifier.height(16.dp)) }
 
         item {
             SwitchRow(
@@ -222,15 +224,6 @@ fun SettingsScreen(
                 label = stringResource(R.string.settings_keep_playing_similar),
                 checked = keepPlayingSimilar,
                 onCheckedChange = onKeepPlayingSimilarChange,
-            )
-        }
-
-        item {
-            val jumpShown by rememberListJumpShown()
-            SwitchRow(
-                label = stringResource(R.string.list_jump_setting),
-                checked = jumpShown,
-                onCheckedChange = { ListJumpPrefs.setShown(context, it) },
             )
         }
 
@@ -384,6 +377,7 @@ private fun LinkRow(label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -410,6 +404,7 @@ private fun SwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -433,6 +428,7 @@ private fun ValueRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .then(
                 if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier
             )
@@ -493,7 +489,7 @@ private fun FolderRow(path: String, onRemove: () -> Unit) {
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(armed) {
         if (armed) {
-            delay(4000)
+            delay(ARMED_MS)
             armed = false
         }
     }
@@ -501,6 +497,7 @@ private fun FolderRow(path: String, onRemove: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable {
                 if (armed) {
                     armed = false

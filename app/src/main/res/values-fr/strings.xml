@@ -464,10 +464,6 @@
     <!-- About dialog. Keep the names of the app, people, projects and licences as they are -->
     <!-- Heading. %1$s is the version number, e.g. 2.8.14 -->
     <string name="about_title">Music Box %1$s</string>
-    <string name="about_privacy">Votre bibliothèque et vos paramètres restent sur ce téléphone. YouTube, radio.garden et votre serveur de musique ne sont contactés que lorsque vous les utilisez. Les mots de passe sont scellés dans le magasin de clés du téléphone. Aucune publicité, aucune analyse.</string>
-    <!-- The name of the app's licence -->
-    <string name="about_licence">Licence Publique Générale GNU v3</string>
-    <string name="about_built_on">Construit à partir de CalmMusic par David Ray Wilson</string>
     <!-- The donation link label, beside a drawing of a llama. A fixed phrase: a verb and an object, so the reader knows what pressing it does -->
     <string name="about_feed_the_llamas">nourrir les lamas</string>
     <!-- Toast when the donation link cannot be opened -->
@@ -570,7 +566,6 @@
     <!-- Library lists (Songs, Albums, Artists), shared -->
     <string name="library_sync_in_progress">Synchronisation de la musique en cours…</string>
     <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
-    <string name="library_nothing_added_yet">Rien n\'a été ajouté pour le moment.</string>
     <!-- Empty library: button that opens the YouTube settings -->
     <string name="library_empty_set_up_youtube">Configurer YouTube</string>
     <!-- Empty library: button that opens the folder settings -->
@@ -667,9 +662,6 @@
     <!-- A file opened from another app, such as a file manager -->
     <string name="opened_file_unreadable">Impossible d\'ouvrir ce fichier</string>
     <string name="opened_file_needs_access">Music Box a besoin d\'accéder aux fichiers musicaux pour jouer celui-là</string>
-    <string name="list_jump_setting">Lettres et points de pages</string>
-    <string name="list_jump_shown">Affiché</string>
-    <string name="list_jump_hidden">Masqué</string>
     <!-- Android 13+ keeps an app installed from a file out of Accessibility, notification access
          and the default phone/texting roles until App info, then ⋮, then Allow restricted settings. -->
     <string name="restricted_hint">Android bloque ceci pour les applications installées à partir d\'un fichier. Ouvrez les infos de l\'application, appuyez sur ⋮, puis autorisez les paramètres restreints, puis réessayez.</string>

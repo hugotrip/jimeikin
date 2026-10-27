@@ -952,6 +952,10 @@ class CalmMusicViewModel(
         if (currentlyPlaying) {
             localController?.pause()
         } else {
+            // After an error the player sits idle; it has to be prepared again to try.
+            if (localController?.playbackState == Player.STATE_IDLE && localController.mediaItemCount > 0) {
+                localController.prepare()
+            }
             localController?.playWhenReady = true
         }
 
@@ -1611,11 +1615,12 @@ class CalmMusicViewModel(
                     continue
                 }
 
-                // Read controller state
-                val isPlaying = controller.playWhenReady
+                // Read controller state. A player left idle by an error (a file it cannot read)
+                // keeps playWhenReady, but nothing is playing: the button must say Play.
+                val playbackState = controller.playbackState
+                val isPlaying = controller.playWhenReady && playbackState != Player.STATE_IDLE
                 val position = controller.currentPosition
                 val duration = controller.duration
-                val playbackState = controller.playbackState
                 // What can stall is what comes over a network. This used to ask
                 // playsOnThisPhone, which answers a different question - whether the player
                 // can be handed the uri - and had just been taught to say yes to radio. The

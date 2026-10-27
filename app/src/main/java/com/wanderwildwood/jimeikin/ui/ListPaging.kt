@@ -14,9 +14,9 @@ import androidx.compose.ui.unit.dp
  * The shared [PagedColumn], turning a page on whole rows: the row a page cut at its foot opens
  * the next one, and the last page keeps its rows whole with blank space under them.
  *
- * Every list in the app goes through this rather than calling the component directly, so the
- * letters and page dots are decided once. Each one keeps its own scroll state, which is what
- * makes it safe on a screen whose tabs hold two different lists.
+ * Every list in the app goes through this rather than calling the component directly, so each
+ * fills the room it is given and runs the full width. Each one keeps its own scroll state, which
+ * is what makes it safe on a screen whose tabs hold two different lists.
  */
 @Composable
 fun PagedColumnMMD(
@@ -24,27 +24,17 @@ fun PagedColumnMMD(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    /**
-     * Letters down the edge of an alphabetical list, page dots beside any other; see [ListJump].
-     * Every list gets the dots unless it says otherwise: an artist's songs and the Radio lists
-     * went without them, and those are the long ones.
-     */
-    jump: ListJump? = ListJump.Pages,
     /** A swipe down on the first page; see [PagedColumn]. Null where the list lives on the phone. */
     onPullAtTop: (() -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
-    val state = rememberLazyListState()
-    val list = @Composable {
-        PagedColumn(
-            modifier = if (jump == null) modifier else Modifier.fillMaxSize(),
-            state = state,
-            contentPadding = contentPadding,
-            verticalArrangement = verticalArrangement,
-            horizontalAlignment = horizontalAlignment,
-            onPullAtTop = onPullAtTop,
-            content = content,
-        )
-    }
-    if (jump == null) list() else ListJumpBox(state, jump, modifier) { list() }
+    PagedColumn(
+        modifier = modifier.fillMaxSize(),
+        state = rememberLazyListState(),
+        contentPadding = contentPadding,
+        verticalArrangement = verticalArrangement,
+        horizontalAlignment = horizontalAlignment,
+        onPullAtTop = onPullAtTop,
+        content = content,
+    )
 }
