@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,14 +54,8 @@ import com.wanderwildwood.jimeikin.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    completeAlbumsWithYouTube: Boolean,
-    onCompleteAlbumsWithYouTubeChange: (Boolean) -> Unit,
-    keepPlayingSimilar: Boolean,
-    onKeepPlayingSimilarChange: (Boolean) -> Unit,
     localFolders: List<String>,
-    isYoutubeAccountConnected: Boolean,
-    onConnectYoutubeAccountClick: () -> Unit,
-    onDisconnectYoutubeAccountClick: () -> Unit,
+    onOpenOnlineAccountClick: () -> Unit,
     hasBatteryOptimizationExemption: Boolean,
     onRequestBatteryOptimizationExemption: () -> Unit,
     onAddFolderClick: () -> Unit,
@@ -83,6 +78,7 @@ fun SettingsScreen(
     localScanUnreadableFolders: Int?,
 ) {
     val context = LocalContext.current
+    val onlineConnected = onlineAccountConnected()
     PagedColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
@@ -211,21 +207,8 @@ fun SettingsScreen(
         // Room, not a rule, between the folders and the switches.
         item { Spacer(Modifier.height(16.dp)) }
 
-        item {
-            SwitchRow(
-                label = stringResource(R.string.settings_fill_album_gaps),
-                checked = completeAlbumsWithYouTube,
-                onCheckedChange = onCompleteAlbumsWithYouTubeChange,
-            )
-        }
-
-        item {
-            SwitchRow(
-                label = stringResource(R.string.settings_keep_playing_similar),
-                checked = keepPlayingSimilar,
-                onCheckedChange = onKeepPlayingSimilarChange,
-            )
-        }
+        // The catalogue's own switches, in the edition that has one (src/full).
+        onlineSwitches()
 
         item {
             // Read and written here rather than passed down: nothing else on this screen, or in
@@ -297,22 +280,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
-            // Off by default: the songs fetched again as AAC wait for Wi-Fi. The note says why
-            // turning it on is worth a thought.
-            val settings = (context.applicationContext as com.wanderwildwood.jimeikin.CalmMusic).settingsManager
-            var upgradeOnMobileData by remember { mutableStateOf(settings.getUpgradeOnMobileDataSync()) }
-            SwitchRow(
-                label = stringResource(R.string.settings_upgrade_on_mobile_data),
-                note = stringResource(R.string.settings_upgrade_on_mobile_data_note),
-                checked = upgradeOnMobileData,
-                onCheckedChange = { on ->
-                    upgradeOnMobileData = on
-                    settings.setUpgradeOnMobileData(on)
-                    (context.applicationContext as com.wanderwildwood.jimeikin.CalmMusic).downloadQueue.nudge()
-                },
-            )
-        }
+        onlineDownloadRows()
 
         item {
             // Downloads is transient status about streaming rather than a place of its own;
@@ -346,25 +314,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
-            ValueRow(
-                label = stringResource(R.string.settings_youtube_account),
-                value = if (isYoutubeAccountConnected) stringResource(R.string.settings_youtube_connected) else stringResource(R.string.settings_youtube_not_connected),
-                onClick = if (isYoutubeAccountConnected) null else onConnectYoutubeAccountClick,
-                enabled = !isYoutubeAccountConnected,
-            )
-        }
-
-        if (isYoutubeAccountConnected) {
-            item { Separator() }
-            item {
-                ArmedRow(
-                    label = stringResource(R.string.settings_disconnect_account),
-                    armedLabel = stringResource(R.string.settings_disconnect_account_armed),
-                    onConfirm = onDisconnectYoutubeAccountClick,
-                )
-            }
-        }
+        onlineAccountRows(onlineConnected, onOpenOnlineAccountClick)
     }
 }
 
@@ -387,7 +337,7 @@ private fun LinkRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Separator() {
+internal fun Separator() {
     HorizontalDividerMMD(
         thickness = 1.dp,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -395,7 +345,7 @@ private fun Separator() {
 }
 
 @Composable
-private fun SwitchRow(
+internal fun SwitchRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -413,13 +363,14 @@ private fun SwitchRow(
             TextMMD(text = label, style = MaterialTheme.typography.titleSmall)
             if (note != null) TextMMD(text = note, style = MaterialTheme.typography.bodySmall)
         }
+        Spacer(Modifier.width(16.dp))
         SwitchMMD(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
 /** A row shows its value, and otherwise says nothing. */
 @Composable
-private fun ValueRow(
+internal fun ValueRow(
     label: String,
     value: String,
     onClick: (() -> Unit)?,
@@ -445,7 +396,7 @@ private fun ValueRow(
  * whoever picks the phone up next.
  */
 @Composable
-private fun ArmedRow(
+internal fun ArmedRow(
     label: String,
     armedLabel: String,
     onConfirm: () -> Unit,

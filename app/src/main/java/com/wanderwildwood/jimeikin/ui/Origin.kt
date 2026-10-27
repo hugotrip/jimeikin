@@ -55,9 +55,9 @@ fun OriginMark(origin: Origin) {
     val description = stringResource(
         when (origin) {
             Origin.SERVER -> R.string.origin_server
-            Origin.YOUTUBE -> R.string.origin_youtube
+            Origin.YOUTUBE -> R.string.origin_online
             Origin.SERVER_DOWNLOAD -> R.string.origin_server_download
-            Origin.YOUTUBE_DOWNLOAD -> R.string.origin_youtube_download
+            Origin.YOUTUBE_DOWNLOAD -> R.string.origin_online_download
         },
     )
     Row(verticalAlignment = Alignment.CenterVertically) {

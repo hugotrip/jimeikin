@@ -18,17 +18,6 @@ class CalmMusicSettingsManager(context: Context) {
     private val _localMusicFolders = MutableStateFlow(getLocalMusicFoldersSync())
     val localMusicFolders: StateFlow<Set<String>> = _localMusicFolders.asStateFlow()
 
-    private val _streamingProvider = MutableStateFlow(getStreamingProviderSync())
-    val streamingProvider: StateFlow<StreamingProvider> = _streamingProvider.asStateFlow()
-
-    private val _completeAlbumsWithYouTube = MutableStateFlow(getCompleteAlbumsWithYouTubeSync())
-    val completeAlbumsWithYouTube: StateFlow<Boolean> = _completeAlbumsWithYouTube.asStateFlow()
-
-    private val _keepPlayingSimilar = MutableStateFlow(getKeepPlayingSimilarSync())
-    val keepPlayingSimilar: StateFlow<Boolean> = _keepPlayingSimilar.asStateFlow()
-
-    private val _youtubeAccountCookie = MutableStateFlow(getYouTubeAccountCookieSync())
-    val youtubeAccountCookie: StateFlow<String?> = _youtubeAccountCookie.asStateFlow()
 
     private val _subsonicConfig = MutableStateFlow(getSubsonicConfigSync())
     val subsonicConfig: StateFlow<SubsonicConfig?> = _subsonicConfig.asStateFlow()
@@ -170,35 +159,6 @@ class CalmMusicSettingsManager(context: Context) {
         return prefs.getStringSet(KEY_LOCAL_MUSIC_FOLDERS, emptySet()) ?: emptySet()
     }
 
-    private fun getStreamingProviderSync(): StreamingProvider {
-        val raw = prefs.getString(KEY_STREAMING_PROVIDER, null)
-        return StreamingProvider.fromStored(raw)
-    }
-
-    fun setStreamingProvider(provider: StreamingProvider) {
-        prefs.edit { putString(KEY_STREAMING_PROVIDER, StreamingProvider.toStored(provider)) }
-        _streamingProvider.value = provider
-    }
-
-    fun getCompleteAlbumsWithYouTubeSync(): Boolean {
-        return prefs.getBoolean(KEY_COMPLETE_ALBUMS_WITH_YOUTUBE, false)
-    }
-
-    fun setCompleteAlbumsWithYouTube(enabled: Boolean) {
-        prefs.edit { putBoolean(KEY_COMPLETE_ALBUMS_WITH_YOUTUBE, enabled) }
-        _completeAlbumsWithYouTube.value = enabled
-    }
-
-    /** Off unless chosen: when a YouTube song is the last in the queue, add what YouTube plays after it. */
-    fun getKeepPlayingSimilarSync(): Boolean {
-        return prefs.getBoolean(KEY_KEEP_PLAYING_SIMILAR, false)
-    }
-
-    fun setKeepPlayingSimilar(enabled: Boolean) {
-        prefs.edit { putBoolean(KEY_KEEP_PLAYING_SIMILAR, enabled) }
-        _keepPlayingSimilar.value = enabled
-    }
-
     /** Off unless turned on: what is playing, handed to Glance for its lock-screen panel. The app draws its own strip on the lock screen, so the two would otherwise say it twice. */
     fun getPlayingOnLockScreenSync(): Boolean {
         return prefs.getBoolean(KEY_PLAYING_ON_LOCK_SCREEN, false)
@@ -220,23 +180,6 @@ class CalmMusicSettingsManager(context: Context) {
         prefs.edit { putBoolean(KEY_UPGRADE_ON_MOBILE_DATA, enabled) }
     }
 
-    private fun getYouTubeAccountCookieSync(): String? {
-        // A signed-in cookie is a credential like any other, and is sealed the same way.
-        val stored = prefs.getString(KEY_YOUTUBE_ACCOUNT_COOKIE, null) ?: return null
-        val cookie = Secrets.open(stored) ?: return null
-        if (!Secrets.isSealed(stored)) {
-            Secrets.seal(cookie)?.let { sealed ->
-                prefs.edit { putString(KEY_YOUTUBE_ACCOUNT_COOKIE, sealed) }
-            }
-        }
-        return cookie
-    }
-
-    fun setYouTubeAccountCookie(cookie: String) {
-        prefs.edit { putString(KEY_YOUTUBE_ACCOUNT_COOKIE, Secrets.seal(cookie)) }
-        _youtubeAccountCookie.value = cookie
-    }
-
     /**
      * Which of the five places along the bottom was last open. The app always started on
      * Songs, so somebody who lives in Albums or Playlists paid a tap for it every time they
@@ -256,11 +199,6 @@ class CalmMusicSettingsManager(context: Context) {
         prefs.edit { putString(KEY_LAST_LIBRARY_TAB, route) }
     }
 
-    fun clearYouTubeAccountCookie() {
-        prefs.edit { remove(KEY_YOUTUBE_ACCOUNT_COOKIE) }
-        _youtubeAccountCookie.value = null
-    }
-
     companion object {
         private const val PREFS_NAME = "calmmusic_settings"
         private const val KEY_SUBSONIC_URL = "subsonic_url"
@@ -274,10 +212,6 @@ class CalmMusicSettingsManager(context: Context) {
         private const val KEY_LOCAL_MUSIC_FOLDERS = "local_music_folders"
         private const val KEY_LAST_LOCAL_LIBRARY_SCAN_MILLIS = "last_local_library_scan_millis"
         private const val KEY_LOCAL_ALBUM_KEY_VERSION = "local_album_key_version"
-        private const val KEY_STREAMING_PROVIDER = "streaming_provider"
-        private const val KEY_COMPLETE_ALBUMS_WITH_YOUTUBE = "complete_albums_with_youtube"
-        private const val KEY_KEEP_PLAYING_SIMILAR = "keep_playing_similar"
-        private const val KEY_YOUTUBE_ACCOUNT_COOKIE = "youtube_account_cookie"
         private const val KEY_LAST_LIBRARY_TAB = "last_library_tab"
         private const val KEY_PLAYING_ON_LOCK_SCREEN = "playing_on_lock_screen"
         private const val KEY_UPGRADE_ON_MOBILE_DATA = "upgrade_on_mobile_data"

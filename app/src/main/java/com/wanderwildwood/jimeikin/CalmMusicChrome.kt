@@ -183,7 +183,7 @@ fun CalmMusicTopAppBar(
                 }
 
                 (currentDestination?.route == Screen.ArtistDetails.route ||
-                    currentDestination?.route == Screen.YoutubeArtistDetails.route) &&
+                    currentDestination?.route == Screen.OnlineArtistDetails.route) &&
                     selectedArtistName != null -> {
                     TextMMD(
                         text = selectedArtistName,

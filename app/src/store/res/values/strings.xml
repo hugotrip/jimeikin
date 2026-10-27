@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The store edition's own words, where the full edition's speak of its online catalogue. -->
+<resources>
+    <string name="main_title_online_sign_in">Sign in</string>
+    <string name="main_search_error">The search did not finish</string>
+    <!-- Player: a song kept from the full edition's online catalogue, which this edition cannot play -->
+    <string name="main_not_in_this_edition">This song streams from a service this edition does not include. Skipping.</string>
+    <string name="player_downloads_online">Online</string>
+    <string name="player_downloads_as_aac">Online again, as AAC</string>
+    <string name="origin_online">Streams</string>
+    <string name="origin_online_download">Downloaded</string>
+    <string name="library_search_searching">Searching…</string>
+    <string name="library_search_failed">The search did not finish</string>
+    <string name="library_nothing_added_yet">Music comes from a folder on this phone or its card, or from your own music server.</string>
+
+    <!-- About -->
+    <string name="about_what">Plays the music on this phone and on your own music server, and internet radio.</string>
+    <string name="about_privacy_phone">Your library, playlists, queue, hearts and settings stay on this phone. A music server\'s password is sealed with a key in the phone\'s keystore before it is saved. Nothing is sent to the app\'s maker.</string>
+    <string name="about_privacy_online">The app goes online only for what you use: your own music server (Navidrome or another Subsonic server) at the address you type in; radio.garden, to browse stations, and each station\'s own stream while it plays; and api.zippopotam.us, only for a US or Canadian postcode typed into the radio search. A server on a home network is often plain http, so what goes to it is not encrypted.</string>
+    <string name="about_terms">This app is free software under the GNU General Public License v3. It comes with no warranty: use it at your own risk. Radio stations and music servers are run by others, under their own terms.</string>
+    <string name="about_bundled">Tags read and written with jaudiotagger, LGPL 2.1. Mudita MMD, AndroidX, Jetpack Compose, Media3, Room, OkHttp, Kotlin and kotlinx.coroutines, all Apache 2.0. Java library backports (desugar_jdk_libs), GPL 2.0 with the Classpath Exception. The Lato typeface, SIL Open Font Licence 1.1. Icons from Material Symbols, Apache 2.0.</string>
+</resources>

@@ -244,9 +244,18 @@ Android Studio, JDK 21, Android SDK Platform 37+, and a device or emulator on An
 configuration.
 
 ```sh
-./gradlew :app:assembleDebug     # or :app:assembleRelease
-./gradlew :app:installDebug
+./gradlew :app:assembleFullDebug     # or :app:assembleFullRelease
+./gradlew :app:installFullDebug
 ```
+
+There are two editions, from one source. **full** is this one, the GitHub release. **store**
+(`:app:assembleStoreRelease`) is the edition offered in Mudita's store: the same app without
+YouTube Music. Its code (`app/src/full`), NewPipeExtractor and the words about it are not in
+that APK at all; `app/src/store` stands in for them. Both have the same application id, key and
+version code, so either installs over the other, and a library carries over: songs streamed
+from YouTube are left out of the store edition's lists and skipped if one is played, and
+downloads are files in either. Its own description and privacy policy are in
+[store-edition/](store-edition/).
 
 Both build types share a checked-in debug-style keystore; see `app/build.gradle.kts`. A
 tagged push (`v*`) triggers a GitHub Actions release build that publishes a signed APK to

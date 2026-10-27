@@ -7,7 +7,7 @@ sealed class SearchResult {
     data class Song(val song: SongUiModel) : SearchResult()
     data class Album(val album: AlbumUiModel) : SearchResult()
     data class LibraryArtist(val artist: ArtistUiModel) : SearchResult()
-    data class YouTubeArtist(val artist: YoutubeArtistUiModel) : SearchResult()
+    data class OnlineArtist(val artist: OnlineArtistUiModel) : SearchResult()
 }
 
 /**
@@ -24,9 +24,9 @@ fun buildSearchResults(
     librarySongs: List<SongUiModel>,
     libraryAlbums: List<AlbumUiModel>,
     libraryArtists: List<ArtistUiModel>,
-    youTubeSongs: List<SongUiModel>,
-    youTubeAlbums: List<AlbumUiModel>,
-    youTubeArtists: List<YoutubeArtistUiModel>,
+    onlineSongs: List<SongUiModel>,
+    onlineAlbums: List<AlbumUiModel>,
+    onlineArtists: List<OnlineArtistUiModel>,
 ): List<SearchResult> {
     val q = query.trim()
     if (q.isEmpty()) return emptyList()
@@ -63,19 +63,19 @@ fun buildSearchResults(
     // of forty albums called Moondance is the one meant. Its order is kept, the three lists
     // taken a turn at a time - a song, an album, an artist - with an artist whose name is
     // exactly what was typed put first.
-    fun youTubeTurn(index: Int, exact: Boolean) = if (exact) -1 else index
-    youTubeSongs.forEachIndexed { i, s ->
-        add(SearchResult.Song(s), songKey(s), PLACE_YOUTUBE, youTubeTurn(i, false), KIND_SONG)
+    fun onlineTurn(index: Int, exact: Boolean) = if (exact) -1 else index
+    onlineSongs.forEachIndexed { i, s ->
+        add(SearchResult.Song(s), songKey(s), PLACE_ONLINE, onlineTurn(i, false), KIND_SONG)
     }
-    youTubeAlbums.forEachIndexed { i, a ->
-        add(SearchResult.Album(a), albumKey(a), PLACE_YOUTUBE, youTubeTurn(i, false), KIND_ALBUM_YT)
+    onlineAlbums.forEachIndexed { i, a ->
+        add(SearchResult.Album(a), albumKey(a), PLACE_ONLINE, onlineTurn(i, false), KIND_ALBUM_ONLINE)
     }
     // An artist is offered only when the name is what was searched for. YouTube answers
     // "moondance" with whoever has a song of that name, and a row that says only "Sam Smith,
     // Artist" is not an answer to it.
-    youTubeArtists.forEachIndexed { i, a ->
+    onlineArtists.forEachIndexed { i, a ->
         val m = match(q, a.name) ?: return@forEachIndexed
-        add(SearchResult.YouTubeArtist(a), artistKey(a.name), PLACE_YOUTUBE, youTubeTurn(i, m == 0), KIND_ARTIST_YT)
+        add(SearchResult.OnlineArtist(a), artistKey(a.name), PLACE_ONLINE, onlineTurn(i, m == 0), KIND_ARTIST_ONLINE)
     }
 
     return candidates
@@ -87,19 +87,19 @@ fun buildSearchResults(
 
 private const val PLACE_PHONE = 0
 private const val PLACE_SERVER = 1
-private const val PLACE_YOUTUBE = 2
+private const val PLACE_ONLINE = 2
 
 // In the library a match on an artist leads, then an album, then a song. In YouTube's part
 // a song leads each turn: it is what a search there is usually for.
 private const val KIND_ARTIST = 0
 private const val KIND_ALBUM = 1
 private const val KIND_SONG = 2
-private const val KIND_ALBUM_YT = 3
-private const val KIND_ARTIST_YT = 4
+private const val KIND_ALBUM_ONLINE = 3
+private const val KIND_ARTIST_ONLINE = 4
 
 private fun placeOf(origin: Origin?): Int = when (origin) {
     Origin.SERVER -> PLACE_SERVER
-    Origin.YOUTUBE -> PLACE_YOUTUBE
+    Origin.YOUTUBE -> PLACE_ONLINE
     // A download is on the phone: it plays with no signal, like a file put there.
     else -> PLACE_PHONE
 }

@@ -57,7 +57,7 @@ fun PlaylistDetailsScreen(
     onDeleteClick: (SongUiModel) -> Unit,
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
     onKeepAllClick: (List<SongUiModel>) -> Unit = {},
-    canKeepYouTube: Boolean = false,
+    canKeepOnline: Boolean = false,
 ) {
     // Local State
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
@@ -235,7 +235,7 @@ fun PlaylistDetailsScreen(
                 // A playlist is the thing a reader most wants on the phone before
                 // leaving the house. Shown only where something is still on a server
                 // or YouTube, so it never offers work with nothing behind it.
-                if (songs.hasSongsToKeep(canKeepYouTube, LocalIsDownloaded.current)) {
+                if (songs.hasSongsToKeep(canKeepOnline, LocalIsDownloaded.current)) {
                     IconButton(
                         onClick = { onKeepAllClick(songs) },
                     ) {

@@ -148,7 +148,7 @@ fun AlbumsScreen(
 class AlbumActions(
     /** The album's tracks in order, as its own page would list them. */
     val songs: suspend (AlbumUiModel) -> List<SongUiModel>,
-    val canKeepYouTube: Boolean,
+    val canKeepOnline: Boolean,
     val onPlayNext: (AlbumUiModel, List<SongUiModel>) -> Unit,
     val onAddToQueue: (AlbumUiModel, List<SongUiModel>) -> Unit,
     val onAddToPlaylist: (List<SongUiModel>) -> Unit,
@@ -277,7 +277,7 @@ fun AlbumItem(
                             text = { TextMMD(text = stringResource(R.string.player_add_to_playlist)) },
                             onClick = { withSongs { actions.onAddToPlaylist(it) } }
                         )
-                        if (songs?.hasSongsToKeep(actions.canKeepYouTube, isDownloaded) == true) {
+                        if (songs?.hasSongsToKeep(actions.canKeepOnline, isDownloaded) == true) {
                             HorizontalDividerMMD(thickness = 1.dp)
                             DropdownMenuItemMMD(
                                 text = { TextMMD(text = stringResource(R.string.player_song_keep_on_phone)) },

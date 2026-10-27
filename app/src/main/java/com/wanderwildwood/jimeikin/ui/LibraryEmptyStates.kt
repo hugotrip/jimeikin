@@ -55,7 +55,7 @@ fun LibraryOnboardingEmptyState(
         Spacer(modifier = Modifier.height(24.dp))
 
         // In the order a copy is worth having in, which is also the order search lists them:
-        // the phone, then a server at home, then YouTube.
+        // the phone, then a server at home, then the online catalogue.
         ButtonMMD(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(12.dp),
@@ -82,18 +82,7 @@ fun LibraryOnboardingEmptyState(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedButtonMMD(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(12.dp),
-            onClick = onOpenStreamingSettingsClick,
-        ) {
-            TextMMD(
-                text = stringResource(R.string.library_empty_set_up_youtube),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        // The online catalogue's own way in, in the edition that has one (src/full).
+        OnlineSetUpButton(onClick = onOpenStreamingSettingsClick)
     }
 }

@@ -20,7 +20,7 @@ import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
 
 /** Lightweight UI model for a YouTube Music artist search result. */
-data class YoutubeArtistUiModel(
+data class OnlineArtistUiModel(
     val browseId: String,
     val name: String,
 )
@@ -38,7 +38,7 @@ fun SearchScreen(
     onPlaySongClick: (SongUiModel) -> Unit,
     onAlbumClick: (AlbumUiModel) -> Unit,
     onLibraryArtistClick: (ArtistUiModel) -> Unit,
-    onArtistClick: (YoutubeArtistUiModel) -> Unit,
+    onArtistClick: (OnlineArtistUiModel) -> Unit,
     currentSongId: String? = null,
     librarySongIds: Set<String> = emptySet(),
     onAddToPlaylistClick: (SongUiModel) -> Unit = {},
@@ -95,7 +95,7 @@ fun SearchScreen(
                         onClick = { onLibraryArtistClick(result.artist) },
                         showDivider = showDivider,
                     )
-                    is SearchResult.YouTubeArtist -> SearchArtistItem(
+                    is SearchResult.OnlineArtist -> SearchArtistItem(
                         artist = result.artist,
                         onClick = { onArtistClick(result.artist) },
                         showDivider = showDivider,
@@ -114,7 +114,7 @@ fun SearchScreen(
 
 @Composable
 private fun SearchArtistItem(
-    artist: YoutubeArtistUiModel,
+    artist: OnlineArtistUiModel,
     onClick: () -> Unit,
     showDivider: Boolean = true,
 ) {

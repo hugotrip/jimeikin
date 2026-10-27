@@ -15,7 +15,7 @@ sealed class Screen(val route: String, @StringRes val labelRes: Int, val icon: I
     object Albums : Screen("albums", R.string.main_title_albums, Icons.Album)
     object AlbumDetails : Screen("albumDetails", R.string.main_title_album, Icons.Album)
     object ArtistDetails : Screen("artistDetails", R.string.main_title_artist, Icons.LibraryMusic)
-    object YoutubeArtistDetails : Screen("youtubeArtistDetails", R.string.main_title_artist, Icons.LibraryMusic)
+    object OnlineArtistDetails : Screen("onlineArtistDetails", R.string.main_title_artist, Icons.LibraryMusic)
     object Search : Screen("search", R.string.main_title_search, Icons.Search)
 
     object Radio : Screen("radio", R.string.main_title_radio, Icons.Radio) // Add this line
@@ -25,7 +25,7 @@ sealed class Screen(val route: String, @StringRes val labelRes: Int, val icon: I
     object EditDetails : Screen("editDetails", R.string.main_title_edit_details, Icons.Edit)
     object FileUnder : Screen("fileUnder", R.string.main_title_file_under, Icons.Person)
     object Hearted : Screen("hearted", R.string.hearted_title, Icons.Heart)
-    object YouTubeLogin : Screen("youtubeLogin", R.string.main_title_connect_youtube, Icons.Person)
+    object OnlineSignIn : Screen("onlineSignIn", R.string.main_title_online_sign_in, Icons.Person)
 }
 
 /**

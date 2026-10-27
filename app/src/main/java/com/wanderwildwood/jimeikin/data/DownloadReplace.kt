@@ -142,7 +142,7 @@ object DownloadReplace {
             runCatching { writePending(app, pending(app) - old.key) }
             throw IOException("the library could not be updated: ${e.message}", e)
         }
-        if (newId != row.id) app.youTubeCopies.rename(row.id, newId)
+        if (newId != row.id) app.online.renameCopy(row.id, newId)
     }
 
     private fun repoint(app: CalmMusic, database: CalmMusicDatabase, row: SongEntity, place: Place): String = when (place) {
@@ -305,7 +305,7 @@ object DownloadReplace {
         val renamed = rename(app, new, wanted) ?: return false
         return try {
             val newId = repoint(app, database, row, renamed)
-            if (newId != row.id) app.youTubeCopies.rename(row.id, newId)
+            if (newId != row.id) app.online.renameCopy(row.id, newId)
             Log.i(TAG, "${new.name} renamed ${renamed.name}")
             true
         } catch (e: Exception) {

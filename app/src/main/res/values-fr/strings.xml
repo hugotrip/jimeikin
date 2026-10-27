@@ -22,7 +22,6 @@
     <string name="main_title_downloads">Téléchargements</string>
     <string name="main_title_settings">Paramètres</string>
     <string name="main_title_music_server">Serveur de musique</string>
-    <string name="main_title_connect_youtube">Connecter un compte YouTube</string>
     <!-- Top bar title when renaming an existing playlist -->
     <string name="main_title_rename_playlist">Renommer la playlist</string>
     <!-- Top bar title when making a new playlist; also the button in the add-to-playlist sheet -->
@@ -56,11 +55,8 @@
     <string name="main_button_delete_count">En supprimer %1$d</string>
     <!-- Button (finished picking songs to add to a playlist) -->
     <string name="main_button_done">Fait</string>
-    <!-- Search -->
-    <string name="main_search_error">La recherche n’a pas atteint YouTube</string>
     <!-- Playback messages (snackbars) -->
     <string name="main_playback_still_starting">Démarrage de la lecture toujours en cours</string>
-    <string name="main_youtube_cannot_play">YouTube indique que cette piste ne peut pas être lue. Elle sera ignorée.</string>
     <string name="main_no_artist_page">Aucune page pour cet artiste</string>
     <string name="main_no_album_page">Aucune page pour cet album</string>
     <string name="main_download_started">Téléchargement démarré</string>
@@ -345,7 +341,6 @@
     <string name="player_downloads_clear">Nettoyer</string>
     <!-- Downloads: where a song came from, under its artist -->
     <string name="player_downloads_from_server">De votre serveur de musique</string>
-    <string name="player_downloads_from_youtube">De YouTube</string>
     <!-- Library top bar: icon description, opens Downloads -->
     <string name="main_cd_downloads">Téléchargements</string>
     <!-- Radio screen -->
@@ -431,11 +426,6 @@
         <item quantity="one">%1$d dossier n\'a pas pu être lu. Ses pistes ont été mises à l\'écart.</item>
         <item quantity="other">%1$d dossiers n\'ont pas pu être lus. Leurs pistes ont été mises à l\'écart.</item>
     </plurals>
-    <!-- Settings screen: the rows below the folders -->
-    <!-- Switch: fetch an album's missing tracks from YouTube -->
-    <string name="settings_fill_album_gaps">Ajouter les pistes manquantes des albums depuis YouTube</string>
-    <!-- Switch row: when the last song in the queue is a YouTube song, add the songs YouTube Music would play after it -->
-    <string name="settings_keep_playing_similar">Continuer à jouer des pistes similaires depuis YouTube</string>
     <!-- Settings switch: the song playing is handed to the Glance app for its lock-screen panel -->
     <string name="settings_playing_on_lock_screen">Afficher la lecture en cours dans Glance</string>
     <!-- Row title: whether the app may keep playing in the background -->
@@ -452,15 +442,6 @@
     <string name="settings_downloads">Téléchargements</string>
     <!-- Row that opens the music server (Navidrome/Subsonic) screen -->
     <string name="settings_music_server">Serveur de musique</string>
-    <!-- Row title for the signed-in YouTube account -->
-    <string name="settings_youtube_account">Compte YouTube</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_connected">Connecté</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_not_connected">Non connecté</string>
-    <!-- Row that signs the YouTube account out; the second label is shown after one tap -->
-    <string name="settings_disconnect_account">Déconnecter le compte</string>
-    <string name="settings_disconnect_account_armed">Déconnecter le compte — appuyez à nouveau</string>
     <!-- About dialog. Keep the names of the app, people, projects and licences as they are -->
     <!-- Heading. %1$s is the version number, e.g. 2.8.14 -->
     <string name="about_title">Music Box %1$s</string>
@@ -482,9 +463,7 @@
     <string name="lockscreen_service_description">Affiche les contrôles de Music Box sur l\'écran de verrouillage pendant qu\'il joue. Seul un service d\'accessibilité peut se dessiner au-dessus de l\'écran de verrouillage, c\'est pourquoi c\'en est un. Il n\'observe que l\'écran de verrouillage du système, et seulement pour une chose : si la demande du code PIN est affichée, les contrôles lui laissent la place. Il ne lit aucune autre application, et rien ne quitte le téléphone.</string>
     <!-- Read aloud for the small mark on a row that came from the music server or YouTube -->
     <string name="origin_server">Diffusé depuis votre serveur de musique</string>
-    <string name="origin_youtube">Diffusé depuis YouTube</string>
     <string name="origin_server_download">Téléchargé depuis votre serveur de musique</string>
-    <string name="origin_youtube_download">Téléchargé depuis YouTube</string>
     <!-- Editing a song's or an album's tags -->
     <string name="main_title_edit_details">Modifier les informations</string>
     <!-- Song long-press menu item -->
@@ -551,23 +530,13 @@
     <!-- Row at the foot of the screen; the second label is shown in bold after one tap -->
     <string name="library_server_forget">Oublier le serveur</string>
     <string name="library_server_forget_armed">Oublier le serveur — ses pistes seront retirées de la bibliothèque ; appuyez à nouveau</string>
-    <!-- YouTube sign-in screen, when the web page fails -->
-    <string name="library_youtube_login_failed">La page de connexion ne s\'est pas chargée</string>
-    <!-- Button: try loading the sign-in page again -->
-    <string name="library_youtube_login_retry">Réessayer</string>
-    <!-- Search screen -->
-    <string name="library_search_searching">Recherche sur YouTube…</string>
     <string name="library_search_nothing">Rien n\'a été trouvé. Essayez une autre recherche.</string>
     <!-- Before an album's artist in the search results, where albums sit among songs and artists -->
     <string name="library_search_kind_album">Album</string>
-    <string name="library_search_failed">La recherche n’a pas atteint YouTube</string>
     <!-- Second line under an artist's name in the search results, saying the result is an artist -->
     <string name="library_search_result_artist">Artiste</string>
     <!-- Library lists (Songs, Albums, Artists), shared -->
     <string name="library_sync_in_progress">Synchronisation de la musique en cours…</string>
-    <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
-    <!-- Empty library: button that opens the YouTube settings -->
-    <string name="library_empty_set_up_youtube">Configurer YouTube</string>
     <!-- Empty library: button that opens the folder settings -->
     <string name="library_empty_choose_folder">Choisir un dossier</string>
     <!-- Empty library: button that opens the music server screen (Navidrome and the like) -->

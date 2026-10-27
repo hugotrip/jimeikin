@@ -589,7 +589,7 @@ private fun NowPlayingScreenPreview() {
         onDownloadClick = {},
         onCancelDownloadClick = {},
         sourceType = "YOUTUBE",
-        streamResolverLabel = "Innertube",
+        streamResolverLabel = null,
     )
 }
 
@@ -628,6 +628,6 @@ private fun NowPlayingScreenSavedPreview() {
         isDownloaded = true,
         onDeleteDownloadClick = {},
         sourceType = "YOUTUBE",
-        streamResolverLabel = "Innertube",
+        streamResolverLabel = null,
     )
 }

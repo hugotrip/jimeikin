@@ -23,7 +23,6 @@
     <string name="main_title_downloads">Downloads</string>
     <string name="main_title_settings">Einstellungen</string>
     <string name="main_title_music_server">Musik-Server</string>
-    <string name="main_title_connect_youtube">Mit einem YouTube-Account verbinden</string>
     <!-- Top bar title when renaming an existing playlist -->
     <string name="main_title_rename_playlist">Wiedergabeliste umbenennen</string>
     <!-- Top bar title when making a new playlist; also the button in the add-to-playlist sheet -->
@@ -62,12 +61,9 @@
     <!-- Button (finished picking songs to add to a playlist) -->
     <string name="main_button_done">Fertig</string>
 
-    <!-- Search -->
-    <string name="main_search_error">Die Suche konnte YouTube nicht erreichen</string>
 
     <!-- Playback messages (snackbars) -->
     <string name="main_playback_still_starting">Die Wiedergabe startet noch</string>
-    <string name="main_youtube_cannot_play">YouTube hat mitgeteilt, dass der Titel nicht gespielt werden kann. Wird übersprungen.</string>
     <string name="main_no_artist_page">Keine Seite für diesen Künstler</string>
     <string name="main_no_album_page">Keine Seite für dieses Album</string>
     <string name="main_download_started">Download gestartet</string>
@@ -366,9 +362,6 @@
         <item quantity="other">%1$d Ordner konnten nicht gelesen werden. Ihre Titel wurden in Ruhe gelassen.</item>
     </plurals>
 
-    <!-- Settings screen: the rows below the folders -->
-    <!-- Switch: fetch an album's missing tracks from YouTube -->
-    <string name="settings_fill_album_gaps">Fülle Lücken in Alben mit YouTube</string>
     <!-- Row title: whether the app may keep playing in the background -->
     <string name="settings_background_playback">Wiedergabe im Hintergrund</string>
     <!-- Value under "Background playback" when the battery exemption is granted -->
@@ -379,15 +372,6 @@
     <string name="settings_downloads">Downloads</string>
     <!-- Row that opens the music server (Navidrome/Subsonic) screen -->
     <string name="settings_music_server">Musik-Server</string>
-    <!-- Row title for the signed-in YouTube account -->
-    <string name="settings_youtube_account">YouTube-Account</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_connected">Verbunden</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_not_connected">Nicht verbunden</string>
-    <!-- Row that signs the YouTube account out; the second label is shown after one tap -->
-    <string name="settings_disconnect_account">Trenne den Account</string>
-    <string name="settings_disconnect_account_armed">Trenne den Account — tippe erneut</string>
 
     <!-- About dialog. Keep the names of the app, people, projects and licences as they are -->
     <!-- Heading. %1$s is the version number, e.g. 2.8.14 -->
@@ -416,24 +400,12 @@
     <string name="library_server_forget">Vergiss diesen Server</string>
     <string name="library_server_forget_armed">Vergiss diesen Server — seine Titel verlassen die Bibliothek; tippe erneut</string>
 
-    <!-- YouTube sign-in screen, when the web page fails -->
-    <string name="library_youtube_login_failed">Die Login-Seite konnte nicht geladen werden</string>
-    <!-- Button: try loading the sign-in page again -->
-    <string name="library_youtube_login_retry">Wiederholen</string>
 
-    <!-- Search screen -->
-    <!-- Tab over the search results -->
-    <!-- Tab over the search results -->
-    <!-- Tab over the search results -->
-    <string name="library_search_failed">Die Suche hat YouTube nicht erreicht</string>
     <!-- Second line under an artist's name in the search results, saying the result is an artist -->
     <string name="library_search_result_artist">Künstler</string>
 
     <!-- Library lists (Songs, Albums, Artists), shared -->
     <string name="library_sync_in_progress">Musik-Abgleich läuft gerade...</string>
-    <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
-    <!-- Empty library: button that opens the YouTube settings -->
-    <string name="library_empty_set_up_youtube">Richte YouTube ein</string>
     <!-- Empty library: button that opens the folder settings -->
     <string name="library_empty_choose_folder">Wähle einen Ordner</string>
 

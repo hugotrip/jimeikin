@@ -56,9 +56,7 @@ class PlaybackService : MediaSessionService() {
         private const val CHANNEL_ID = "calmmusic_playback_channel"
         private var errorCallback: ((PlaybackException) -> Unit)? = null
 
-        private const val NEWPIPE_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
-
-        private const val BYPASS_COOKIES = "SOCS=CAI; VISITOR_INFO1_LIVE=i7Sm6Qgj0lE; CONSENT=YES+cb.20210328-17-p0.en+FX+475"
+        private const val STREAM_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
 
         /**
          * The session while the service is alive, for the lock-screen controls, which run in
@@ -227,11 +225,8 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         val upstreamFactory = OkHttpDataSource.Factory(okHttpClient)
-            .setUserAgent(NEWPIPE_USER_AGENT)
-            .setDefaultRequestProperties(mapOf(
-                "Cookie" to BYPASS_COOKIES,
-                "Referer" to "https://www.youtube.com/"
-            ))
+            .setUserAgent(STREAM_USER_AGENT)
+            .setDefaultRequestProperties(app.online.streamHeaders)
 
         val resolvingFactory = ResolvingDataSource.Factory(upstreamFactory) { dataSpec ->
             val uri = dataSpec.uri
@@ -248,11 +243,8 @@ class PlaybackService : MediaSessionService() {
             // This used to pass through only file and content, so a Subsonic stream url was
             // handed to the extractor as though the whole url were a video id, and playback
             // failed with "No service can handle the url".
-            val host = uri.host.orEmpty()
-            val isYouTube = host.endsWith("youtube.com") ||
-                host.endsWith("youtu.be") ||
-                host.endsWith("googlevideo.com")
-            if (scheme != null && !isYouTube) {
+            val isCatalogue = app.online.isCatalogueHost(uri.host.orEmpty())
+            if (scheme != null && !isCatalogue) {
                 // A live radio stream has no end and no length, and handing one to the cache
                 // stalls it before a note is heard - it sat on "Loading" for ever. This flag
                 // is exactly for that case: cache what has a length, stream what does not. A
@@ -267,24 +259,7 @@ class PlaybackService : MediaSessionService() {
                 ?: uri.lastPathSegment
                 ?: return@Factory dataSpec
 
-            val precache = app.youTubePrecacheManager
-            val now = System.currentTimeMillis()
-            val cached = precache.getCachedWithLabel(videoId, now)
-
-            if (cached != null) {
-                val (cachedUrl, cachedLabel) = cached
-                app.playbackStateManager.updateStreamResolverLabel(cachedLabel)
-                return@Factory dataSpec.withUri(cachedUrl.toUri())
-            }
-
-            val (resolvedUrl, resolverLabel) = runBlocking(Dispatchers.IO) {
-                try {
-                    app.youTubeInnertubeClient.getBestAudioUrl(videoId) to "Innertube"
-                } catch (_: Exception) {
-                    app.youTubeStreamResolver.getBestAudioUrl(videoId) to "NewPipe"
-                }
-            }
-            precache.putUrl(videoId, resolvedUrl, resolverLabel, now)
+            val (resolvedUrl, resolverLabel) = app.online.resolveStream(videoId)
             app.playbackStateManager.updateStreamResolverLabel(resolverLabel)
 
             dataSpec.withUri(resolvedUrl.toUri())

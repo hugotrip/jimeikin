@@ -12,7 +12,6 @@ import androidx.media3.datasource.cache.SimpleCache
 import com.wanderwildwood.jimeikin.data.CalmMusicSettingsManager
 import com.wanderwildwood.jimeikin.data.NowPlayingStorage
 import com.wanderwildwood.jimeikin.data.PlaybackStateManager
-import okhttp3.OkHttpClient
 import java.io.File
 
 @OptIn(UnstableApi::class)
@@ -32,22 +31,8 @@ class CalmMusic : Application() {
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     }
 
-    val youTubeSearchClient: YouTubeMusicSearchClient by lazy {
-        YouTubeMusicSearchClientImpl.create()
-    }
-
-    val youTubeInnertubeClient: YouTubeMusicInnertubeClient by lazy {
-        val client = OkHttpClient.Builder().build()
-        YouTubeMusicInnertubeClientImpl(client) { settingsManager.youtubeAccountCookie.value }
-    }
-
-    val youTubeStreamResolver: YouTubeStreamResolver by lazy {
-        YouTubeStreamResolver()
-    }
-
-    val youTubePrecacheManager: YouTubePrecacheManager by lazy {
-        YouTubePrecacheManager(this)
-    }
+    /** Songs from the online catalogue, where this edition has one; see [OnlineMusic]. */
+    val online: OnlineMusic by lazy { createOnlineMusic(this) }
 
     val playbackStateManager: PlaybackStateManager by lazy {
         PlaybackStateManager()
@@ -57,16 +42,11 @@ class CalmMusic : Application() {
         NowPlayingStorage(this)
     }
 
-    /** Which YouTube songs are already downloaded, and as which file. */
-    val youTubeCopies: YouTubeCopies by lazy {
-        YouTubeCopies(File(filesDir, "youtube-downloads.txt"))
-    }
-
     /** Names the reader gave songs, albums and artists, laid over the library as it is read. */
     val nameOverrides: com.wanderwildwood.jimeikin.data.NameOverrides by lazy {
         com.wanderwildwood.jimeikin.data.NameOverrides(
             dao = { com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(this).nameOverrideDao() },
-            recorded = { youTubeCopies.recorded.value },
+            recorded = { online.recorded.value },
         )
     }
 
@@ -74,14 +54,14 @@ class CalmMusic : Application() {
     val hearts: com.wanderwildwood.jimeikin.data.Hearts by lazy {
         com.wanderwildwood.jimeikin.data.Hearts(
             dao = { com.wanderwildwood.jimeikin.data.CalmMusicDatabase.getDatabase(this).heartedSongDao() },
-            recorded = { youTubeCopies.recorded.value },
+            recorded = { online.recorded.value },
         )
     }
 
     lateinit var settingsManager: CalmMusicSettingsManager
         private set
 
-    /** Every download, YouTube's and the music server's, in one list. */
+    /** Every download, in one list. */
     lateinit var downloadQueue: DownloadQueue
         private set
 

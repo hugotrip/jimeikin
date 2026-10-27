@@ -6,7 +6,6 @@ import android.net.NetworkCapabilities
 import android.os.Environment
 import android.util.Log
 import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
-import com.wanderwildwood.jimeikin.data.DownloadUpgrade
 import com.wanderwildwood.jimeikin.data.SongEntity
 import com.wanderwildwood.jimeikin.data.SubsonicDownloader
 import com.wanderwildwood.jimeikin.data.SubsonicResult
@@ -127,7 +126,7 @@ class DownloadQueue(private val app: CalmMusic) {
     fun isUnderway(songId: String): Boolean =
         _items.value.any { it.songId == songId && it.state.isActive }
 
-    fun enqueueYouTube(song: SongUiModel, albumArtist: String? = null) {
+    fun enqueueOnline(song: SongUiModel, albumArtist: String? = null) {
         add(
             DownloadItem(
                 id = UUID.randomUUID().toString(),
@@ -315,7 +314,7 @@ class DownloadQueue(private val app: CalmMusic) {
     private suspend fun fetch(item: DownloadItem) {
         val outcome: Pair<DownloadState, String?> = try {
             when (item.kind) {
-                DownloadKind.YOUTUBE -> fetchYouTube(item)
+                DownloadKind.YOUTUBE -> fetchOnline(item)
                 DownloadKind.SERVER -> fetchFromServer(item)
                 DownloadKind.UPGRADE -> fetchUpgrade(item)
             }
@@ -347,39 +346,16 @@ class DownloadQueue(private val app: CalmMusic) {
         }
     }
 
-    private suspend fun fetchYouTube(item: DownloadItem): Pair<DownloadState, String?> {
+    private suspend fun fetchOnline(item: DownloadItem): Pair<DownloadState, String?> {
         val musicDir = app.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
             ?: return DownloadState.FAILED to app.getString(R.string.service_subsonic_download_no_storage)
         if (!musicDir.exists()) musicDir.mkdirs()
-        val song = SongUiModel(
-            id = item.songId,
-            title = item.title,
-            artist = item.artist,
-            durationMillis = item.durationMillis,
-            discNumber = item.discNumber,
-            trackNumber = item.trackNumber,
-            sourceType = "YOUTUBE",
-            audioUri = item.audioUri,
-            album = item.album,
-        )
-        val ok = performYouTubeDownloadInternal(
-            app = app,
-            song = song,
-            albumArtist = item.albumArtist,
-            targetDir = musicDir,
-            context = app,
-            client = client,
-            onProgress = { progress(item.id, it) },
-        )
+        val ok = app.online.download(item, musicDir, client) { progress(item.id, it) }
         return if (ok) DownloadState.DOWNLOADED to null else DownloadState.FAILED to null
     }
 
     private suspend fun fetchUpgrade(item: DownloadItem): Pair<DownloadState, String?> =
-        when (val result = DownloadUpgrade.upgrade(app, item.songId, client, songsInUse) { progress(item.id, it) }) {
-            DownloadUpgrade.Result.Done -> DownloadState.DOWNLOADED to null
-            is DownloadUpgrade.Result.Failed -> DownloadState.FAILED to result.reason
-            DownloadUpgrade.Result.Later -> DownloadState.NOT_FINISHED to null
-        }
+        app.online.upgrade(item.songId, client, songsInUse) { progress(item.id, it) }
 
     /**
      * The row is not duplicated: once the file is whole the song's source changes from a

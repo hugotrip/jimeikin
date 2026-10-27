@@ -122,11 +122,11 @@ class YouTubeCopiesTest {
         val recorded = mapOf("vidA" to harbour.id)
         val downloads = listOf(harbour, shingle)
         val here: (SongUiModel) -> Boolean = { YouTubeCopyMatch.copyOf(it, recorded, downloads) != null }
-        assertFalse(listing.hasSongsToKeep(canKeepYouTube = true, isDownloaded = here))
-        assertTrue(listing.hasSongsToKeep(canKeepYouTube = true, isDownloaded = { false }))
+        assertFalse(listing.hasSongsToKeep(canKeepOnline = true, isDownloaded = here))
+        assertTrue(listing.hasSongsToKeep(canKeepOnline = true, isDownloaded = { false }))
         // A song deleted from the phone is downloadable again.
         val afterDelete: (SongUiModel) -> Boolean = { YouTubeCopyMatch.copyOf(it, recorded, listOf(harbour)) != null }
-        assertTrue(listing.hasSongsToKeep(canKeepYouTube = true, isDownloaded = afterDelete))
+        assertTrue(listing.hasSongsToKeep(canKeepOnline = true, isDownloaded = afterDelete))
     }
 
     @Test
