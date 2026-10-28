@@ -313,6 +313,7 @@ private fun CalmMusicTopAppBarActions(
             Icon(
                 imageVector = Icons.Settings,
                 contentDescription = stringResource(R.string.main_cd_settings),
+                modifier = Modifier.size(22.dp),
             )
         }
     }

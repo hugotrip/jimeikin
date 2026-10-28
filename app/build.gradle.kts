@@ -15,8 +15,8 @@ android {
         applicationId = "com.wanderwildwood.jimeikin"
         minSdk = 28
         targetSdk = 36
-        versionCode = 85
-        versionName = "2.18.11"
+        versionCode = 86
+        versionName = "2.18.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -107,7 +107,7 @@ android {
     }
 }
 
-// jimeikin-full-2.18.11.apk, jimeikin-store-2.18.11.apk: which edition, and which version, by name.
+// jimeikin-full-2.18.12.apk, jimeikin-store-2.18.12.apk: which edition, and which version, by name.
 androidComponents {
     onVariants { variant ->
         val suffix = if (variant.buildType == "release") "" else "-${variant.buildType}"
