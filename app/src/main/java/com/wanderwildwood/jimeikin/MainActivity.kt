@@ -43,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalCursorBlinkEnabled
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -84,7 +85,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.wanderwildwood.jimeikin.data.StreamingProvider
 import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.DarkStatusIconsInSheet
 import com.wanderwildwood.jimeikin.ui.buildSearchResults
@@ -112,6 +112,7 @@ import com.wanderwildwood.jimeikin.ui.DownloadLineBar
 import com.wanderwildwood.jimeikin.ui.DownloadsScreen
 import com.wanderwildwood.jimeikin.ui.NowPlayingScreen
 import com.wanderwildwood.jimeikin.playback.OpenedFile
+import com.wanderwildwood.jimeikin.playback.SongLink
 import com.wanderwildwood.jimeikin.ui.PlaylistAddSongsScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistDetailsScreen
 import com.wanderwildwood.jimeikin.ui.PlaylistEditScreen
@@ -123,8 +124,8 @@ import com.wanderwildwood.jimeikin.ui.SearchScreen
 import com.wanderwildwood.jimeikin.ui.SettingsScreen
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import com.wanderwildwood.jimeikin.ui.SongsScreen
-import com.wanderwildwood.jimeikin.ui.YouTubeArtistDetailsScreen
-import com.wanderwildwood.jimeikin.ui.YouTubeLoginScreen
+import com.wanderwildwood.jimeikin.ui.OnlineArtistScreen
+import com.wanderwildwood.jimeikin.ui.OnlineSignInScreen
 import com.wanderwildwood.jimeikin.ui.EditNameDialog
 import com.wanderwildwood.jimeikin.ui.HeartActions
 import com.wanderwildwood.jimeikin.ui.HeartedScreen
@@ -135,7 +136,7 @@ import com.wanderwildwood.jimeikin.ui.NameEditing
 import com.wanderwildwood.jimeikin.ui.NameTarget
 import com.wanderwildwood.jimeikin.ui.toHeartedRow
 import com.wanderwildwood.jimeikin.ui.toSongUiModel
-import com.wanderwildwood.jimeikin.ui.YoutubeArtistUiModel
+import com.wanderwildwood.jimeikin.ui.OnlineArtistUiModel
 import com.mudita.mmd.ThemeMMD
 import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
 import com.mudita.mmd.components.bottom_sheet.SheetStateMMD
@@ -153,6 +154,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import androidx.media3.common.Player
+import androidx.media3.datasource.HttpDataSource
+import com.wanderwildwood.jimeikin.playback.PlaybackTrouble
+import com.wanderwildwood.jimeikin.playback.Trouble
+import com.wanderwildwood.jimeikin.ui.TroubleDialog
 
 class MainActivity : ComponentActivity() {
 
@@ -185,7 +193,12 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             ThemeMMD(colorScheme = monochrome) {
-                CompositionLocalProvider(LocalTopBarActions provides remember { TopBarActionsSlot() }) {
+                // A steady cursor: a blinking one repaints the panel twice a second for as long
+                // as a field has focus. Dialogs and sheets inherit it.
+                CompositionLocalProvider(
+                    LocalTopBarActions provides remember { TopBarActionsSlot() },
+                    LocalCursorBlinkEnabled provides false,
+                ) {
                     CalmMusic(
                         app,
                         openedFile = opened.value,
@@ -248,6 +261,9 @@ fun CalmMusic(
     val snackbarHostState = remember { SnackbarHostStateMMD() }
 
     val settingsManager = app.settingsManager
+
+    // Why a song is not playing, when it isn't: a dialog rather than silence (PlaybackTrouble).
+    var playbackTrouble by remember { mutableStateOf<Trouble?>(null) }
 
     val viewModel: CalmMusicViewModel = viewModel(factory = CalmMusicViewModel.factory(app))
     val playbackState by viewModel.playbackState.collectAsState()
@@ -330,11 +346,6 @@ fun CalmMusic(
 
     val localMusicFoldersState = settingsManager.localMusicFolders.collectAsState()
     val localMusicFolders = localMusicFoldersState.value
-    val completeAlbumsWithYouTubeState = settingsManager.completeAlbumsWithYouTube.collectAsState()
-    val completeAlbumsWithYouTube = completeAlbumsWithYouTubeState.value
-    val keepPlayingSimilar by settingsManager.keepPlayingSimilar.collectAsState()
-    val youtubeAccountCookieState = settingsManager.youtubeAccountCookie.collectAsState()
-    val isYoutubeAccountConnected = youtubeAccountCookieState.value != null
     var hasBatteryOptimizationExemption by rememberSaveable { mutableStateOf(false) }
     var resumeCount by remember { mutableIntStateOf(0) }
 
@@ -384,8 +395,6 @@ fun CalmMusic(
     )
 
     val canNavigateBack = navController.previousBackStackEntry != null
-    val streamingProviderState = settingsManager.streamingProvider.collectAsState()
-    val streamingProvider = streamingProviderState.value
 
     val librarySongs by viewModel.librarySongs.collectAsState()
     val librarySongIds = remember(librarySongs) {
@@ -393,12 +402,12 @@ fun CalmMusic(
     }
     // A YouTube song's download is a row of its own, keyed on the file; these are what a
     // YouTube listing's songs are looked for among before anything offers to download them.
-    val youTubeDownloads = remember(librarySongs) {
+    val onlineDownloads = remember(librarySongs) {
         librarySongs.filter { it.sourceType == "YOUTUBE_DOWNLOAD" }
     }
-    val recordedYouTubeCopies by app.youTubeCopies.recorded.collectAsState()
-    val isDownloaded: (SongUiModel) -> Boolean = remember(youTubeDownloads, recordedYouTubeCopies) {
-        { song -> YouTubeCopyMatch.copyOf(song, recordedYouTubeCopies, youTubeDownloads) != null }
+    val recordedOnlineCopies by app.online.recorded.collectAsState()
+    val isDownloaded: (SongUiModel) -> Boolean = remember(onlineDownloads, recordedOnlineCopies) {
+        { song -> app.online.copyIn(song, recordedOnlineCopies, onlineDownloads) != null }
     }
 
     val libraryAlbums by viewModel.libraryAlbums.collectAsState()
@@ -429,7 +438,7 @@ fun CalmMusic(
 
     var selectedArtist by remember { mutableStateOf<String?>(null) }
     var selectedArtistId by remember { mutableStateOf<String?>(null) }
-    var selectedYoutubeArtist by remember { mutableStateOf<YoutubeArtistUiModel?>(null) }
+    var selectedOnlineArtist by remember { mutableStateOf<OnlineArtistUiModel?>(null) }
 
     val playbackQueue = playbackState.playbackQueue
     val currentSongId = playbackState.currentSongId
@@ -450,7 +459,7 @@ fun CalmMusic(
     var searchQuery by remember { mutableStateOf("") }
     var searchSongs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
     var searchAlbums by remember { mutableStateOf<List<AlbumUiModel>>(emptyList()) }
-    var searchArtists by remember { mutableStateOf<List<YoutubeArtistUiModel>>(emptyList()) }
+    var searchArtists by remember { mutableStateOf<List<OnlineArtistUiModel>>(emptyList()) }
     // What was last searched for, as submitted: the library's matches follow it, not the
     // letters still being typed.
     var searchedQuery by remember { mutableStateOf("") }
@@ -487,7 +496,7 @@ fun CalmMusic(
         NameEditing(canEditAlbum = { it.id in albumRowIds }, edit = { nameTarget = it })
     }
     val hearted by app.hearts.hearted.collectAsState()
-    val heartActions = remember(hearted, recordedYouTubeCopies) {
+    val heartActions = remember(hearted, recordedOnlineCopies) {
         HeartActions(
             isHearted = { song -> app.hearts.entryFor(song.id, hearted) != null },
             toggle = { song ->
@@ -501,11 +510,11 @@ fun CalmMusic(
     }
     // Each hearted song as the library has it where it is there - a streamed song that has since
     // been downloaded plays from its file - and as it was kept when hearted where it is not.
-    val heartedSongs = remember(hearted, librarySongs, recordedYouTubeCopies, names) {
+    val heartedSongs = remember(hearted, librarySongs, recordedOnlineCopies, names) {
         val byId = librarySongs.associateBy { it.id }
         hearted.map { entry ->
             byId[entry.songId]
-                ?: recordedYouTubeCopies[entry.songId]?.let { byId[it] }
+                ?: recordedOnlineCopies[entry.songId]?.let { byId[it] }
                 ?: entry.toSongUiModel(::formatDurationMillis).let { song ->
                     names?.songTitle(song.id)?.let { song.copy(title = it) } ?: song
                 }
@@ -537,11 +546,12 @@ fun CalmMusic(
     fun performSearch() {
         if (searchQuery.isBlank()) return
 
-        // The library answers at once and without a signal; YouTube's results join below it
-        // when they come.
+        // The library answers at once and without a signal; the online catalogue's results join
+        // below it when they come.
         searchedQuery = searchQuery.trim()
 
-        if (isSearching) return
+        // An edition without the online catalogue searches the library alone.
+        if (isSearching || !app.online.available) return
 
         searchScope.launch {
             isSearching = true
@@ -552,49 +562,13 @@ fun CalmMusic(
             searchAlbums = emptyList()
             searchArtists = emptyList()
             try {
-                val songResults = app.youTubeInnertubeClient.searchSongs(
-                    query = searchQuery,
-                    limit = 25,
-                )
-                val albumResults = app.youTubeInnertubeClient.searchAlbums(
-                    query = searchQuery,
-                    limit = 25,
-                )
-                val artistResults = app.youTubeInnertubeClient.searchArtists(
-                    query = searchQuery,
-                    limit = 25,
-                )
-                searchSongs = songResults.map {
-                    SongUiModel(
-                        id = it.videoId,
-                        title = it.title,
-                        artist = it.artist,
-                        durationText = formatDurationMillis(it.durationMillis),
-                        durationMillis = it.durationMillis,
-                        trackNumber = null,
-                        sourceType = "YOUTUBE",
-                        audioUri = it.videoId,
-                        album = it.album,
-                    )
-                }
-                searchAlbums = albumResults.map { album ->
-                    AlbumUiModel(
-                        id = album.albumId,
-                        title = album.title,
-                        artist = album.artist,
-                        sourceType = "YOUTUBE",
-                        releaseYear = album.year,
-                    )
-                }
-                searchArtists = artistResults.map { artist ->
-                    YoutubeArtistUiModel(
-                        browseId = artist.browseId,
-                        name = artist.name,
-                    )
-                }
+                val found = app.online.search(searchQuery)
+                searchSongs = found.songs
+                searchAlbums = found.albums
+                searchArtists = found.artists
 
-                val topVideoIds = songResults.take(5).map { it.videoId }
-                app.youTubePrecacheManager.precacheSearchResults(topVideoIds)
+                val topVideoIds = found.songs.take(5).map { it.id }
+                app.online.precacheSearch(topVideoIds)
             } catch (e: Exception) {
                 searchError = context.getString(R.string.main_search_error)
                 searchSongs = emptyList()
@@ -1037,17 +1011,17 @@ fun CalmMusic(
             ?: song.album?.let { title -> libraryAlbums.find { it.title.equals(title, ignoreCase = true) }?.artist }
 
     fun keepAllOnPhone(songs: List<SongUiModel>, pageAlbum: AlbumUiModel?) {
-        val fromYouTube = if (streamingProvider == StreamingProvider.YOUTUBE) {
+        val fromOnline = if (app.online.available) {
             // Not one already downloaded: a listing from YouTube names its songs by video
             // even once they are here, and every one of them used to be fetched again.
-            app.youTubeCopies.leftToDownload(songs, youTubeDownloads, downloadQueue::isUnderway)
+            app.online.leftToDownload(songs, onlineDownloads, downloadQueue::isUnderway)
         } else {
             emptyList()
         }
         val fromServer = songs.filter {
             it.sourceType == com.wanderwildwood.jimeikin.data.SubsonicSync.SOURCE_TYPE && !downloadQueue.isUnderway(it.id)
         }
-        if (fromServer.isEmpty() && fromYouTube.isEmpty()) {
+        if (fromServer.isEmpty() && fromOnline.isEmpty()) {
             libraryScope.launch {
                 snackbarHostState.showSnackbar(
                     message = context.getString(R.string.main_all_on_phone_already),
@@ -1061,10 +1035,10 @@ fun CalmMusic(
             songs.forEach { song ->
                 when (song) {
                     in fromServer -> downloadQueue.enqueueServer(song)
-                    in fromYouTube -> downloadQueue.enqueueYouTube(song, albumArtistFor(song, pageAlbum))
+                    in fromOnline -> downloadQueue.enqueueOnline(song, albumArtistFor(song, pageAlbum))
                 }
             }
-            val total = fromServer.size + fromYouTube.size
+            val total = fromServer.size + fromOnline.size
             libraryScope.launch {
                 snackbarHostState.showSnackbar(
                     message = context.resources.getQuantityString(R.plurals.main_keeping_songs, total, total),
@@ -1082,7 +1056,7 @@ fun CalmMusic(
      * streaming provider. Into the same queue as everything else.
      */
     fun keepOnPhone(song: SongUiModel, pageAlbum: AlbumUiModel?) {
-        if (song.sourceType == "YOUTUBE" && app.youTubeCopies.copyOf(song, youTubeDownloads) != null) {
+        if (song.sourceType == "YOUTUBE" && app.online.copyOf(song, onlineDownloads) != null) {
             libraryScope.launch {
                 snackbarHostState.showSnackbar(
                     message = context.getString(R.string.main_song_on_phone_already, song.title),
@@ -1097,8 +1071,8 @@ fun CalmMusic(
                 downloadQueue.enqueueServer(song)
                 true
             }
-            song.sourceType == "YOUTUBE" && streamingProvider == StreamingProvider.YOUTUBE -> {
-                downloadQueue.enqueueYouTube(song, albumArtistFor(song, pageAlbum))
+            song.sourceType == "YOUTUBE" && app.online.available -> {
+                downloadQueue.enqueueOnline(song, albumArtistFor(song, pageAlbum))
                 true
             }
             else -> false
@@ -1233,7 +1207,7 @@ fun CalmMusic(
         if (currentDestination?.route == Screen.Search.route) {
             focusRequester.requestFocus()
         } else {
-            app.youTubePrecacheManager.clearSearchWindow()
+            app.online.clearSearchWindow()
         }
         if (currentDestination?.route != Screen.Playlists.route && isPlaylistsEditMode) {
             isPlaylistsEditMode = false
@@ -1354,7 +1328,9 @@ fun CalmMusic(
         // key, which cancels the effect, and would cancel the reading with it.
         fileToOpen = null
         libraryScope.launch {
-            val song = withContext(Dispatchers.IO) { OpenedFile.read(appContext, uri) }
+            val song = withContext(Dispatchers.IO) {
+                if (SongLink.isLink(uri)) SongLink.read(appContext, uri) else OpenedFile.read(appContext, uri)
+            }
             if (song != null) {
                 startPlaybackFromQueue(queue = listOf(song), startIndex = 0)
                 return@launch
@@ -1385,6 +1361,10 @@ fun CalmMusic(
         val controller = localMediaController ?: return@LaunchedEffect
         viewModel.startLocalPlaybackMonitoring(controller)
 
+        // The song stopped for want of a login has already said why, and still raises a player
+        // error a moment later; that one is not said twice. Cleared when play is pressed again.
+        var stoppedFor: String? = null
+        var wasPlaying = false
         PlaybackService.registerErrorCallback { error ->
             var cause: Throwable? = error
             var lastCause: Throwable? = null
@@ -1396,21 +1376,83 @@ fun CalmMusic(
             val className = root.javaClass.name
             val message = root.message ?: error.message ?: ""
 
-            val isNewPipeContentNotAvailable =
-                className == "org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException" ||
-                        message.contains("page needs to be reloaded", ignoreCase = true) ||
-                        message.contains("ContentNotAvailable", ignoreCase = true)
-
-            if (isNewPipeContentNotAvailable) {
+            val unplayable = app.online.unplayableMessage(className, message)
+            if (unplayable != null) {
                 libraryScope.launch {
                     snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.main_youtube_cannot_play),
+                        message = context.getString(unplayable),
                         withDismissAction = false,
                         duration = SnackbarDurationMMD.Short,
                     )
                 }
                 viewModel.playNextInQueue(controller)
+            } else {
+                val failedId = controller.currentMediaItem?.mediaId
+                // Whatever the dialog says, the player is stopped: playWhenReady stays on after
+                // an error, which left the notification and the lock screen saying Playing.
+                // Play prepares the song again.
+                controller.pause()
+                if (failedId != null && failedId == stoppedFor) return@registerErrorCallback
+                val status = generateSequence<Throwable>(error) { it.cause }
+                    .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+                    .firstOrNull()?.responseCode
+                playbackTrouble = PlaybackTrouble.fromError(
+                    errorCode = error.errorCode,
+                    httpStatus = status,
+                    streamsFromServer = streamsFromServer(viewModel, controller.currentMediaItem?.mediaId),
+                    online = isOnline(appContext),
+                    serverSignedIn = settingsManager.subsonicConfig.value != null,
+                )
             }
+        }
+
+        // Two failures raise no error at all: a server song with no login, which sat "playing"
+        // at 0:00, and a server song that never finishes loading. Both are watched for on the
+        // player's own events, not on a timer, so nothing runs while it is idle.
+        var stalledFor: String? = null
+        var stallWatch: Job? = null
+        fun check() {
+            val id = controller.currentMediaItem?.mediaId
+            if (!controller.playWhenReady) stalledFor = null
+            if (controller.playWhenReady && !wasPlaying) stoppedFor = null
+            wasPlaying = controller.playWhenReady
+            val server = streamsFromServer(viewModel, id)
+            val signedIn = settingsManager.subsonicConfig.value != null
+            if (controller.playWhenReady && id != null && id != stoppedFor) {
+                PlaybackTrouble.beforePlaying(server, signedIn)?.let { trouble ->
+                    stoppedFor = id
+                    controller.pause()
+                    playbackTrouble = trouble
+                    return
+                }
+            }
+            stallWatch?.cancel()
+            if (server && controller.playWhenReady && controller.playbackState == Player.STATE_BUFFERING) {
+                stallWatch = launch {
+                    delay(PlaybackTrouble.STALL_MS)
+                    val stillId = controller.currentMediaItem?.mediaId
+                    if (controller.playWhenReady && controller.playbackState == Player.STATE_BUFFERING &&
+                        stillId == id && id != stalledFor
+                    ) {
+                        stalledFor = id
+                        playbackTrouble = PlaybackTrouble.stalled(
+                            online = isOnline(appContext),
+                            serverSignedIn = settingsManager.subsonicConfig.value != null,
+                        )
+                    }
+                }
+            }
+        }
+        val watcher = object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) = check()
+        }
+        controller.addListener(watcher)
+        check()
+        try {
+            awaitCancellation()
+        } finally {
+            controller.removeListener(watcher)
+            stallWatch?.cancel()
         }
     }
 
@@ -1458,8 +1500,55 @@ fun CalmMusic(
         }
     }
 
+    // The picker itself, from the empty library as from Settings: a "Choose a folder" that only
+    // led to Settings left the choosing still to find. The new folder is read at once, by the
+    // LaunchedEffect on the folder list.
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            val flags =
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            } catch (_: SecurityException) {
+            }
+            settingsManager.addLocalMusicFolder(uri.toString())
+        }
+    }
+    val chooseFolder: () -> Unit = {
+        runCatching { folderPickerLauncher.launch(initialFolderPickerUri(context)) }
+            .onFailure { openLocalSettings() }
+    }
+
     val openMusicServer: () -> Unit = {
         navController.navigate(Screen.MusicServer.route) { launchSingleTop = true }
+    }
+
+    playbackTrouble?.let { trouble ->
+        TroubleDialog(
+            trouble = trouble,
+            onFix = { t ->
+                playbackTrouble = null
+                when (t) {
+                    Trouble.SERVER_SIGNED_OUT, Trouble.SERVER_REFUSED, Trouble.SERVER_UNREACHABLE -> {
+                        // The server page sits under the full-screen player, so the player goes first.
+                        showNowPlaying = false
+                        openMusicServer()
+                    }
+                    Trouble.NO_INTERNET -> openSystemPage(context, Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                    Trouble.NO_FILE_ACCESS -> openSystemPage(
+                        context,
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.fromParts("package", context.packageName, null),
+                        ),
+                    )
+                    else -> Unit
+                }
+            },
+            onDismiss = { playbackTrouble = null },
+        )
     }
 
     fun NavGraphBuilder.playlistsNavGraph() {
@@ -1509,7 +1598,7 @@ fun CalmMusic(
                 onDeleteClick = onDelete,
                 onKeepOnPhoneClick = onKeepOnPhone,
                 onKeepAllClick = onKeepAllOnPhone,
-                canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+                canKeepOnline = app.online.available,
             )
         }
 
@@ -1565,7 +1654,7 @@ fun CalmMusic(
                 onDeleteClick = onDelete,
                 onKeepOnPhoneClick = onKeepOnPhone,
                 onKeepAllClick = onKeepAllOnPhone,
-                canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+                canKeepOnline = app.online.available,
             )
         }
         composable(Screen.PlaylistAddSongs.route) {
@@ -1685,7 +1774,7 @@ fun CalmMusic(
     val latestAlbumActions by rememberUpdatedState(
         AlbumActions(
             songs = { album -> viewModel.getAlbumSongsForDetails(album) },
-            canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+            canKeepOnline = app.online.available,
             onPlayNext = { album, songs ->
                 viewModel.enqueue(songs, playNext = true, localController = localMediaController)
                 libraryScope.launch {
@@ -1719,10 +1808,10 @@ fun CalmMusic(
             },
         )
     )
-    val albumActions = remember(streamingProvider) {
+    val albumActions = remember {
         AlbumActions(
             songs = { latestAlbumActions.songs(it) },
-            canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+            canKeepOnline = app.online.available,
             onPlayNext = { album, songs -> latestAlbumActions.onPlayNext(album, songs) },
             onAddToQueue = { album, songs -> latestAlbumActions.onAddToQueue(album, songs) },
             onAddToPlaylist = { latestAlbumActions.onAddToPlaylist(it) },
@@ -1757,8 +1846,8 @@ fun CalmMusic(
                         // Each page is named by its own artist. Preferring the library's here
                         // titled a YouTube artist's page with whichever library artist was
                         // opened last.
-                        selectedArtistName = if (currentDestination?.route == Screen.YoutubeArtistDetails.route) {
-                            selectedYoutubeArtist?.name
+                        selectedArtistName = if (currentDestination?.route == Screen.OnlineArtistDetails.route) {
+                            selectedOnlineArtist?.name
                         } else {
                             selectedArtist
                         },
@@ -1953,7 +2042,7 @@ fun CalmMusic(
                         isSyncInProgress = isLibrarySyncInProgress,
                         hasAnySongs = hasAnySongs,
                         onOpenStreamingSettingsClick = openStreamingSettings,
-                        onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenLocalSettingsClick = chooseFolder,
                         onOpenMusicServerClick = openMusicServer,
                         onArtistClick = { artist ->
                             val artistName = artist.name
@@ -2051,7 +2140,7 @@ fun CalmMusic(
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
                         onOpenStreamingSettingsClick = openStreamingSettings,
-                        onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenLocalSettingsClick = chooseFolder,
                         onOpenMusicServerClick = openMusicServer,
                         onPullAtTop = libraryPull,
                     )
@@ -2064,7 +2153,7 @@ fun CalmMusic(
                         isSyncInProgress = isLibrarySyncInProgress,
                         hasAnySongs = hasAnySongs,
                         onOpenStreamingSettingsClick = openStreamingSettings,
-                        onOpenLocalSettingsClick = openLocalSettings,
+                        onOpenLocalSettingsClick = chooseFolder,
                         onOpenMusicServerClick = openMusicServer,
                         onAlbumClick = { album ->
                             selectedAlbum = album
@@ -2078,7 +2167,7 @@ fun CalmMusic(
                 composable(Screen.Search.route) {
                     val searchResults = remember(
                         searchedQuery, librarySongs, libraryAlbums, libraryArtists,
-                        searchSongs, searchAlbums, searchArtists, recordedYouTubeCopies,
+                        searchSongs, searchAlbums, searchArtists, recordedOnlineCopies,
                     ) {
                         buildSearchResults(
                             query = searchedQuery,
@@ -2088,9 +2177,9 @@ fun CalmMusic(
                             // A song already downloaded is its file here too, as on an album
                             // page: found only by the video it came from, it was offered to
                             // stream as though it were not on the phone.
-                            youTubeSongs = YouTubeCopyMatch.withCopies(searchSongs, recordedYouTubeCopies, youTubeDownloads),
-                            youTubeAlbums = searchAlbums,
-                            youTubeArtists = searchArtists,
+                            onlineSongs = app.online.withCopiesIn(searchSongs, recordedOnlineCopies, onlineDownloads),
+                            onlineAlbums = searchAlbums,
+                            onlineArtists = searchArtists,
                         )
                     }
                     SearchScreen(
@@ -2116,9 +2205,9 @@ fun CalmMusic(
                                 launchSingleTop = true
                             }
                         },
-                        onArtistClick = { artist: YoutubeArtistUiModel ->
-                            selectedYoutubeArtist = artist
-                            navController.navigate(Screen.YoutubeArtistDetails.route) {
+                        onArtistClick = { artist: OnlineArtistUiModel ->
+                            selectedOnlineArtist = artist
+                            navController.navigate(Screen.OnlineArtistDetails.route) {
                                 launchSingleTop = true
                             }
                         },
@@ -2152,7 +2241,7 @@ fun CalmMusic(
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = { keepOnPhone(it, selectedAlbum) },
                         onKeepAllClick = { keepAllOnPhone(it, selectedAlbum) },
-                        canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+                        canKeepOnline = app.online.available,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                         onRemoveAlbumClick = { songs ->
                             libraryScope.launch {
@@ -2191,13 +2280,13 @@ fun CalmMusic(
                         onDeleteClick = onDelete,
                         onKeepOnPhoneClick = onKeepOnPhone,
                         onKeepAllClick = onKeepAllOnPhone,
-                        canKeepYouTube = streamingProvider == StreamingProvider.YOUTUBE,
+                        canKeepOnline = app.online.available,
                         onAddAllToPlaylistClick = onAddAllToPlaylist,
                     )
                 }
-                composable(Screen.YoutubeArtistDetails.route) {
-                    YouTubeArtistDetailsScreen(
-                        browseId = selectedYoutubeArtist?.browseId,
+                composable(Screen.OnlineArtistDetails.route) {
+                    OnlineArtistScreen(
+                        browseId = selectedOnlineArtist?.browseId,
                         viewModel = viewModel,
                         onPlaySongClick = { song, songs ->
                             val index = songs.indexOfFirst { it.id == song.id }
@@ -2290,20 +2379,6 @@ fun CalmMusic(
                         }
                     }
 
-                    val folderPickerLauncher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.OpenDocumentTree(),
-                    ) { uri ->
-                        if (uri != null) {
-                            val flags =
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            try {
-                                context.contentResolver.takePersistableUriPermission(uri, flags)
-                            } catch (_: SecurityException) {
-                            }
-                            settingsManager.addLocalMusicFolder(uri.toString())
-                        }
-                    }
-
                     fun requestBatteryOptimizationExemption() {
                         val powerManager = context.getSystemService(PowerManager::class.java)
                         if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
@@ -2316,27 +2391,13 @@ fun CalmMusic(
                     }
 
                     SettingsScreen(
-                        completeAlbumsWithYouTube = completeAlbumsWithYouTube,
-                        onCompleteAlbumsWithYouTubeChange = { enabled ->
-                            settingsManager.setCompleteAlbumsWithYouTube(enabled)
-                        },
-                        keepPlayingSimilar = keepPlayingSimilar,
-                        onKeepPlayingSimilarChange = { enabled ->
-                            settingsManager.setKeepPlayingSimilar(enabled)
-                        },
                         localFolders = localMusicFolders.toList(),
-                        isYoutubeAccountConnected = isYoutubeAccountConnected,
-                        onConnectYoutubeAccountClick = {
-                            navController.navigate(Screen.YouTubeLogin.route)
-                        },
-                        onDisconnectYoutubeAccountClick = {
-                            settingsManager.clearYouTubeAccountCookie()
+                        onOpenOnlineAccountClick = {
+                            navController.navigate(Screen.OnlineSignIn.route)
                         },
                         hasBatteryOptimizationExemption = hasBatteryOptimizationExemption,
                         onRequestBatteryOptimizationExemption = { requestBatteryOptimizationExemption() },
-                        onAddFolderClick = {
-                            folderPickerLauncher.launch(initialFolderPickerUri(context))
-                        },
+                        onAddFolderClick = chooseFolder,
                         onRemoveFolderClick = { uri ->
                             settingsManager.removeLocalMusicFolder(uri)
                         },
@@ -2437,12 +2498,9 @@ fun CalmMusic(
                     )
                 }
 
-                composable(Screen.YouTubeLogin.route) {
-                    YouTubeLoginScreen(
-                        onLoginSuccess = { cookie ->
-                            settingsManager.setYouTubeAccountCookie(cookie)
-                            navController.navigateUp()
-                        },
+                composable(Screen.OnlineSignIn.route) {
+                    OnlineSignInScreen(
+                        onDone = { navController.navigateUp() },
                         onBackClick = { navController.navigateUp() },
                     )
                 }
@@ -2580,10 +2638,10 @@ fun CalmMusic(
                                     showNowPlaying = false
                                     navController.navigate(Screen.ArtistDetails.route) { launchSingleTop = true }
                                 }
-                                is CalmMusicViewModel.ArtistPage.YouTube -> {
-                                    selectedYoutubeArtist = page.artist
+                                is CalmMusicViewModel.ArtistPage.Online -> {
+                                    selectedOnlineArtist = page.artist
                                     showNowPlaying = false
-                                    navController.navigate(Screen.YoutubeArtistDetails.route) { launchSingleTop = true }
+                                    navController.navigate(Screen.OnlineArtistDetails.route) { launchSingleTop = true }
                                 }
                                 null -> snackbarHostState.showSnackbar(
                                     message = context.getString(R.string.main_no_artist_page),
@@ -2617,7 +2675,7 @@ fun CalmMusic(
                 player = if (isLocalVideo) localMediaController else null,
                 // Not for a YouTube song already downloaded from somewhere else - a search,
                 // an album page - and playing here from YouTube's listing.
-                canDownload = streamingProvider == StreamingProvider.YOUTUBE && song.sourceType == "YOUTUBE" &&
+                canDownload = app.online.available && song.sourceType == "YOUTUBE" &&
                     !isDownloaded(song),
                 isDownloadInProgress = downloadStatuses.any { it.songId == song.id && it.state.isActive },
                 onDownloadClick = {
@@ -2636,7 +2694,7 @@ fun CalmMusic(
                         }
                     }
 
-                    downloadQueue.enqueueYouTube(song, albumArtist)
+                    downloadQueue.enqueueOnline(song, albumArtist)
                     askForNotificationsOnce()
                     libraryScope.launch {
                         snackbarHostState.showSnackbar(
@@ -3072,13 +3130,13 @@ fun getAppBarTitle(currentDestination: NavDestination?, isEditingPlaylist: Boole
         currentDestination?.route == Screen.AlbumDetails.route -> stringResource(R.string.main_title_album)
         currentDestination?.route == Screen.Artists.route -> stringResource(R.string.main_title_artists)
         currentDestination?.route == Screen.ArtistDetails.route -> stringResource(R.string.main_title_artist)
-        currentDestination?.route == Screen.YoutubeArtistDetails.route -> stringResource(R.string.main_title_artist)
+        currentDestination?.route == Screen.OnlineArtistDetails.route -> stringResource(R.string.main_title_artist)
         currentDestination?.route == Screen.Search.route -> stringResource(R.string.main_title_search)
         currentDestination?.route == Screen.Radio.route -> stringResource(R.string.main_title_radio)
         currentDestination?.route == Screen.Downloads.route -> stringResource(R.string.main_title_downloads)
         currentDestination?.route == Screen.Settings.route -> stringResource(R.string.main_title_settings)
         currentDestination?.route == Screen.MusicServer.route -> stringResource(R.string.main_title_music_server)
-        currentDestination?.route == Screen.YouTubeLogin.route -> stringResource(R.string.main_title_connect_youtube)
+        currentDestination?.route == Screen.OnlineSignIn.route -> stringResource(R.string.main_title_online_sign_in)
         currentDestination?.route == Screen.EditDetails.route -> stringResource(R.string.main_title_edit_details)
         currentDestination?.route == Screen.FileUnder.route -> stringResource(R.string.main_title_file_under)
         currentDestination?.route == Screen.Hearted.route -> stringResource(R.string.hearted_title)
@@ -3120,5 +3178,30 @@ private fun initialFolderPickerUri(context: Context): Uri? {
         )
     } catch (_: Exception) {
         null
+    }
+}
+
+
+/**
+ * Whether the song with this id plays from the music server just now: a server song that has
+ * not been kept on the phone. One that has been kept is a file and needs no server.
+ */
+private fun streamsFromServer(viewModel: CalmMusicViewModel, mediaId: String?): Boolean {
+    val song = viewModel.playbackState.value.nowPlayingSong ?: return false
+    return mediaId != null && song.id == mediaId && song.sourceType == "SUBSONIC"
+}
+
+/** Whether the phone has a network that reaches the internet. For [PlaybackTrouble]. */
+private fun isOnline(context: Context): Boolean = runCatching {
+    val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return@runCatching false
+    val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return@runCatching false
+    caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}.getOrDefault(false)
+
+/** Opens one of Android's own settings pages; a phone without that page says nothing. */
+private fun openSystemPage(context: Context, intent: Intent) {
+    try {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: Exception) {
     }
 }

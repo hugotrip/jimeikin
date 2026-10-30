@@ -114,17 +114,17 @@ fun EditDetailsScreen(
         }
 
         Row(modifier = Modifier.fillMaxWidth()) {
+            // Drawn at full strength whatever the state: a faded button is a grey smear on the
+            // panel. A press that cannot act yet does nothing.
             OutlinedButtonMMD(
-                onClick = onCancel,
-                enabled = !isSaving,
+                onClick = { if (!isSaving) onCancel() },
                 modifier = Modifier.weight(1f),
             ) {
                 TextMMD(text = stringResource(R.string.player_cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
             ButtonMMD(
-                onClick = { onSave(fields) },
-                enabled = hasChanges && trackIsValid && !isSaving,
+                onClick = { if (hasChanges && trackIsValid && !isSaving) onSave(fields) },
                 modifier = Modifier.weight(1f),
             ) {
                 TextMMD(text = stringResource(R.string.player_save))
@@ -147,7 +147,7 @@ private fun Field(
         onValueChange = onValueChange,
         label = { TextMMD(text = stringResource(labelRes)) },
         singleLine = true,
-        enabled = enabled,
+        readOnly = !enabled,
         keyboardOptions = if (numeric) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
     )
     Spacer(Modifier.height(12.dp))

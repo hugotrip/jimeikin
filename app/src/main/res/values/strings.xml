@@ -24,7 +24,6 @@
     <string name="main_title_downloads">Downloads</string>
     <string name="main_title_settings">Settings</string>
     <string name="main_title_music_server">Music server</string>
-    <string name="main_title_connect_youtube">Connect a YouTube account</string>
     <!-- Top bar title when renaming an existing playlist -->
     <string name="main_title_rename_playlist">Rename playlist</string>
     <!-- Top bar title when making a new playlist; also the button in the add-to-playlist sheet -->
@@ -63,12 +62,9 @@
     <!-- Button (finished picking songs to add to a playlist) -->
     <string name="main_button_done">Done</string>
 
-    <!-- Search -->
-    <string name="main_search_error">The search did not reach YouTube</string>
 
     <!-- Playback messages (snackbars) -->
     <string name="main_playback_still_starting">Playback is still starting</string>
-    <string name="main_youtube_cannot_play">YouTube reported this track can\'t be played. Skipping.</string>
     <string name="main_no_artist_page">No page for this artist</string>
     <string name="main_no_album_page">No page for this album</string>
     <string name="main_download_started">Download started</string>
@@ -373,9 +369,6 @@
     <string name="player_downloads_clear">Clear</string>
     <!-- Downloads: where a song came from, under its artist -->
     <string name="player_downloads_from_server">From your music server</string>
-    <string name="player_downloads_from_youtube">From YouTube</string>
-    <!-- Downloads: a song already on the phone, fetched again from YouTube as AAC so every player can play it -->
-    <string name="player_downloads_as_aac">From YouTube again, as AAC</string>
     <!-- Library top bar: icon description, opens Downloads -->
     <string name="main_cd_downloads">Downloads</string>
 
@@ -465,15 +458,6 @@
         <item quantity="other">%1$d folders could not be read. Their songs were left alone.</item>
     </plurals>
 
-    <!-- Settings screen: the rows below the folders -->
-    <!-- Switch: fetch an album's missing tracks from YouTube -->
-    <string name="settings_fill_album_gaps">Fill in album gaps from YouTube</string>
-    <!-- Switch row: when the last song in the queue is a YouTube song, add the songs YouTube Music would play after it -->
-    <string name="settings_keep_playing_similar">Keep playing similar songs from YouTube</string>
-    <!-- Settings switch: songs downloaded before 2.18.2 are fetched again as AAC; off, only on Wi-Fi -->
-    <string name="settings_upgrade_on_mobile_data">Fetch older downloads again over mobile data</string>
-    <!-- Note under that switch: why it is off to begin with -->
-    <string name="settings_upgrade_on_mobile_data_note">Off, they wait for Wi-Fi. On, every song downloaded before 2.18.2 is fetched once more from YouTube, which can come to a lot of data for a large library.</string>
     <!-- Settings switch: the song playing is handed to the Glance app for its lock-screen panel -->
     <string name="settings_playing_on_lock_screen">Show what is playing in Glance</string>
     <!-- Row title: whether the app may keep playing in the background -->
@@ -490,23 +474,25 @@
     <string name="settings_downloads">Downloads</string>
     <!-- Row that opens the music server (Navidrome/Subsonic) screen -->
     <string name="settings_music_server">Music server</string>
-    <!-- Row title for the signed-in YouTube account -->
-    <string name="settings_youtube_account">YouTube account</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_connected">Connected</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_not_connected">Not connected</string>
-    <!-- Row that signs the YouTube account out; the second label is shown after one tap -->
-    <string name="settings_disconnect_account">Disconnect the account</string>
-    <string name="settings_disconnect_account_armed">Disconnect the account — tap again</string>
 
     <!-- About dialog. Keep the names of the app, people, projects and licences as they are -->
     <!-- Heading. %1$s is the version number, e.g. 2.8.14 -->
     <string name="about_title">Music Box %1$s</string>
-    <string name="about_privacy">Your library and settings stay on this phone. YouTube, radio.garden and your music server are contacted only when you use them. Passwords are sealed in the phone\'s keystore. No ads, no analytics.</string>
-    <!-- The name of the app's licence -->
-    <string name="about_licence">GNU General Public License v3</string>
-    <string name="about_built_on">Built on CalmMusic by David Ray Wilson</string>
+    <string name="about_privacy_heading">Privacy</string>
+    <string name="about_privacy_close">There are no ads, no analytics and no tracking. Downloaded songs are saved in Music/Music Box, where other apps on the phone can see them. Lock-screen controls, if you turn them on, are an accessibility service that draws this app\'s buttons over the lock screen and reads nothing else. Show what is playing in Glance, if you turn it on, hands the song\'s name to Glance on this phone.</string>
+    <string name="about_terms_heading">Terms</string>
+    <string name="about_open_source_heading">Open source</string>
+    <string name="about_licences_row">Licences</string>
+    <string name="licences_title">Licences</string>
+    <string name="licences_source_heading">Source code</string>
+    <string name="licences_source_link">github.com/wanderwildwood/jimeikin</string>
+    <string name="licences_licence_heading">Licence</string>
+    <string name="licences_licence_body">Music Box is free software under the GNU General Public License, version 3 only. Copyright wander wildwood. It comes with no warranty. Built on CalmMusic by David Ray Wilson, also GPL-3.0.</string>
+    <string name="licences_built_with_heading">Built with</string>
+    <string name="licences_texts_heading">Full licence texts</string>
+    <string name="about_built_on">Built on CalmMusic by David Ray Wilson, GPL-3.0.</string>
+    <!-- A link that opens the app's source code in a browser -->
+    <string name="about_source">Source code: github.com/wanderwildwood/jimeikin</string>
     <!-- The donation link label, beside a drawing of a llama. A fixed phrase: a verb and an object, so the reader knows what pressing it does -->
     <string name="about_feed_the_llamas">feed the llamas</string>
     <!-- Toast when the donation link cannot be opened -->
@@ -527,9 +513,7 @@
 
     <!-- Read aloud for the small mark on a row that came from the music server or YouTube -->
     <string name="origin_server">Streams from your music server</string>
-    <string name="origin_youtube">Streams from YouTube</string>
     <string name="origin_server_download">Downloaded from your music server</string>
-    <string name="origin_youtube_download">Downloaded from YouTube</string>
 
     <!-- Editing a song's or an album's tags -->
     <string name="main_title_edit_details">Edit details</string>
@@ -601,26 +585,15 @@
     <string name="library_server_forget">Forget this server</string>
     <string name="library_server_forget_armed">Forget this server — its songs leave the library; tap again</string>
 
-    <!-- YouTube sign-in screen, when the web page fails -->
-    <string name="library_youtube_login_failed">The sign-in page did not load</string>
-    <!-- Button: try loading the sign-in page again -->
-    <string name="library_youtube_login_retry">Retry</string>
 
-    <!-- Search screen -->
-    <string name="library_search_searching">Searching YouTube…</string>
     <string name="library_search_nothing">Nothing found. Try a different search.</string>
     <!-- Before an album's artist in the search results, where albums sit among songs and artists -->
     <string name="library_search_kind_album">Album</string>
-    <string name="library_search_failed">The search did not reach YouTube</string>
     <!-- Second line under an artist's name in the search results, saying the result is an artist -->
     <string name="library_search_result_artist">Artist</string>
 
     <!-- Library lists (Songs, Albums, Artists), shared -->
     <string name="library_sync_in_progress">Music sync is in progress…</string>
-    <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
-    <string name="library_nothing_added_yet">Nothing has been added yet.</string>
-    <!-- Empty library: button that opens the YouTube settings -->
-    <string name="library_empty_set_up_youtube">Set up YouTube</string>
     <!-- Empty library: button that opens the folder settings -->
     <string name="library_empty_choose_folder">Choose a folder</string>
     <!-- Empty library: button that opens the music server screen (Navidrome and the like) -->
@@ -725,9 +698,6 @@
     <!-- A file opened from another app, such as a file manager -->
     <string name="opened_file_unreadable">Could not open that file</string>
     <string name="opened_file_needs_access">Music Box needs access to music files to play that one</string>
-    <string name="list_jump_setting">Letters and page dots</string>
-    <string name="list_jump_shown">Shown</string>
-    <string name="list_jump_hidden">Hidden</string>
 
     <!-- Android 13+ keeps an app installed from a file out of Accessibility, notification access
          and the default phone/texting roles until App info, then ⋮, then Allow restricted settings. -->
@@ -737,4 +707,26 @@
     <string name="main_pull_checking_server">Checking the server…</string>
     <string name="main_pull_reading_folders">Reading the music on the phone…</string>
     <string name="main_pull_up_to_date">Up to date</string>
+
+    <!-- Why a song is not playing: a dialog in place of silence. Idea by heavencanthandle. -->
+    <string name="trouble_signed_out_title">Not signed in to your music server</string>
+    <string name="trouble_signed_out">This song is on your music server, and Music Box has no login for it. After a reinstall the saved password can\'t be read any more. Enter it again under Music server.</string>
+    <string name="trouble_unreachable_title">Can\'t reach your music server</string>
+    <string name="trouble_unreachable">The phone is online, but the server isn\'t answering. It may be off, or its address may have changed.</string>
+    <string name="trouble_refused_title">Your music server said no</string>
+    <string name="trouble_refused">The server answered but wouldn\'t send the song. The login may be wrong or out of date. Check it under Music server.</string>
+    <string name="trouble_no_internet_title">No internet</string>
+    <string name="trouble_no_internet">This song streams, and the phone isn\'t connected. Songs saved on the phone still play.</string>
+    <string name="trouble_file_missing_title">Song file is missing</string>
+    <string name="trouble_file_missing">The file for this song isn\'t where the library says it is. It may have been moved or deleted.</string>
+    <string name="trouble_no_access_title">Music Box can\'t read your music</string>
+    <string name="trouble_no_access">Android isn\'t letting Music Box read the songs on the phone. Allow music and audio in Music Box\'s permissions.</string>
+    <string name="trouble_still_loading_title">Still waiting to play</string>
+    <string name="trouble_still_loading">This song has been loading for a while without starting.</string>
+    <string name="trouble_cant_play_title">Can\'t play this song</string>
+    <string name="trouble_cant_play">Something went wrong playing it. Try another song, or this one again later.</string>
+    <string name="trouble_fix_server">Music server</string>
+    <string name="trouble_fix_internet">Internet settings</string>
+    <string name="trouble_fix_access">Permissions</string>
+    <string name="trouble_close">OK</string>
 </resources>

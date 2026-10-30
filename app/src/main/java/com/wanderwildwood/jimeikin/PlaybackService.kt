@@ -56,9 +56,15 @@ class PlaybackService : MediaSessionService() {
         private const val CHANNEL_ID = "calmmusic_playback_channel"
         private var errorCallback: ((PlaybackException) -> Unit)? = null
 
-        private const val NEWPIPE_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
+        /**
+         * True while what the player was given is a live station. Read on the loading thread,
+         * written on the app's, so it is volatile. A station's playlist and streams bypass the
+         * cache: see [LiveAwareDataSource].
+         */
+        @Volatile
+        private var playingLive = false
 
-        private const val BYPASS_COOKIES = "SOCS=CAI; VISITOR_INFO1_LIVE=i7Sm6Qgj0lE; CONSENT=YES+cb.20210328-17-p0.en+FX+475"
+        private const val STREAM_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
 
         /**
          * The session while the service is alive, for the lock-screen controls, which run in
@@ -151,23 +157,29 @@ class PlaybackService : MediaSessionService() {
         )
 
         // What the session publishes, which is what a launcher's now-playing widget, the lock
-        // screen and the media notification all draw from. It carries no picture at all: a
-        // song's cover, embedded or fetched, is stripped here, so covers stay inside the app
-        // and the home and lock screens stay calmer, each drawing its own plain look.
+        // screen and the media notification all draw from. A song's cover, embedded or fetched,
+        // is stripped here, so covers stay inside the app and the home and lock screens stay
+        // calmer, each drawing its own plain look. The one picture it carries is this app's own
+        // icon, and only while a radio station plays: a station has no cover to keep inside, and
+        // the icon is what tells a glance at the home screen which app the sound is coming from.
         //
         // It has to be stripped twice. The notification, the platform session and the
         // lock-screen strip ask the player for the song, so getMediaMetadata covers them. But
         // a controller that connects to the session is sent the song as it changes, straight
         // from the listener callback, and that would still carry the cover - so every
         // listener is wrapped and handed the stripped song too.
+        val stationIcon = runCatching { assets.open("station-icon.png").use { it.readBytes() } }.getOrNull()
         val sessionPlayer = object : ForwardingPlayer(player) {
             private val wrapped = HashMap<Player.Listener, Player.Listener>()
 
+            private fun publishable(metadata: MediaMetadata): MediaMetadata =
+                metadata.forSession(isRadio(player.currentMediaItem?.mediaId), stationIcon)
+
             override fun getMediaMetadata(): MediaMetadata =
-                super.getMediaMetadata().withoutArtwork()
+                publishable(super.getMediaMetadata())
 
             override fun addListener(listener: Player.Listener) {
-                super.addListener(wrapped.getOrPut(listener) { NoArtworkListener(listener) })
+                super.addListener(wrapped.getOrPut(listener) { NoArtworkListener(listener, ::publishable) })
             }
 
             override fun removeListener(listener: Player.Listener) {
@@ -181,6 +193,37 @@ class PlaybackService : MediaSessionService() {
             override fun play() {
                 catchUpIfLive()
                 super.play()
+            }
+
+            // What is being set is what the loading thread will ask about, so it is noted first.
+            override fun setMediaItem(mediaItem: MediaItem) {
+                playingLive = isLiveSet(listOf(mediaItem))
+                super.setMediaItem(mediaItem)
+            }
+
+            override fun setMediaItem(mediaItem: MediaItem, startPositionMs: Long) {
+                playingLive = isLiveSet(listOf(mediaItem))
+                super.setMediaItem(mediaItem, startPositionMs)
+            }
+
+            override fun setMediaItem(mediaItem: MediaItem, resetPosition: Boolean) {
+                playingLive = isLiveSet(listOf(mediaItem))
+                super.setMediaItem(mediaItem, resetPosition)
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>) {
+                playingLive = isLiveSet(mediaItems)
+                super.setMediaItems(mediaItems)
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>, resetPosition: Boolean) {
+                playingLive = isLiveSet(mediaItems)
+                super.setMediaItems(mediaItems, resetPosition)
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>, startIndex: Int, startPositionMs: Long) {
+                playingLive = isLiveSet(mediaItems)
+                super.setMediaItems(mediaItems, startIndex, startPositionMs)
             }
 
             override fun setPlayWhenReady(playWhenReady: Boolean) {
@@ -221,11 +264,8 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         val upstreamFactory = OkHttpDataSource.Factory(okHttpClient)
-            .setUserAgent(NEWPIPE_USER_AGENT)
-            .setDefaultRequestProperties(mapOf(
-                "Cookie" to BYPASS_COOKIES,
-                "Referer" to "https://www.youtube.com/"
-            ))
+            .setUserAgent(STREAM_USER_AGENT)
+            .setDefaultRequestProperties(app.online.streamHeaders)
 
         val resolvingFactory = ResolvingDataSource.Factory(upstreamFactory) { dataSpec ->
             val uri = dataSpec.uri
@@ -242,11 +282,8 @@ class PlaybackService : MediaSessionService() {
             // This used to pass through only file and content, so a Subsonic stream url was
             // handed to the extractor as though the whole url were a video id, and playback
             // failed with "No service can handle the url".
-            val host = uri.host.orEmpty()
-            val isYouTube = host.endsWith("youtube.com") ||
-                host.endsWith("youtu.be") ||
-                host.endsWith("googlevideo.com")
-            if (scheme != null && !isYouTube) {
+            val isCatalogue = app.online.isCatalogueHost(uri.host.orEmpty())
+            if (scheme != null && !isCatalogue) {
                 // A live radio stream has no end and no length, and handing one to the cache
                 // stalls it before a note is heard - it sat on "Loading" for ever. This flag
                 // is exactly for that case: cache what has a length, stream what does not. A
@@ -261,24 +298,7 @@ class PlaybackService : MediaSessionService() {
                 ?: uri.lastPathSegment
                 ?: return@Factory dataSpec
 
-            val precache = app.youTubePrecacheManager
-            val now = System.currentTimeMillis()
-            val cached = precache.getCachedWithLabel(videoId, now)
-
-            if (cached != null) {
-                val (cachedUrl, cachedLabel) = cached
-                app.playbackStateManager.updateStreamResolverLabel(cachedLabel)
-                return@Factory dataSpec.withUri(cachedUrl.toUri())
-            }
-
-            val (resolvedUrl, resolverLabel) = runBlocking(Dispatchers.IO) {
-                try {
-                    app.youTubeInnertubeClient.getBestAudioUrl(videoId) to "Innertube"
-                } catch (_: Exception) {
-                    app.youTubeStreamResolver.getBestAudioUrl(videoId) to "NewPipe"
-                }
-            }
-            precache.putUrl(videoId, resolvedUrl, resolverLabel, now)
+            val (resolvedUrl, resolverLabel) = app.online.resolveStream(videoId)
             app.playbackStateManager.updateStreamResolverLabel(resolverLabel)
 
             dataSpec.withUri(resolvedUrl.toUri())
@@ -289,7 +309,14 @@ class PlaybackService : MediaSessionService() {
             .setUpstreamDataSourceFactory(resolvingFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
-        return DefaultDataSource.Factory(this, networkAndCacheStack)
+        val cached = DefaultDataSource.Factory(this, networkAndCacheStack)
+        val straightThrough = DefaultDataSource.Factory(this, resolvingFactory)
+        // A live station's HLS playlist is a small file with a length, and the cache kept the
+        // first copy of it: every later fetch of the "moving" playlist came back the same, the
+        // player decided the stream was stuck after the ten seconds or so the first copy held,
+        // and stopped; playing again was handed the same copy and stopped again. Anything
+        // played live goes straight to the network instead.
+        return DataSource.Factory { LiveAwareDataSource(cached.createDataSource(), straightThrough.createDataSource()) { playingLive } }
     }
 
     /** What is loaded, for Glance's lock-screen panel; nothing while stopped or finished. */
@@ -346,8 +373,61 @@ class PlaybackService : MediaSessionService() {
     }
 }
 
-/** The same song with no picture: no embedded cover and no link to one. */
-private fun MediaMetadata.withoutArtwork(): MediaMetadata {
+/** Whether a set of queue entries is a live station: stations are queued on their own. */
+internal fun isLiveSet(items: List<MediaItem>): Boolean = items.any { isRadio(it.mediaId) }
+
+/**
+ * Reads through [cached] for a song and straight from [direct] for a live station. [isLive] is
+ * asked at every open, so a station's playlist is fetched fresh each time the player asks.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+internal class LiveAwareDataSource(
+    private val cached: DataSource,
+    private val direct: DataSource,
+    private val isLive: () -> Boolean,
+) : DataSource {
+    private var current: DataSource? = null
+
+    override fun addTransferListener(transferListener: androidx.media3.datasource.TransferListener) {
+        cached.addTransferListener(transferListener)
+        direct.addTransferListener(transferListener)
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        val chosen = if (isLive()) direct else cached
+        current = chosen
+        return chosen.open(dataSpec)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int = current!!.read(buffer, offset, length)
+
+    override fun getUri(): android.net.Uri? = current?.uri
+
+    override fun getResponseHeaders(): Map<String, List<String>> = current?.responseHeaders ?: emptyMap()
+
+    override fun close() {
+        try {
+            current?.close()
+        } finally {
+            current = null
+        }
+    }
+}
+
+/** A radio station's queue entry is the only one whose id starts this way. */
+internal fun isRadio(mediaId: String?): Boolean = mediaId?.startsWith("RADIO:") == true
+
+/**
+ * What the session may show of this song. A radio station gets this app's own icon as its
+ * picture; everything else gets none - no embedded cover and no link to one.
+ */
+internal fun MediaMetadata.forSession(radio: Boolean, icon: ByteArray?): MediaMetadata {
+    if (radio && icon != null) {
+        return buildUpon()
+            .setArtworkData(icon, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            .setArtworkUri(null)
+            .build()
+    }
     if (artworkData == null && artworkUri == null) return this
     return buildUpon()
         .setArtworkData(null, null)
@@ -361,9 +441,12 @@ private fun MediaMetadata.withoutArtwork(): MediaMetadata {
  * default that does nothing, and a callback left out here would never reach the session.
  */
 @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
-private class NoArtworkListener(private val inner: Player.Listener) : Player.Listener {
+private class NoArtworkListener(
+    private val inner: Player.Listener,
+    private val publishable: (MediaMetadata) -> MediaMetadata,
+) : Player.Listener {
     override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) =
-        inner.onMediaMetadataChanged(mediaMetadata.withoutArtwork())
+        inner.onMediaMetadataChanged(publishable(mediaMetadata))
 
     override fun onEvents(player: Player, events: Player.Events) = inner.onEvents(player, events)
     override fun onTimelineChanged(timeline: Timeline, reason: Int) = inner.onTimelineChanged(timeline, reason)

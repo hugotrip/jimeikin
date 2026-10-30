@@ -180,22 +180,34 @@ playing in Glance** turned on, the song playing or paused shows on its lock-scre
 strip on the lock screen already shows the song.
 
 Album covers stay inside the app. The song goes to the lock screen, the media notification and
-a launcher's now-playing widget with no picture, so each draws its own plain look.
+a launcher's now-playing widget with no cover, so each draws its own plain look. A radio station
+has no cover, so it goes out with this app's own icon, which says which app is playing.
 
 ## Installing
 
 Android 9 (API 28) or newer. Download the APK from
 [Releases](https://github.com/wanderwildwood/jimeikin/releases/latest) and open it; every
 release is signed with the same key, so later ones install over it and keep your library,
-playlists and settings.
+playlists and settings. The newest release is always at
+<https://github.com/wanderwildwood/jimeikin/releases/latest/download/jimeikin.apk>, with a
+`.sha256` beside it.
+
+For updates without doing this by hand, add this repository to
+[Obtainium](https://github.com/ImranR98/Obtainium):
+
+    https://github.com/wanderwildwood/jimeikin
 
 ## What it sends
 
 Your settings and local library stay on the phone, and so do your downloads, in
-Music/Music Box. The YouTube features talk to YouTube and
-YouTube Music, only to search, stream and download audio, and once to fetch again as AAC a
-song downloaded as Opus before 2.18.2. There are no ads, no analytics and no tracking
-SDKs. The same is said in the app, behind the **i** in the top right.
+Music/Music Box. The app goes online only for what you use: your own music server, at the
+address you type in; radio.garden, to browse stations, and each station's own stream while it
+plays; api.zippopotam.us, only for a US or Canadian postcode typed into the radio search; and
+YouTube and YouTube Music, to search, stream and download audio, to ask what plays next when
+Keep playing similar songs is on, and once to fetch again as AAC a song downloaded as Opus
+before 2.18.2. There are no ads, no analytics and no tracking SDKs. The same is said in the
+app, under **Privacy** and **Terms** in About (the **i** at the top right of Settings), which
+also lists the open-source parts it is built with and links to this source.
 
 A music server's password and a connected YouTube account's cookie are sealed with a key held
 in the phone's keystore, which cannot be exported and is not itself backed up, and the file
@@ -232,9 +244,18 @@ Android Studio, JDK 21, Android SDK Platform 37+, and a device or emulator on An
 configuration.
 
 ```sh
-./gradlew :app:assembleDebug     # or :app:assembleRelease
-./gradlew :app:installDebug
+./gradlew :app:assembleFullDebug     # or :app:assembleFullRelease
+./gradlew :app:installFullDebug
 ```
+
+There are two editions, from one source. **full** is this one, the GitHub release. **store**
+(`:app:assembleStoreRelease`) is the edition offered in Mudita's store: the same app without
+YouTube Music. Its code (`app/src/full`), NewPipeExtractor and the words about it are not in
+that APK at all; `app/src/store` stands in for them. Both have the same application id, key and
+version code, so either installs over the other, and a library carries over: songs streamed
+from YouTube are left out of the store edition's lists and skipped if one is played, and
+downloads are files in either. Its own description and privacy policy are in
+[store-edition/](store-edition/).
 
 Both build types share a checked-in debug-style keystore; see `app/build.gradle.kts`. A
 tagged push (`v*`) triggers a GitHub Actions release build that publishes a signed APK to
@@ -245,7 +266,13 @@ Releases.
 - Built on [CalmMusic](https://github.com/davidraywilson/CalmMusic) by David Ray Wilson (GPL-3.0).
 - Station listings from [radio.garden](https://radio.garden), used as a directory only.
 - YouTube stream resolution via [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) by TeamNewPipe (GPL-3.0).
-- UI built with Mudita's MMD component library for Kompakt.
+- UI built with Mudita's MMD component library for Kompakt (Apache 2.0), with the Lato typeface (SIL OFL 1.1) and Material Symbols icons (Apache 2.0).
+- Tags read and written with [jaudiotagger](https://bitbucket.org/ijabz/jaudiotagger) (LGPL 2.1). NewPipeExtractor brings jsoup (MIT), nanojson (MIT or Apache 2.0) and Rhino (MPL 2.0). AndroidX, Jetpack Compose, Media3, Room, OkHttp, Kotlin and kotlinx.coroutines are Apache 2.0.
+- The dialog that says why a song is not playing, and the `jimeikin://song` link, began as an idea and a first version by [heavencanthandle](https://github.com/heavencanthandle/Music-box).
+
+## Privacy
+
+Privacy: what the app stores and what it sends is set out in [PRIVACY.md](PRIVACY.md).
 
 ## Licence
 

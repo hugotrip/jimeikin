@@ -46,7 +46,7 @@ fun AlbumDetailsScreen(
     onDeleteClick: (SongUiModel) -> Unit = {},
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
     onKeepAllClick: (List<SongUiModel>) -> Unit = {},
-    canKeepYouTube: Boolean = false,
+    canKeepOnline: Boolean = false,
     onAddAllToPlaylistClick: (List<SongUiModel>) -> Unit = {},
     onRemoveAlbumClick: ((List<SongUiModel>) -> Unit)? = null,
 ) {
@@ -211,7 +211,7 @@ fun AlbumDetailsScreen(
 
                 // Only where there is something to download: a record already on the phone
                 // needs nothing, and this button would then be a button that does nothing.
-                if (songs.hasSongsToKeep(canKeepYouTube, LocalIsDownloaded.current)) {
+                if (songs.hasSongsToKeep(canKeepOnline, LocalIsDownloaded.current)) {
                     IconButton(onClick = { onKeepAllClick(songs) }) {
                         Icon(
                             imageVector = Icons.Download,
@@ -223,13 +223,13 @@ fun AlbumDetailsScreen(
         }
     }
 }
-/** Pressed once it says what it will do; pressed again within four seconds it does it. */
+/** Pressed once it says what it will do; pressed again within six seconds it does it. */
 @Composable
 private fun RemoveAlbumButton(count: Int, onConfirmed: () -> Unit) {
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(armed) {
         if (armed) {
-            delay(4000)
+            delay(ARMED_MS)
             armed = false
         }
     }

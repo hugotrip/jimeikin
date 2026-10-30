@@ -20,11 +20,10 @@ import com.wanderwildwood.jimeikin.data.AlbumEntity
 import com.wanderwildwood.jimeikin.data.ArtistEntity
 import com.wanderwildwood.jimeikin.data.ArtistWithCounts
 import com.wanderwildwood.jimeikin.data.CalmMusicDatabase
-import com.wanderwildwood.jimeikin.data.dropOrphanedYouTubeRows
+import com.wanderwildwood.jimeikin.data.dropOrphanedOnlineRows
 import com.wanderwildwood.jimeikin.data.CalmMusicSettingsManager
 import com.wanderwildwood.jimeikin.data.DownloadMove
 import com.wanderwildwood.jimeikin.data.DownloadReplace
-import com.wanderwildwood.jimeikin.data.DownloadUpgrade
 import com.wanderwildwood.jimeikin.data.PublicDownloads
 import com.wanderwildwood.jimeikin.data.LibraryRepository
 import com.wanderwildwood.jimeikin.data.NowPlayingSnapshot
@@ -38,8 +37,10 @@ import com.wanderwildwood.jimeikin.ui.ArtistUiModel
 import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
 import com.wanderwildwood.jimeikin.ui.RepeatMode
 import com.wanderwildwood.jimeikin.ui.SongUiModel
-import com.wanderwildwood.jimeikin.ui.YoutubeArtistUiModel
+import com.wanderwildwood.jimeikin.ui.OnlineArtistUiModel
+import com.wanderwildwood.jimeikin.data.ArtistAlbumsFill
 import com.wanderwildwood.jimeikin.data.ArtistNames
+import kotlinx.coroutines.CancellationException
 import com.wanderwildwood.jimeikin.data.NameOverrideEntity
 import com.wanderwildwood.jimeikin.data.NameOverrides
 import com.wanderwildwood.jimeikin.data.NamedAlbumDao
@@ -165,14 +166,14 @@ class CalmMusicViewModel(
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState
 
-    fun onSongDownloaded(youtubeSongId: String, controller: MediaController?) {
+    fun onSongDownloaded(onlineSongId: String, controller: MediaController?) {
         viewModelScope.launch {
             delay(200)
 
             val state = _playbackState.value
             val queue = state.playbackQueue
 
-            val indexInQueue = queue.indexOfFirst { it.id == youtubeSongId && it.sourceType == "YOUTUBE" }
+            val indexInQueue = queue.indexOfFirst { it.id == onlineSongId && it.sourceType == "YOUTUBE" }
             if (indexInQueue == -1) return@launch
 
             val library = _librarySongs.value
@@ -310,11 +311,11 @@ class CalmMusicViewModel(
     suspend fun getAlbumSongsForDetails(album: AlbumUiModel): List<SongUiModel> {
         val songs = albumSongsForDetails(album)
         if (songs.none { it.sourceType == "YOUTUBE" }) return songs
-        return YouTubeCopyMatch.inAlbumOrder(app.youTubeCopies.withCopies(songs, downloadedYouTubeSongs()))
+        return app.online.inAlbumOrder(app.online.withCopies(songs, downloadedOnlineSongs()))
     }
 
-    /** The YouTube downloads in the library, which [YouTubeCopies] matches listings against. */
-    private suspend fun downloadedYouTubeSongs(): List<SongUiModel> = withContext(Dispatchers.IO) {
+    /** The catalogue's downloads in the library, which listings are matched against. */
+    private suspend fun downloadedOnlineSongs(): List<SongUiModel> = withContext(Dispatchers.IO) {
         songDao.getSongsBySourceType("YOUTUBE_DOWNLOAD").map { entity ->
             SongUiModel(
                 id = entity.id,
@@ -334,8 +335,7 @@ class CalmMusicViewModel(
     private suspend fun albumSongsForDetails(album: AlbumUiModel): List<SongUiModel> {
         val localSongs = getAlbumSongs(album.id)
 
-        val settings = CalmMusicSettingsManager(app)
-        val shouldComplete = settings.getCompleteAlbumsWithYouTubeSync()
+        val shouldComplete = app.online.completeAlbums.value
 
         if (localSongs.isNotEmpty()) {
             // An album on a music server is already whole: the server holds the record, not a
@@ -344,9 +344,9 @@ class CalmMusicViewModel(
             // YouTube listing that spelled it differently enough to slip past the matcher.
             val fromServer = localSongs.any { it.sourceType == SubsonicSync.SOURCE_TYPE }
             if (shouldComplete && !fromServer) {
-                val youtubeSongs = getYouTubeAlbumSongs(album)
-                if (youtubeSongs.isNotEmpty()) {
-                    return mergeLocalAndYouTubeAlbums(localSongs, youtubeSongs)
+                val onlineSongs = getOnlineAlbumSongs(album)
+                if (onlineSongs.isNotEmpty()) {
+                    return mergeLocalAndOnlineAlbums(localSongs, onlineSongs)
                 }
             }
             return localSongs
@@ -354,7 +354,7 @@ class CalmMusicViewModel(
 
         val serverAlbumId = SubsonicSync.serverAlbumId(album.id)
         return if (album.sourceType == "YOUTUBE") {
-            getYouTubeAlbumSongs(album)
+            getOnlineAlbumSongs(album)
         } else if (album.sourceType == SubsonicSync.SOURCE_TYPE && serverAlbumId != null) {
             // Opened from a server song the library holds no album for; see serverAlbumFor.
             serverAlbumSongs(serverAlbumId)
@@ -363,9 +363,9 @@ class CalmMusicViewModel(
         }
     }
 
-    private fun mergeLocalAndYouTubeAlbums(
+    private fun mergeLocalAndOnlineAlbums(
         localSongs: List<SongUiModel>,
-        youtubeSongs: List<SongUiModel>
+        onlineSongs: List<SongUiModel>
     ): List<SongUiModel> {
         val mergedList = mutableListOf<SongUiModel>()
         val availableLocal = localSongs.toMutableList()
@@ -375,7 +375,7 @@ class CalmMusicViewModel(
         // so the second arrived as a second row for a track already on the page.
         val titlesShown = mutableSetOf<String>()
 
-        for (ytSong in youtubeSongs) {
+        for (ytSong in onlineSongs) {
             val matchIndex = availableLocal.indexOfFirst { local ->
                 areSongsMatching(local, ytSong)
             }
@@ -422,87 +422,7 @@ class CalmMusicViewModel(
         return false
     }
 
-    // Each album's listing, as first fetched. A page is drawn again whenever the library
-    // changes - each time a download lands - and fetching the listing afresh each time could
-    // bring it back in another order, or with a track more or less.
-    private val youTubeAlbumListings = java.util.concurrent.ConcurrentHashMap<String, List<SongUiModel>>()
-
-    private suspend fun getYouTubeAlbumSongs(album: AlbumUiModel): List<SongUiModel> {
-        val cacheKey = listOf(album.id, YouTubeCopyMatch.key(album.title), YouTubeCopyMatch.key(album.artist.orEmpty()))
-            .joinToString("|")
-        youTubeAlbumListings[cacheKey]?.let { return it }
-        val songs = getYouTubeAlbumTracks(album).ifEmpty { searchYouTubeAlbumSongs(album) }
-        if (songs.isNotEmpty()) youTubeAlbumListings[cacheKey] = songs
-        return songs
-    }
-
-    /** The album's own page on YouTube Music, when it came from there and so has its id. */
-    private suspend fun getYouTubeAlbumTracks(album: AlbumUiModel): List<SongUiModel> {
-        if (!album.id.startsWith("MPRE")) return emptyList()
-        val tracks = withContext(Dispatchers.IO) {
-            runCatching { app.youTubeInnertubeClient.getAlbumTracks(album.id) }.getOrDefault(emptyList())
-        }
-        return tracks.mapIndexed { index, track ->
-            SongUiModel(
-                id = track.videoId,
-                title = track.title,
-                artist = track.artist ?: album.artist.orEmpty(),
-                durationText = formatDurationMillis(track.durationMillis),
-                durationMillis = track.durationMillis,
-                trackNumber = track.trackNumber ?: (index + 1),
-                discNumber = 1,
-                sourceType = "YOUTUBE",
-                audioUri = track.videoId,
-                album = album.title,
-            )
-        }
-    }
-
-    private suspend fun searchYouTubeAlbumSongs(album: AlbumUiModel): List<SongUiModel> {
-        return withContext(Dispatchers.IO) {
-            val termBuilder = StringBuilder().apply {
-                append(album.title)
-                val artist = album.artist
-                if (!artist.isNullOrBlank()) {
-                    append(' ')
-                    append(artist)
-                }
-            }
-
-            val results = app.youTubeInnertubeClient.searchSongs(
-                query = termBuilder.toString(),
-                limit = 50,
-            )
-
-            val targetAlbumName = album.title.trim()
-
-            val filtered = results.filter { result ->
-                val resultAlbum = result.album?.trim().orEmpty()
-                if (resultAlbum.isEmpty()) return@filter false
-
-                resultAlbum.equals(targetAlbumName, ignoreCase = true) ||
-                        resultAlbum.contains(targetAlbumName, ignoreCase = true) ||
-                        targetAlbumName.contains(resultAlbum, ignoreCase = true)
-            }
-
-            val songsForAlbum = if (filtered.isNotEmpty()) filtered else results
-
-            songsForAlbum.mapIndexed { index, item ->
-                SongUiModel(
-                    id = item.videoId,
-                    title = item.title,
-                    artist = item.artist,
-                    durationText = formatDurationMillis(item.durationMillis),
-                    durationMillis = item.durationMillis,
-                    trackNumber = index + 1,
-                    discNumber = 1,
-                    sourceType = "YOUTUBE",
-                    audioUri = item.videoId,
-                    album = album.title,
-                )
-            }
-        }
-    }
+    private suspend fun getOnlineAlbumSongs(album: AlbumUiModel): List<SongUiModel> = app.online.albumSongs(album)
 
     data class ArtistContent(
         val songs: List<SongUiModel>,
@@ -514,7 +434,7 @@ class CalmMusicViewModel(
     /** Where the artist line on Now playing leads: a page in the library, or one on YouTube. */
     sealed interface ArtistPage {
         data class Library(val artist: ArtistUiModel) : ArtistPage
-        data class YouTube(val artist: YoutubeArtistUiModel) : ArtistPage
+        data class Online(val artist: OnlineArtistUiModel) : ArtistPage
     }
 
     /**
@@ -558,11 +478,7 @@ class CalmMusicViewModel(
         val first = song.artist.split(", ", " & ").first().trim()
         return withContext(Dispatchers.IO) {
             listOf(song.artist, first).distinct().firstNotNullOfOrNull { name ->
-                val key = ArtistNames.key(name)
-                runCatching { app.youTubeInnertubeClient.searchArtists(name, limit = 5) }
-                    .getOrDefault(emptyList())
-                    .firstOrNull { ArtistNames.key(it.name) == key }
-                    ?.let { ArtistPage.YouTube(YoutubeArtistUiModel(browseId = it.browseId, name = it.name)) }
+                app.online.findArtist(name)?.let { ArtistPage.Online(it) }
             }
         }
     }
@@ -849,50 +765,45 @@ class CalmMusicViewModel(
         }
     }
 
-    data class YoutubeArtistPageUiModel(
-        val name: String,
-        val songs: List<SongUiModel>,
-        val albums: List<AlbumUiModel>,
-        val singles: List<AlbumUiModel>,
-    )
+    /** Whether "Fill in album gaps" is on; always off in an edition without YouTube. */
+    val completeAlbumsFromOnline get() = app.online.completeAlbums
 
-    suspend fun getYoutubeArtistPage(browseId: String): YoutubeArtistPageUiModel {
-        return withContext(Dispatchers.IO) {
-            val page = app.youTubeInnertubeClient.getArtistPage(browseId)
+    private val onlineAlbumsCache = HashMap<String, Pair<Long, List<AlbumUiModel>>>()
 
-            val songs = page.songs.mapIndexed { index, item ->
-                SongUiModel(
-                    id = item.videoId,
-                    title = item.title,
-                    artist = item.artist,
-                    durationText = formatDurationMillis(item.durationMillis),
-                    durationMillis = item.durationMillis,
-                    trackNumber = index + 1,
-                    discNumber = 1,
-                    sourceType = "YOUTUBE",
-                    audioUri = item.videoId,
-                    album = item.album,
-                )
-            }
-
-            fun toAlbumUiModel(item: InnertubeAlbumResult) = AlbumUiModel(
-                id = item.albumId,
-                title = item.title,
-                artist = item.artist ?: page.name,
-                sourceType = "YOUTUBE",
-                releaseYear = item.year,
-            )
-
-            YoutubeArtistPageUiModel(
-                name = page.name,
-                // The ones already downloaded as their files, so their menus offer to remove
-                // the download rather than to fetch it again.
-                songs = app.youTubeCopies.withCopies(songs, downloadedYouTubeSongs()),
-                albums = page.albums.map(::toAlbumUiModel),
-                singles = page.singles.map(::toAlbumUiModel),
-            )
+    /**
+     * The albums and singles YouTube lists for the artist named [name] that [local] lacks, for
+     * the library artist's page. Empty when "Fill in album gaps" is off (nothing is fetched),
+     * when this edition has no YouTube, or when YouTube has no artist of exactly that name -
+     * [ArtistNames.key] decides, so a different artist is never shown. Null when YouTube could
+     * not be reached. Kept for [ONLINE_ALBUMS_KEEP_MS] so opening the page again does not ask again.
+     */
+    suspend fun getOnlineAlbumsFor(name: String, local: List<AlbumUiModel>): List<AlbumUiModel>? {
+        if (!app.online.available || !app.online.completeAlbums.value || name.isBlank()) return emptyList()
+        val key = ArtistNames.key(name)
+        val now = System.currentTimeMillis()
+        val cached = synchronized(onlineAlbumsCache) { onlineAlbumsCache[key] }
+        val all = if (cached != null && now - cached.first < ONLINE_ALBUMS_KEEP_MS) {
+            cached.second
+        } else {
+            val fetched = withContext(Dispatchers.IO) {
+                try {
+                    val artist = app.online.findArtist(name) ?: return@withContext emptyList()
+                    val page = app.online.artistPage(artist.browseId, emptyList())
+                    page.albums + page.singles
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    null
+                }
+            } ?: return null
+            synchronized(onlineAlbumsCache) { onlineAlbumsCache[key] = now to fetched }
+            fetched
         }
+        return ArtistAlbumsFill.rest(local, all, emptyList())
     }
+
+    suspend fun getOnlineArtistPage(browseId: String): OnlineArtistPage =
+        app.online.artistPage(browseId, downloadedOnlineSongs())
 
     private fun rebuildPlaybackSubqueues(queue: List<SongUiModel>) {
         playbackCoordinator.rebuildPlaybackSubqueues(queue)
@@ -952,6 +863,10 @@ class CalmMusicViewModel(
         if (currentlyPlaying) {
             localController?.pause()
         } else {
+            // After an error the player sits idle; it has to be prepared again to try.
+            if (localController?.playbackState == Player.STATE_IDLE && localController.mediaItemCount > 0) {
+                localController.prepare()
+            }
             localController?.playWhenReady = true
         }
 
@@ -1061,7 +976,7 @@ class CalmMusicViewModel(
             val controller = localController
             if (controller != null) {
                 viewModelScope.launch {
-                    playYouTubeSongInQueue(song, startIndex, controller, startPositionMs)
+                    playOnlineSongInQueue(song, startIndex, controller, startPositionMs)
                 }
                 playbackCoordinator.localQueueInitialized = true
             }
@@ -1295,30 +1210,15 @@ class CalmMusicViewModel(
         val seed = queue[index]
         if (state.repeatMode != RepeatMode.OFF) return
         if (seed.id == lastSimilarSeedId) return
-        if (!app.settingsManager.getKeepPlayingSimilarSync()) return
-        val videoId = SimilarSongs.seedVideoId(seed, app.youTubeCopies.recorded.value) ?: return
+        if (!app.online.keepPlayingSimilar.value) return
+        val videoId = app.online.similarSeed(seed) ?: return
         if (!isOnline()) return
         lastSimilarSeedId = seed.id
 
         viewModelScope.launch {
-            val found = app.youTubeInnertubeClient.getUpNext(videoId)
-            val current = _playbackState.value
-            // The listener may have started something else while YouTube answered.
-            if (current.playbackQueue.lastOrNull()?.id != seed.id) return@launch
-            val songs = SimilarSongs
-                .pick(found, current.playbackQueue, app.youTubeCopies.recorded.value, videoId, SIMILAR_BATCH)
-                .map { item ->
-                    SongUiModel(
-                        id = item.videoId,
-                        title = item.title,
-                        artist = item.artist,
-                        durationText = formatDurationMillis(item.durationMillis),
-                        durationMillis = item.durationMillis,
-                        sourceType = "YOUTUBE",
-                        audioUri = item.videoId,
-                        album = item.album,
-                    )
-                }
+            val songs = app.online.similar(videoId, { _playbackState.value.playbackQueue }, SIMILAR_BATCH)
+            // The listener may have started something else while the catalogue answered.
+            if (_playbackState.value.playbackQueue.lastOrNull()?.id != seed.id) return@launch
             if (songs.isNotEmpty()) enqueue(songs, playNext = false, localController = controller)
         }
     }
@@ -1524,7 +1424,7 @@ class CalmMusicViewModel(
     }
 
     @OptIn(UnstableApi::class)
-    private suspend fun playYouTubeSongInQueue(
+    private suspend fun playOnlineSongInQueue(
         song: SongUiModel,
         targetIndex: Int,
         localController: MediaController,
@@ -1541,8 +1441,8 @@ class CalmMusicViewModel(
 
             val mediaItem = MediaItem.Builder()
                 .setMediaId(videoId)
-                .setCustomCacheKey(videoId)
-                .setUri("https://www.youtube.com/watch?v=$videoId")
+                .setCustomCacheKey(app.online.cacheKey(videoId))
+                .setUri(app.online.playAddress(videoId))
                 .setMediaMetadata(metadata)
                 .build()
 
@@ -1591,7 +1491,29 @@ class CalmMusicViewModel(
     fun startLocalPlaybackMonitoring(controller: MediaController) {
         localPlaybackMonitorJob?.cancel()
         localPlaybackMonitorJob = viewModelScope.launch {
-            var lastYouTubeQueueIndex: Int? = null
+            // The button follows the player the moment it changes, not at the next tick of the
+            // loop below: a file the player cannot read leaves it idle at once, and the button
+            // that said Pause for a second or two after the error dialog said Play only later.
+            val follow = object : Player.Listener {
+                override fun onEvents(player: Player, events: Player.Events) {
+                    if (!events.containsAny(
+                            Player.EVENT_PLAYBACK_STATE_CHANGED,
+                            Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                            Player.EVENT_PLAYER_ERROR,
+                        )
+                    ) return
+                    val state = _playbackState.value
+                    if (state.nowPlayingSong == null || !playsOnThisPhone(state.nowPlayingSong.sourceType)) return
+                    val playing = player.playWhenReady && player.playbackState != Player.STATE_IDLE &&
+                        player.playbackState != Player.STATE_ENDED
+                    if (state.isPlaybackPlaying != playing) {
+                        _playbackState.value = state.copy(isPlaybackPlaying = playing, isBuffering = false)
+                    }
+                }
+            }
+            controller.addListener(follow)
+            try {
+            var lastOnlineQueueIndex: Int? = null
             // Once a second, not five times a second. The seek bar and the clock are the
             // only readers, both show whole seconds, and every republish repaints a panel
             // that redraws in full.
@@ -1603,19 +1525,21 @@ class CalmMusicViewModel(
                 val queue = state.playbackQueue
                 val currentSong = state.nowPlayingSong
                 val isLocalFile = playsOnThisPhone(currentSong?.sourceType)
-                val isYouTube = currentSong?.sourceType == "YOUTUBE"
+                val isCatalogueSong = currentSong?.sourceType == "YOUTUBE"
                 var didAutoAdvance = false
 
-                if (!isLocalFile && !isYouTube) {
+                if (!isLocalFile && !isCatalogueSong) {
                     delay(slowIntervalMs)
                     continue
                 }
 
-                // Read controller state
-                val isPlaying = controller.playWhenReady
+                // Read controller state. A player left idle by an error (a file it cannot read)
+                // keeps playWhenReady, but nothing is playing: the button must say Play.
+                val playbackState = controller.playbackState
+                val isPlaying = controller.playWhenReady && playbackState != Player.STATE_IDLE &&
+                    playbackState != Player.STATE_ENDED
                 val position = controller.currentPosition
                 val duration = controller.duration
-                val playbackState = controller.playbackState
                 // What can stall is what comes over a network. This used to ask
                 // playsOnThisPhone, which answers a different question - whether the player
                 // can be handed the uri - and had just been taught to say yes to radio. The
@@ -1650,7 +1574,7 @@ class CalmMusicViewModel(
                     }
                 }
 
-                if (isYouTube || currentSong?.sourceType == "YOUTUBE_DOWNLOAD") addSimilarIfLast(state, controller)
+                if (isCatalogueSong || currentSong?.sourceType == "YOUTUBE_DOWNLOAD") addSimilarIfLast(state, controller)
 
                 // Handle End-of-Track / End-of-Segment Auto-Advance
                 if (playbackState == Player.STATE_ENDED && currentSong != null) {
@@ -1693,11 +1617,11 @@ class CalmMusicViewModel(
                     lastCompletedSongId = null
                 }
 
-                if (isYouTube) {
+                if (isCatalogueSong) {
                     // Maintain a small prefetch window
                     val currentIndex = state.playbackQueueIndex
-                    if (currentIndex != null && currentIndex in queue.indices && currentIndex != lastYouTubeQueueIndex) {
-                        lastYouTubeQueueIndex = currentIndex
+                    if (currentIndex != null && currentIndex in queue.indices && currentIndex != lastOnlineQueueIndex) {
+                        lastOnlineQueueIndex = currentIndex
                         val windowIds = mutableListOf<String>()
                         for (offset in -5..5) {
                             val idx = currentIndex + offset
@@ -1709,7 +1633,7 @@ class CalmMusicViewModel(
                             }
                         }
                         if (windowIds.isNotEmpty()) {
-                            app.youTubePrecacheManager.updateQueueWindow(windowIds)
+                            app.online.updateQueueWindow(windowIds)
                         }
                     }
                 }
@@ -1720,10 +1644,13 @@ class CalmMusicViewModel(
                 }
 
                 val nextDelayMs = when {
-                    (isLocalFile || isYouTube) && isPlaying -> fastIntervalMs
+                    (isLocalFile || isCatalogueSong) && isPlaying -> fastIntervalMs
                     else -> slowIntervalMs
                 }
                 delay(nextDelayMs)
+            }
+            } finally {
+                controller.removeListener(follow)
             }
         }
     }
@@ -1742,7 +1669,7 @@ class CalmMusicViewModel(
         refreshLibraryFromDatabase()
         // Downloads found again in a chosen folder may still be Opus; see DownloadUpgrade.
         runCatching {
-            DownloadUpgrade.candidates(app, songsInUse).forEach { app.downloadQueue.enqueueUpgrade(it) }
+            app.online.upgradeCandidates(songsInUse).forEach { app.downloadQueue.enqueueUpgrade(it) }
         }.onFailure { android.util.Log.w("CalmMusicViewModel", "making downloads AAC failed", it) }
 
         return result
@@ -1765,7 +1692,7 @@ class CalmMusicViewModel(
                     releaseYear = null
                 )
 
-                val albumSongs = getYouTubeAlbumSongs(tempAlbum)
+                val albumSongs = getOnlineAlbumSongs(tempAlbum)
 
                 val match = albumSongs.firstOrNull {
                     areSongsMatching(it, songToSave)
@@ -1894,7 +1821,7 @@ class CalmMusicViewModel(
         }
         withContext(Dispatchers.IO) {
             songDao.deleteByIds(listOf(song.id))
-            database.dropOrphanedYouTubeRows()
+            database.dropOrphanedOnlineRows()
         }
         refreshLibraryFromDatabase()
         return true
@@ -1933,7 +1860,7 @@ class CalmMusicViewModel(
                             } else {
                                 DocumentFile.fromSingleUri(app, uri)?.delete()
                             }
-                            app.youTubeCopies.forget(song.id)
+                            app.online.forgetCopy(song.id)
                         }
                         com.wanderwildwood.jimeikin.data.SubsonicDownloader.SOURCE_TYPE -> {
                             rawSongDao.getSongById(song.id)?.let { com.wanderwildwood.jimeikin.data.SubsonicDownloader.unkeep(app, it) }
@@ -1944,7 +1871,7 @@ class CalmMusicViewModel(
                     count++
                 }
             }
-            database.dropOrphanedYouTubeRows()
+            database.dropOrphanedOnlineRows()
             count
         }
         // Downloads written before a reinstall are not this app's to delete, and Android asks
@@ -1958,7 +1885,7 @@ class CalmMusicViewModel(
                         val gone = PublicDownloads.fileOf(song.audioUri ?: song.id)?.exists() != true
                         if (gone) forgetDownloadRow(song)
                         gone
-                    }.also { database.dropOrphanedYouTubeRows() }
+                    }.also { database.dropOrphanedOnlineRows() }
                 }
             }
         }
@@ -1969,7 +1896,7 @@ class CalmMusicViewModel(
     private suspend fun forgetDownloadRow(song: SongUiModel) {
         playlistDao.deleteTracksForSongId(song.id)
         songDao.deleteByIds(listOf(song.id))
-        app.youTubeCopies.forget(song.id)
+        app.online.forgetCopy(song.id)
     }
 
     /**
@@ -2071,7 +1998,7 @@ class CalmMusicViewModel(
     suspend fun renameSong(song: SongUiModel, title: String) {
         val overrides = app.nameOverrides
         val names = overrides.current()
-        val ids = com.wanderwildwood.jimeikin.data.sameSongIds(song.id, app.youTubeCopies.recorded.value)
+        val ids = com.wanderwildwood.jimeikin.data.sameSongIds(song.id, app.online.recorded.value)
         val existing = ids.firstNotNullOfOrNull { names.get(NameOverrides.SONG, it) }
         val original = existing?.originalName
             ?: withContext(Dispatchers.IO) { rawSongDao.getSongById(song.id)?.title }
@@ -2242,11 +2169,11 @@ class CalmMusicViewModel(
                 // Remove from all playlists and from the songs table.
                 playlistDao.deleteTracksForSongId(song.id)
                 songDao.deleteByIds(listOf(song.id))
-                database.dropOrphanedYouTubeRows()
+                database.dropOrphanedOnlineRows()
                 true
             }
             if (!removed) return false
-            if (song.sourceType == "YOUTUBE_DOWNLOAD") app.youTubeCopies.forget(song.id)
+            if (song.sourceType == "YOUTUBE_DOWNLOAD") app.online.forgetCopy(song.id)
 
             refreshLibraryFromDatabase()
             true
@@ -2329,13 +2256,16 @@ class CalmMusicViewModel(
     suspend fun refreshLibraryFromDatabase() {
         try {
             val (allSongs, allAlbums) = withContext(Dispatchers.IO) {
-                val songsFromDb = songDao.getAllSongs()
+                // Songs kept from the online catalogue stream from it, and an edition without
+                // one leaves them out rather than list what cannot play. They stay in the
+                // database, so the full edition installed again finds them where they were.
+                val songsFromDb = songDao.getAllSongs().filter { app.online.available || it.sourceType != "YOUTUBE" }
                 val albumsFromDb = albumDao.getAllAlbums()
                 songsFromDb to albumsFromDb
             }
                 .let { (songs, albums) -> withoutServerDuplicates(songs) to albums }
             val allArtistsWithCounts = withContext(Dispatchers.IO) {
-                artistDao.getAllArtistsWithCounts()
+                artistDao.getAllArtistsWithCounts().filter { app.online.available || it.sourceType != "YOUTUBE" }
             }
 
             val uniqueAlbumCounts = allAlbums
@@ -2636,7 +2566,7 @@ class CalmMusicViewModel(
             // unfinished last time is finished first.
             runCatching {
                 if (DownloadReplace.sweep(app, inUse)) refreshLibraryFromDatabase()
-                DownloadUpgrade.candidates(app, inUse).forEach { app.downloadQueue.enqueueUpgrade(it) }
+                app.online.upgradeCandidates(inUse).forEach { app.downloadQueue.enqueueUpgrade(it) }
             }.onFailure { android.util.Log.w("CalmMusicViewModel", "making downloads AAC failed", it) }
         }
     }
@@ -2656,6 +2586,8 @@ class CalmMusicViewModel(
     }
 
     companion object {
+        private const val ONLINE_ALBUMS_KEEP_MS = 30 * 60 * 1000L
+
         fun factory(application: Application): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")

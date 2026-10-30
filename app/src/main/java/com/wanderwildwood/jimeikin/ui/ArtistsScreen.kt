@@ -114,7 +114,6 @@ fun ArtistsScreen(
                 PagedColumnMMD(
                     onPullAtTop = onPullAtTop,
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp),
-                    jump = remember(artists) { ListJump.Letters(artists.map { it.name }) },
                 ) {
                     items(
                         items = artists,
@@ -181,8 +180,9 @@ fun ArtistItem(
                         imageVector = Icons.Close,
                         contentDescription = stringResource(R.string.player_song_close_menu),
                         modifier = Modifier
-                            .size(24.dp)
-                            .clickable { showMenu = false },
+                            .size(48.dp)
+                            .clickable { showMenu = false }
+                            .padding(12.dp),
                     )
                     DropdownMenuMMD(
                         expanded = true,

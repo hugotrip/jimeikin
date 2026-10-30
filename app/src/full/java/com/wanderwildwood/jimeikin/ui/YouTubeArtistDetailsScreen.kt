@@ -37,7 +37,7 @@ import com.wanderwildwood.jimeikin.R
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun YouTubeArtistDetailsScreen(
+fun OnlineArtistScreen(
     browseId: String?,
     viewModel: CalmMusicViewModel,
     onPlaySongClick: (SongUiModel, List<SongUiModel>) -> Unit,
@@ -77,7 +77,7 @@ fun YouTubeArtistDetailsScreen(
         isLoading = true
         errorMessage = null
         try {
-            val page = viewModel.getYoutubeArtistPage(browseId)
+            val page = viewModel.getOnlineArtistPage(browseId)
             songs = page.songs
             albums = page.albums
             singles = page.singles

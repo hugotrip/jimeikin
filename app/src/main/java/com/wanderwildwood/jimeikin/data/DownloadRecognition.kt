@@ -12,7 +12,7 @@ import java.io.File
  * A download outlasts the app in Music/Music Box, but a new install knows nothing of it: found
  * through a chosen folder it came back as a plain song of the reader's own, and YouTube still
  * offered it to stream as though it were not on the phone. Since 2.18.1 a YouTube download
- * names its video in its comment tag ([YouTubeAudioFile.writeTags]), and that is read here.
+ * names its video in its comment tag, and that is read here ([OnlineMusic.idInComment]).
  *
  * Only files directly in a Music Box folder are read, and only their index, not the audio
  * ([Mp4Boxes]). What each said is kept by its document id, size and time, so a file is read
@@ -43,7 +43,10 @@ object DownloadRecognition {
      * out. Reads only files not already read as they are now.
      */
     fun videoIds(context: Context, files: List<Found>): Map<String, String> {
-        if (files.isEmpty()) return emptyMap()
+        // An edition with no catalogue has nothing to know them by, and leaves the record of
+        // what each file said as the full edition wrote it.
+        val online = (context.applicationContext as com.wanderwildwood.jimeikin.CalmMusic).online
+        if (files.isEmpty() || !online.available) return emptyMap()
         val cache = load(context)
         val now = HashMap<String, Entry>()
         var read = 0
@@ -52,7 +55,7 @@ object DownloadRecognition {
             now[file.documentId] = known ?: run {
                 read++
                 val comment = Mp4Boxes.read(context, file.uri)?.comment
-                Entry(file.size, file.lastModified, YouTubeAudioFile.videoIdOf(comment).orEmpty())
+                Entry(file.size, file.lastModified, online.idInComment(comment).orEmpty())
             }
         }
         if (read > 0 || now.keys != cache.keys) save(context, now)

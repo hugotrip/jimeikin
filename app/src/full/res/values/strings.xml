@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The full edition's own words: YouTube Music, and the About that says what the app does with it. -->
+<resources>
+    <string name="main_title_online_sign_in">Connect a YouTube account</string>
+    <!-- Search -->
+    <string name="main_search_error">The search did not reach YouTube</string>
+    <string name="main_youtube_cannot_play">YouTube reported this track can\'t be played. Skipping.</string>
+    <string name="player_downloads_online">From YouTube</string>
+    <!-- Downloads: a song already on the phone, fetched again from YouTube as AAC so every player can play it -->
+    <string name="player_downloads_as_aac">From YouTube again, as AAC</string>
+    <!-- Settings screen: the rows below the folders -->
+    <!-- Switch: fetch an album's missing tracks from YouTube -->
+    <string name="settings_fill_album_gaps">Fill in album gaps from YouTube</string>
+    <!-- Switch row: when the last song in the queue is a YouTube song, add the songs YouTube Music would play after it -->
+    <string name="settings_keep_playing_similar">Keep playing similar songs from YouTube</string>
+    <!-- Settings switch: songs downloaded before 2.18.2 are fetched again as AAC; off, only on Wi-Fi -->
+    <string name="settings_upgrade_on_mobile_data">Fetch older downloads again over mobile data</string>
+    <!-- Note under that switch: why it is off to begin with -->
+    <string name="settings_upgrade_on_mobile_data_note">Off, they wait for Wi-Fi. On, every song downloaded before 2.18.2 is fetched once more from YouTube, which can come to a lot of data for a large library.</string>
+    <!-- Row title for the signed-in YouTube account -->
+    <string name="settings_youtube_account">YouTube account</string>
+    <!-- Value under "YouTube account" -->
+    <string name="settings_youtube_connected">Connected</string>
+    <!-- Value under "YouTube account" -->
+    <string name="settings_youtube_not_connected">Not connected</string>
+    <!-- Row that signs the YouTube account out; the second label is shown after one tap -->
+    <string name="settings_disconnect_account">Disconnect the account</string>
+    <string name="settings_disconnect_account_armed">Disconnect the account — tap again</string>
+    <string name="about_what">Plays the music on this phone and on your own music server, and internet radio. It can also search, stream and download songs from YouTube Music.</string>
+    <string name="about_privacy_phone">Your library, playlists, queue, hearts and settings stay on this phone. A music server\'s password and a YouTube sign-in are sealed with a key in the phone\'s keystore before they are saved. Nothing is sent to the app\'s maker.</string>
+    <string name="about_privacy_online">The app goes online only for what you use: your own music server (Navidrome or another Subsonic server) at the address you type in; YouTube Music, to search, stream and download, and, if you switch on Keep playing similar songs, to ask what plays next; radio.garden, to browse stations, and each station\'s own stream while it plays; and api.zippopotam.us, only for a US or Canadian postcode typed into the radio search. A server on a home network is often plain http, so what goes to it is not encrypted.</string>
+    <string name="about_terms">This app is free software under the GNU General Public License v3. It comes with no warranty: use it at your own risk. YouTube, radio stations and music servers are run by others, under their own terms.</string>
+    <string name="origin_online">Streams from YouTube</string>
+    <string name="origin_online_download">Downloaded from YouTube</string>
+    <!-- YouTube sign-in screen, when the web page fails -->
+    <string name="library_youtube_login_failed">The sign-in page did not load</string>
+    <!-- Button: try loading the sign-in page again -->
+    <string name="library_youtube_login_retry">Retry</string>
+    <!-- Search screen -->
+    <string name="library_search_searching">Searching YouTube…</string>
+    <string name="library_search_failed">The search did not reach YouTube</string>
+    <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
+    <string name="library_nothing_added_yet">Pick the folder on this phone or its card where your music is kept. Music Box only reads the files there to build your library, and never changes them unless you edit a song\'s details yourself. Or connect your own music server, or search YouTube.</string>
+    <!-- Empty library: button that opens the YouTube settings -->
+    <string name="library_empty_set_up_youtube">Set up YouTube</string>
+    <string name="library_artist_online_failed">The rest of their albums could not be fetched from YouTube.</string>
+</resources>

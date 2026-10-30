@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="licence_components_extra" translatable="false">
+        <item>NewPipe Extractor|GPL-3.0|https://github.com/TeamNewPipe/NewPipeExtractor</item>
+        <item>jsoup|MIT|https://jsoup.org</item>
+        <item>nanojson|MIT|https://github.com/mmastrac/nanojson</item>
+        <item>Rhino|MPL-2.0|https://github.com/mozilla/rhino</item>
+    </string-array>
+    <string-array name="licence_texts_extra" translatable="false">
+        <item>licences/mpl-2.0.txt|Mozilla Public License 2.0</item>
+        <item>licences/mit.txt|MIT License</item>
+    </string-array>
+</resources>

@@ -211,3 +211,14 @@ object ArtistNames {
     fun songKey(artist: String, album: String?, title: String): String =
         listOf(artistKey(artist), key(album.orEmpty()), key(title)).joinToString("\u0000")
 }
+
+/**
+ * The letter a name is filed under, matching how a list sorted by the name as written puts
+ * it: "The Beatles" is under T. Accents come off (Ödland is under O); a digit, a symbol or a
+ * script with no A to Z is under #.
+ */
+fun firstLetterOf(name: String): String {
+    val first = name.firstOrNull { it.isLetterOrDigit() } ?: return "#"
+    val base = Normalizer.normalize(first.toString(), Normalizer.Form.NFKD).first().uppercaseChar()
+    return if (base in 'A'..'Z') base.toString() else "#"
+}

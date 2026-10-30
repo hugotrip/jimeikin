@@ -1,6 +1,5 @@
 package com.wanderwildwood.jimeikin.data
 
-import com.wanderwildwood.jimeikin.ui.jumpLetterOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -253,10 +252,10 @@ object RadioGarden {
 }
 
 /**
- * In the order the letters down the list's edge read: names in other scripts under # at the
+ * In order of their names: names in other scripts (under #) at the
  * top, then by the name with its case, accents and punctuation set aside. Sorted as written,
  * " NRJ" and "*DUUU" headed a list whose N and D were further down, and a name starting
  * with an accented letter came after Z.
  */
 private fun <T> List<T>.sortedByName(name: (T) -> String): List<T> =
-    sortedWith(compareBy({ jumpLetterOf(name(it)) != "#" }, { ArtistNames.key(name(it)) }))
+    sortedWith(compareBy({ firstLetterOf(name(it)) != "#" }, { ArtistNames.key(name(it)) }))

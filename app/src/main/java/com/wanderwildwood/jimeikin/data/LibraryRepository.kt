@@ -13,8 +13,9 @@ import kotlinx.coroutines.withContext
  * How local albums are keyed. 2: an album with no Album Artist tag is its name in its folder,
  * where it used to be split by each track's artist. 3: artists are keyed without their guests
  * (feat./ft.) and without a leading "The", so one artist is one id however a track credits them.
+ * 4: a compilation with no Album Artist tag is filed under Various Artists, whole.
  */
-private const val LOCAL_ALBUM_KEY_VERSION = 3
+private const val LOCAL_ALBUM_KEY_VERSION = 4
 
 /**
  * Repository responsible for performing library-related data work against the
@@ -139,7 +140,7 @@ class LibraryRepository(
                                 songDao.upsertAll(rows.map { it.song })
                                 artistDao.upsertAll(rows.mapNotNull { it.artist }.distinctBy { it.id })
                                 albumDao.upsertAll(rows.mapNotNull { it.album }.distinctBy { it.id })
-                                recognisedDownloads.forEach { (audio, videoId) -> app.youTubeCopies.record(videoId, audio.song.id) }
+                                recognisedDownloads.forEach { (audio, videoId) -> app.online.recordCopy(videoId, audio.song.id) }
                                 android.util.Log.i("LibraryRepository", "${rows.size} songs in Music Box known again as downloads")
                             }
                             val recognisedIds = recognisedDownloads.mapTo(HashSet()) { it.first.song.id }
@@ -424,7 +425,7 @@ class LibraryRepository(
                 rows.artist?.let { artistsToUpsert += it }
                 rows.album?.let { albumsToUpsert += it }
                 // The video it came from, so YouTube's listings know it is here.
-                Mp4Boxes.read(file)?.comment?.let(YouTubeAudioFile::videoIdOf)?.let { videos += it to rows.song.id }
+                Mp4Boxes.read(file)?.comment?.let(app.online::idInComment)?.let { videos += it to rows.song.id }
             }
 
             if (toInsert.isNotEmpty()) {
@@ -436,7 +437,7 @@ class LibraryRepository(
             if (albumsToUpsert.isNotEmpty()) {
                 albumDao.upsertAll(albumsToUpsert.distinctBy { it.id })
             }
-            videos.forEach { (videoId, songId) -> app.youTubeCopies.record(videoId, songId) }
+            videos.forEach { (videoId, songId) -> app.online.recordCopy(videoId, songId) }
 
             toInsert.size
         }

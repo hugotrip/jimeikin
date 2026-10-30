@@ -57,7 +57,7 @@ fun PlaylistDetailsScreen(
     onDeleteClick: (SongUiModel) -> Unit,
     onKeepOnPhoneClick: (SongUiModel) -> Unit = {},
     onKeepAllClick: (List<SongUiModel>) -> Unit = {},
-    canKeepYouTube: Boolean = false,
+    canKeepOnline: Boolean = false,
 ) {
     // Local State
     var songs by remember { mutableStateOf<List<SongUiModel>>(emptyList()) }
@@ -167,7 +167,6 @@ fun PlaylistDetailsScreen(
 
             else -> {
                 PagedColumnMMD(
-                    jump = ListJump.Pages,
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,
@@ -236,7 +235,7 @@ fun PlaylistDetailsScreen(
                 // A playlist is the thing a reader most wants on the phone before
                 // leaving the house. Shown only where something is still on a server
                 // or YouTube, so it never offers work with nothing behind it.
-                if (songs.hasSongsToKeep(canKeepYouTube, LocalIsDownloaded.current)) {
+                if (songs.hasSongsToKeep(canKeepOnline, LocalIsDownloaded.current)) {
                     IconButton(
                         onClick = { onKeepAllClick(songs) },
                     ) {
@@ -330,9 +329,9 @@ private fun EditablePlaylistSongItem(
                         imageVector = Icons.ArrowUp,
                         contentDescription = stringResource(R.string.player_playlist_move_up),
                         modifier = Modifier
-                            .size(24.dp)
-                            .padding(4.dp)
-                            .clickable(onClick = onMoveUp),
+                            .size(48.dp)
+                            .clickable(onClick = onMoveUp)
+                            .padding(12.dp),
                     )
                 }
                 if (canMoveDown) {
@@ -340,9 +339,9 @@ private fun EditablePlaylistSongItem(
                         imageVector = Icons.ArrowDown,
                         contentDescription = stringResource(R.string.player_playlist_move_down),
                         modifier = Modifier
-                            .size(24.dp)
-                            .padding(4.dp)
-                            .clickable(onClick = onMoveDown),
+                            .size(48.dp)
+                            .clickable(onClick = onMoveDown)
+                            .padding(12.dp),
                     )
                 }
             }

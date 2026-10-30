@@ -1,27 +1,35 @@
 package com.wanderwildwood.jimeikin.ui
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mudita.mmd.components.buttons.OutlinedButtonMMD
 import com.mudita.mmd.components.text.TextMMD
@@ -29,37 +37,79 @@ import com.wanderwildwood.jimeikin.BuildConfig
 import com.wanderwildwood.jimeikin.R
 
 /**
- * What this is, what it talks to, and what it is made of - short enough to fit the panel
- * without paging. The long account of where each password lives is in the README.
+ * What this is, what it sends where, its terms, what it is built with and where its source is.
+ * The words are a list that pages, so the dialog fits any screen; Close stays under it.
  */
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
+    var showLicences by remember { mutableStateOf(false) }
+    if (showLicences) {
+        LicencesDialog(onDismiss = { showLicences = false })
+        return
+    }
     EInkDialog(onDismiss = onDismiss) {
-        TextMMD(
-            text = stringResource(R.string.about_title, BuildConfig.VERSION_NAME),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-        )
-
-        Spacer(Modifier.height(14.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            TextMMD(text = stringResource(R.string.about_privacy), style = MaterialTheme.typography.labelSmall)
-            Column {
-                TextMMD(text = stringResource(R.string.about_licence), style = MaterialTheme.typography.labelSmall)
-                TextMMD(text = stringResource(R.string.about_built_on), style = MaterialTheme.typography.labelSmall)
-                TextMMD(text = "NewPipeExtractor, GPL-3.0", style = MaterialTheme.typography.labelSmall)
-                TextMMD(text = "MMD by Mudita, Apache 2.0", style = MaterialTheme.typography.labelSmall)
+        PagedColumn(Modifier.fillMaxWidth().weight(1f, fill = false)) {
+            item {
+                TextMMD(
+                    text = stringResource(R.string.about_title, BuildConfig.VERSION_NAME),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                )
             }
-            Llama()
+            item { Para(stringResource(R.string.about_what)) }
+            item { Heading(stringResource(R.string.about_privacy_heading)) }
+            item { Para(stringResource(R.string.about_privacy_phone), top = 4.dp) }
+            item { Para(stringResource(R.string.about_privacy_online)) }
+            item { Para(stringResource(R.string.about_privacy_close)) }
+            item { Heading(stringResource(R.string.about_terms_heading)) }
+            item { Para(stringResource(R.string.about_terms), top = 4.dp) }
+            item { Heading(stringResource(R.string.about_open_source_heading)) }
+            item { Para(stringResource(R.string.about_built_on), top = 4.dp) }
+            item { LicenceRow(stringResource(R.string.about_licences_row)) { showLicences = true } }
+            item { WebLink(stringResource(R.string.about_source), SOURCE_ADDRESS) }
+            item { Spacer(Modifier.height(6.dp)); Llama() }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(14.dp))
         OutlinedButtonMMD(
             onClick = onDismiss,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
         ) { TextMMD(text = stringResource(R.string.about_close), style = MaterialTheme.typography.bodySmall) }
+    }
+}
+
+@Composable
+private fun Heading(text: String) {
+    TextMMD(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 14.dp),
+    )
+}
+
+@Composable
+private fun Para(text: String, top: Dp = 10.dp) {
+    TextMMD(text = text, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = top))
+}
+
+/** Words that open a web address, underlined so they read as a link, on a 48dp row. */
+@Composable
+private fun WebLink(text: String, url: String) {
+    val context = LocalContext.current
+    Box(
+        contentAlignment = Alignment.CenterStart,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable { openWeb(context, url) },
+    ) {
+        TextMMD(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(textDecoration = TextDecoration.Underline),
+        )
     }
 }
 
@@ -84,39 +134,24 @@ private fun Llama() {
     ) {
         TextMMD(
             text = "wanderthe.dev",
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(textDecoration = TextDecoration.Underline),
             // The site's address opens the site, the way the llama beside it opens its page.
             modifier = Modifier
-                .clickable {
-                    runCatching {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://wanderthe.dev")),
-                        )
-                    }.onFailure {
-                        Toast.makeText(context, context.getString(R.string.about_no_browser), Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .padding(vertical = 4.dp),
+                .heightIn(min = 48.dp)
+                .clickable { openWeb(context, "https://wanderthe.dev") }
+                .wrapContentHeight(),
         )
         Spacer(Modifier.width(6.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .clickable {
-                    // Straight to the checkout. The Donate button on the site only leads
-                    // here anyway, so the page in between is a press the reader does not need.
-                    // The short square.link form, not the long checkout.square.site address it
-                    // redirects to -- the short one is what the site itself links to, so a
-                    // regenerated checkout follows it and a published app does not break.
-                    runCatching {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://square.link/u/AGu8oT10")),
-                        )
-                    }.onFailure {
-                        Toast.makeText(context, context.getString(R.string.about_no_browser), Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .padding(vertical = 4.dp),
+                .heightIn(min = 48.dp)
+                // Straight to the checkout. The Donate button on the site only leads
+                // here anyway, so the page in between is a press the reader does not need.
+                // The short square.link form, not the long checkout.square.site address it
+                // redirects to -- the short one is what the site itself links to, so a
+                // regenerated checkout follows it and a published app does not break.
+                .clickable { openWeb(context, "https://square.link/u/AGu8oT10") },
         ) {
             Image(
                 painter = painterResource(R.drawable.llama),

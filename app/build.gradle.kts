@@ -15,12 +15,27 @@ android {
         applicationId = "com.wanderwildwood.jimeikin"
         minSdk = 28
         targetSdk = 36
-        versionCode = 81
-        versionName = "2.18.7"
+        versionCode = 87
+        versionName = "2.18.13"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    // Two editions from one source. "full" is the GitHub edition, with YouTube Music search,
+    // streaming and downloads (src/full). "store" is the one offered to Mudita's store: the same
+    // app without any of that - its code, its library (NewPipeExtractor) and its words are not
+    // in the APK at all; src/store stands in with a part that finds nothing. Same application
+    // id, same key and the same version code for both, so either installs over the other.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("full") {
+            dimension = "edition"
+        }
+        create("store") {
+            dimension = "edition"
         }
     }
 
@@ -92,6 +107,18 @@ android {
     }
 }
 
+// jimeikin-full-2.18.12.apk, jimeikin-store-2.18.12.apk: which edition, and which version, by name.
+androidComponents {
+    onVariants { variant ->
+        val suffix = if (variant.buildType == "release") "" else "-${variant.buildType}"
+        variant.outputs.forEach { output ->
+            (output as com.android.build.api.variant.impl.VariantOutputImpl).outputFileName.set(
+                output.versionName.map { "jimeikin-${variant.flavorName}-$it$suffix.apk" },
+            )
+        }
+    }
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
@@ -99,7 +126,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("androidx.media3:media3-datasource-okhttp:1.2.0")
+    implementation("androidx.media3:media3-datasource-okhttp:1.10.1")
 
     val composeBom = platform("androidx.compose:compose-bom:2025.09.00")
     implementation(composeBom)
@@ -130,12 +157,12 @@ dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
 
     // Media3 (ExoPlayer) for local file playback
-    implementation("androidx.media3:media3-exoplayer:1.3.1")
-    implementation("androidx.media3:media3-exoplayer-hls:1.3.1")
-    implementation("androidx.media3:media3-session:1.3.1")
-    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("androidx.media3:media3-exoplayer:1.10.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.10.1")
+    implementation("androidx.media3:media3-session:1.10.1")
+    implementation("androidx.media3:media3-ui:1.10.1")
 
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5") {
+    "fullImplementation"("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5") {
         exclude(group = "com.google.protobuf")
     }
 

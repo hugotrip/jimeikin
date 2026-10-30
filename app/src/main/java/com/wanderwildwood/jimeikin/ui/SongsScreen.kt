@@ -44,10 +44,10 @@ val LocalIsDownloaded = compositionLocalOf<(SongUiModel) -> Boolean> { { false }
  * need nothing.
  */
 fun List<SongUiModel>.hasSongsToKeep(
-    canKeepYouTube: Boolean,
+    canKeepOnline: Boolean,
     isDownloaded: (SongUiModel) -> Boolean = { false },
 ): Boolean = any {
-    it.sourceType == "SUBSONIC" || (canKeepYouTube && it.sourceType == "YOUTUBE" && !isDownloaded(it))
+    it.sourceType == "SUBSONIC" || (canKeepOnline && it.sourceType == "YOUTUBE" && !isDownloaded(it))
 }
 
 @Composable
@@ -127,7 +127,6 @@ fun SongsScreen(
             else -> {
                 PagedColumnMMD(
                     onPullAtTop = onPullAtTop,
-                    jump = remember(songs) { ListJump.Letters(songs.map { it.title }) },
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 16.dp,

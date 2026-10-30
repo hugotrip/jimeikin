@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Name | licence | web address. Names, licences and addresses stay as they are. -->
+    <string-array name="licence_components_main" translatable="false">
+        <item>CalmMusic, by David Ray Wilson (this app is a fork)|GPL-3.0|https://github.com/wanderwildwood/jimeikin</item>
+        <item>jaudiotagger|LGPL-2.1|https://github.com/ijabz/jaudiotagger</item>
+        <item>Mudita MMD|Apache-2.0|https://developer.mudita.com</item>
+        <item>AndroidX, Jetpack Compose, Media3, Room|Apache-2.0|https://developer.android.com/jetpack/androidx</item>
+        <item>OkHttp and Okio|Apache-2.0|https://github.com/square/okhttp</item>
+        <item>Kotlin and kotlinx.coroutines|Apache-2.0|https://github.com/Kotlin/kotlinx.coroutines</item>
+        <item>desugar_jdk_libs|GPL-2.0 with the Classpath Exception|https://github.com/google/desugar_jdk_libs</item>
+        <item>Lato typeface|OFL-1.1|https://www.latofonts.com</item>
+        <item>Material Symbols icons|Apache-2.0|https://fonts.google.com/icons</item>
+    </string-array>
+    <!-- Id | name shown. The id is the file in assets/licences, or LICENSE for this app's own. -->
+    <string-array name="licence_texts_main" translatable="false">
+        <item>LICENSE|GNU General Public License 3.0</item>
+        <item>licences/apache-2.0.txt|Apache License 2.0</item>
+        <item>licences/lgpl-2.1.txt|GNU Lesser General Public License 2.1</item>
+        <item>licences/gpl-2.0-cpe.txt|GNU General Public License 2.0 with the Classpath Exception</item>
+        <item>licences/ofl-1.1.txt|SIL Open Font License 1.1</item>
+    </string-array>
+</resources>

@@ -7,7 +7,7 @@ sealed class SearchResult {
     data class Song(val song: SongUiModel) : SearchResult()
     data class Album(val album: AlbumUiModel) : SearchResult()
     data class LibraryArtist(val artist: ArtistUiModel) : SearchResult()
-    data class YouTubeArtist(val artist: YoutubeArtistUiModel) : SearchResult()
+    data class OnlineArtist(val artist: OnlineArtistUiModel) : SearchResult()
 }
 
 /**
@@ -24,9 +24,9 @@ fun buildSearchResults(
     librarySongs: List<SongUiModel>,
     libraryAlbums: List<AlbumUiModel>,
     libraryArtists: List<ArtistUiModel>,
-    youTubeSongs: List<SongUiModel>,
-    youTubeAlbums: List<AlbumUiModel>,
-    youTubeArtists: List<YoutubeArtistUiModel>,
+    onlineSongs: List<SongUiModel>,
+    onlineAlbums: List<AlbumUiModel>,
+    onlineArtists: List<OnlineArtistUiModel>,
 ): List<SearchResult> {
     val q = query.trim()
     if (q.isEmpty()) return emptyList()
@@ -36,15 +36,17 @@ fun buildSearchResults(
         val key: String,
         val place: Int,
         val match: Int,
+        /** 0 for an artist named exactly what was typed, in the library or on YouTube. */
+        val lead: Int,
         val kind: Int,
         val index: Int,
     )
 
     val candidates = mutableListOf<Candidate>()
-    fun add(result: SearchResult, key: String, place: Int, match: Int?, kind: Int) {
+    fun add(result: SearchResult, key: String, place: Int, match: Int?, kind: Int, exactArtist: Boolean = false) {
         // A library item that does not match is not a result.
         val m = match ?: return
-        candidates += Candidate(result, key, place, m, kind, candidates.size)
+        candidates += Candidate(result, key, place, m, if (exactArtist) 0 else 1, kind, candidates.size)
     }
 
     librarySongs.forEach { s ->
@@ -57,29 +59,31 @@ fun buildSearchResults(
         add(SearchResult.Album(a), albumKey(a), placeOf(a.origin), match(q, a.title, a.artist), KIND_ALBUM)
     }
     libraryArtists.forEach { a ->
-        add(SearchResult.LibraryArtist(a), artistKey(a.name), placeOf(a.origin), match(q, a.name), KIND_ARTIST)
+        val m = match(q, a.name)
+        add(SearchResult.LibraryArtist(a), artistKey(a.name), placeOf(a.origin), m, KIND_ARTIST, exactArtist = m == 0)
     }
     // YouTube has already ranked its own results, and knows better than a name match which
     // of forty albums called Moondance is the one meant. Its order is kept, the three lists
     // taken a turn at a time - a song, an album, an artist - with an artist whose name is
-    // exactly what was typed put first.
-    fun youTubeTurn(index: Int, exact: Boolean) = if (exact) -1 else index
-    youTubeSongs.forEachIndexed { i, s ->
-        add(SearchResult.Song(s), songKey(s), PLACE_YOUTUBE, youTubeTurn(i, false), KIND_SONG)
+    // exactly what was typed put first - and, below, ahead of everything on the phone too:
+    // the artist searched for is the answer, wherever the rest of the list comes from.
+    fun onlineTurn(index: Int, exact: Boolean) = if (exact) -1 else index
+    onlineSongs.forEachIndexed { i, s ->
+        add(SearchResult.Song(s), songKey(s), PLACE_ONLINE, onlineTurn(i, false), KIND_SONG)
     }
-    youTubeAlbums.forEachIndexed { i, a ->
-        add(SearchResult.Album(a), albumKey(a), PLACE_YOUTUBE, youTubeTurn(i, false), KIND_ALBUM_YT)
+    onlineAlbums.forEachIndexed { i, a ->
+        add(SearchResult.Album(a), albumKey(a), PLACE_ONLINE, onlineTurn(i, false), KIND_ALBUM_ONLINE)
     }
     // An artist is offered only when the name is what was searched for. YouTube answers
     // "moondance" with whoever has a song of that name, and a row that says only "Sam Smith,
     // Artist" is not an answer to it.
-    youTubeArtists.forEachIndexed { i, a ->
+    onlineArtists.forEachIndexed { i, a ->
         val m = match(q, a.name) ?: return@forEachIndexed
-        add(SearchResult.YouTubeArtist(a), artistKey(a.name), PLACE_YOUTUBE, youTubeTurn(i, m == 0), KIND_ARTIST_YT)
+        add(SearchResult.OnlineArtist(a), artistKey(a.name), PLACE_ONLINE, onlineTurn(i, m == 0), KIND_ARTIST_ONLINE, exactArtist = m == 0)
     }
 
     return candidates
-        .sortedWith(compareBy({ it.place }, { it.match }, { it.kind }, { it.index }))
+        .sortedWith(compareBy({ it.lead }, { it.place }, { it.match }, { it.kind }, { it.index }))
         // Sorted best-first, so the copy kept is the best one there is.
         .distinctBy { it.key }
         .map { it.result }
@@ -87,19 +91,19 @@ fun buildSearchResults(
 
 private const val PLACE_PHONE = 0
 private const val PLACE_SERVER = 1
-private const val PLACE_YOUTUBE = 2
+private const val PLACE_ONLINE = 2
 
 // In the library a match on an artist leads, then an album, then a song. In YouTube's part
 // a song leads each turn: it is what a search there is usually for.
 private const val KIND_ARTIST = 0
 private const val KIND_ALBUM = 1
 private const val KIND_SONG = 2
-private const val KIND_ALBUM_YT = 3
-private const val KIND_ARTIST_YT = 4
+private const val KIND_ALBUM_ONLINE = 3
+private const val KIND_ARTIST_ONLINE = 4
 
 private fun placeOf(origin: Origin?): Int = when (origin) {
     Origin.SERVER -> PLACE_SERVER
-    Origin.YOUTUBE -> PLACE_YOUTUBE
+    Origin.YOUTUBE -> PLACE_ONLINE
     // A download is on the phone: it plays with no signal, like a file put there.
     else -> PLACE_PHONE
 }

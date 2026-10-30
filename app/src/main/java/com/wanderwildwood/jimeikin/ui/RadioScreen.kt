@@ -240,7 +240,6 @@ fun RadioScreen(
                 .map { place ->
                     Row3(place.title, plural(place.stationCount)) { browsingPlace = place }
                 },
-            alphabetical = true,
         )
 
         browsing -> {
@@ -265,8 +264,6 @@ fun RadioScreen(
                         browsingPlace = place
                     }
                 },
-                // The towns found by name come after the countries, busiest first.
-                alphabetical = matchingTowns.isEmpty(),
             )
         }
 
@@ -344,16 +341,10 @@ private fun RowList(
     onQueryChange: (String) -> Unit,
     hint: String,
     rows: List<Row3>,
-    /** Rows in order of their titles, so the letters can stand beside them; page dots if not. */
-    alphabetical: Boolean,
 ) {
     PagedColumnMMD(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        // The search field and the heading come first, as one item.
-        jump = remember(rows, alphabetical) {
-            if (alphabetical) ListJump.Letters(rows.map { it.title }, firstIndex = 1) else ListJump.Pages
-        },
     ) {
         item {
             TextFieldMMD(
@@ -412,8 +403,6 @@ private fun ChannelList(
     PagedColumnMMD(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        // A place's stations come in order of their names, after the place's own heading.
-        jump = remember(channels) { ListJump.Letters(channels.map { it.title }, firstIndex = 1) },
     ) {
         item {
             TextMMD(place.title, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 8.dp))
@@ -543,7 +532,7 @@ private fun AddByAddress(onKept: (name: String, streamUrl: String) -> Unit) {
             label = { TextMMD(text = stringResource(R.string.player_radio_address_label)) },
             placeholder = { TextMMD(text = "https://") },
             singleLine = true,
-            enabled = !checking,
+            readOnly = checking,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
         )
         Spacer(Modifier.height(12.dp))
@@ -553,12 +542,12 @@ private fun AddByAddress(onKept: (name: String, streamUrl: String) -> Unit) {
             onValueChange = { name = it },
             label = { TextMMD(text = stringResource(R.string.player_radio_address_name_label)) },
             singleLine = true,
-            enabled = !checking,
+            readOnly = checking,
         )
         Spacer(Modifier.height(20.dp))
         ButtonMMD(
             onClick = {
-                scope.launch {
+                if (address.isNotBlank() && name.isNotBlank() && !checking) scope.launch {
                     checking = true
                     problem = null
                     when (val outcome = RadioAddress.check(context, address)) {
@@ -572,7 +561,6 @@ private fun AddByAddress(onKept: (name: String, streamUrl: String) -> Unit) {
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = address.isNotBlank() && name.isNotBlank() && !checking,
         ) {
             TextMMD(
                 text = stringResource(if (checking) R.string.player_radio_address_checking else R.string.player_radio_address_check),

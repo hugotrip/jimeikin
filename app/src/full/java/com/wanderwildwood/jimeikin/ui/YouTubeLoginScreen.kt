@@ -27,6 +27,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.text.TextMMD
 import com.wanderwildwood.jimeikin.R
+import com.wanderwildwood.jimeikin.youTubeAccount
 
 private const val YOUTUBE_MUSIC_LOGIN_URL =
     "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
@@ -128,4 +129,21 @@ fun YouTubeLoginScreen(
             onBackClick()
         }
     }
+}
+
+/** Signs in to YouTube Music, for the account row in Settings; see [YouTubeLoginScreen]. */
+@Composable
+fun OnlineSignInScreen(
+    onDone: () -> Unit,
+    onBackClick: () -> Unit,
+) {
+    val account = (androidx.compose.ui.platform.LocalContext.current.applicationContext as com.wanderwildwood.jimeikin.CalmMusic)
+        .youTubeAccount
+    YouTubeLoginScreen(
+        onLoginSuccess = { cookie ->
+            account.set(cookie)
+            onDone()
+        },
+        onBackClick = onBackClick,
+    )
 }

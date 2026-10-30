@@ -137,7 +137,7 @@ private fun DownloadRow(
                         stringResource(
                             when (status.kind) {
                                 DownloadKind.SERVER -> R.string.player_downloads_from_server
-                                DownloadKind.YOUTUBE -> R.string.player_downloads_from_youtube
+                                DownloadKind.YOUTUBE -> R.string.player_downloads_online
                                 DownloadKind.UPGRADE -> R.string.player_downloads_as_aac
                             },
                         ),

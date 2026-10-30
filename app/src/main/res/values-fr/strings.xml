@@ -22,7 +22,6 @@
     <string name="main_title_downloads">Téléchargements</string>
     <string name="main_title_settings">Paramètres</string>
     <string name="main_title_music_server">Serveur de musique</string>
-    <string name="main_title_connect_youtube">Connecter un compte YouTube</string>
     <!-- Top bar title when renaming an existing playlist -->
     <string name="main_title_rename_playlist">Renommer la playlist</string>
     <!-- Top bar title when making a new playlist; also the button in the add-to-playlist sheet -->
@@ -56,11 +55,8 @@
     <string name="main_button_delete_count">En supprimer %1$d</string>
     <!-- Button (finished picking songs to add to a playlist) -->
     <string name="main_button_done">Fait</string>
-    <!-- Search -->
-    <string name="main_search_error">La recherche n’a pas atteint YouTube</string>
     <!-- Playback messages (snackbars) -->
     <string name="main_playback_still_starting">Démarrage de la lecture toujours en cours</string>
-    <string name="main_youtube_cannot_play">YouTube indique que cette piste ne peut pas être lue. Elle sera ignorée.</string>
     <string name="main_no_artist_page">Aucune page pour cet artiste</string>
     <string name="main_no_album_page">Aucune page pour cet album</string>
     <string name="main_download_started">Téléchargement démarré</string>
@@ -345,7 +341,6 @@
     <string name="player_downloads_clear">Nettoyer</string>
     <!-- Downloads: where a song came from, under its artist -->
     <string name="player_downloads_from_server">De votre serveur de musique</string>
-    <string name="player_downloads_from_youtube">De YouTube</string>
     <!-- Library top bar: icon description, opens Downloads -->
     <string name="main_cd_downloads">Téléchargements</string>
     <!-- Radio screen -->
@@ -431,11 +426,6 @@
         <item quantity="one">%1$d dossier n\'a pas pu être lu. Ses pistes ont été mises à l\'écart.</item>
         <item quantity="other">%1$d dossiers n\'ont pas pu être lus. Leurs pistes ont été mises à l\'écart.</item>
     </plurals>
-    <!-- Settings screen: the rows below the folders -->
-    <!-- Switch: fetch an album's missing tracks from YouTube -->
-    <string name="settings_fill_album_gaps">Ajouter les pistes manquantes des albums depuis YouTube</string>
-    <!-- Switch row: when the last song in the queue is a YouTube song, add the songs YouTube Music would play after it -->
-    <string name="settings_keep_playing_similar">Continuer à jouer des pistes similaires depuis YouTube</string>
     <!-- Settings switch: the song playing is handed to the Glance app for its lock-screen panel -->
     <string name="settings_playing_on_lock_screen">Afficher la lecture en cours dans Glance</string>
     <!-- Row title: whether the app may keep playing in the background -->
@@ -452,22 +442,9 @@
     <string name="settings_downloads">Téléchargements</string>
     <!-- Row that opens the music server (Navidrome/Subsonic) screen -->
     <string name="settings_music_server">Serveur de musique</string>
-    <!-- Row title for the signed-in YouTube account -->
-    <string name="settings_youtube_account">Compte YouTube</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_connected">Connecté</string>
-    <!-- Value under "YouTube account" -->
-    <string name="settings_youtube_not_connected">Non connecté</string>
-    <!-- Row that signs the YouTube account out; the second label is shown after one tap -->
-    <string name="settings_disconnect_account">Déconnecter le compte</string>
-    <string name="settings_disconnect_account_armed">Déconnecter le compte — appuyez à nouveau</string>
     <!-- About dialog. Keep the names of the app, people, projects and licences as they are -->
     <!-- Heading. %1$s is the version number, e.g. 2.8.14 -->
     <string name="about_title">Music Box %1$s</string>
-    <string name="about_privacy">Votre bibliothèque et vos paramètres restent sur ce téléphone. YouTube, radio.garden et votre serveur de musique ne sont contactés que lorsque vous les utilisez. Les mots de passe sont scellés dans le magasin de clés du téléphone. Aucune publicité, aucune analyse.</string>
-    <!-- The name of the app's licence -->
-    <string name="about_licence">Licence Publique Générale GNU v3</string>
-    <string name="about_built_on">Construit à partir de CalmMusic par David Ray Wilson</string>
     <!-- The donation link label, beside a drawing of a llama. A fixed phrase: a verb and an object, so the reader knows what pressing it does -->
     <string name="about_feed_the_llamas">nourrir les lamas</string>
     <!-- Toast when the donation link cannot be opened -->
@@ -486,9 +463,7 @@
     <string name="lockscreen_service_description">Affiche les contrôles de Music Box sur l\'écran de verrouillage pendant qu\'il joue. Seul un service d\'accessibilité peut se dessiner au-dessus de l\'écran de verrouillage, c\'est pourquoi c\'en est un. Il n\'observe que l\'écran de verrouillage du système, et seulement pour une chose : si la demande du code PIN est affichée, les contrôles lui laissent la place. Il ne lit aucune autre application, et rien ne quitte le téléphone.</string>
     <!-- Read aloud for the small mark on a row that came from the music server or YouTube -->
     <string name="origin_server">Diffusé depuis votre serveur de musique</string>
-    <string name="origin_youtube">Diffusé depuis YouTube</string>
     <string name="origin_server_download">Téléchargé depuis votre serveur de musique</string>
-    <string name="origin_youtube_download">Téléchargé depuis YouTube</string>
     <!-- Editing a song's or an album's tags -->
     <string name="main_title_edit_details">Modifier les informations</string>
     <!-- Song long-press menu item -->
@@ -555,24 +530,13 @@
     <!-- Row at the foot of the screen; the second label is shown in bold after one tap -->
     <string name="library_server_forget">Oublier le serveur</string>
     <string name="library_server_forget_armed">Oublier le serveur — ses pistes seront retirées de la bibliothèque ; appuyez à nouveau</string>
-    <!-- YouTube sign-in screen, when the web page fails -->
-    <string name="library_youtube_login_failed">La page de connexion ne s\'est pas chargée</string>
-    <!-- Button: try loading the sign-in page again -->
-    <string name="library_youtube_login_retry">Réessayer</string>
-    <!-- Search screen -->
-    <string name="library_search_searching">Recherche sur YouTube…</string>
     <string name="library_search_nothing">Rien n\'a été trouvé. Essayez une autre recherche.</string>
     <!-- Before an album's artist in the search results, where albums sit among songs and artists -->
     <string name="library_search_kind_album">Album</string>
-    <string name="library_search_failed">La recherche n’a pas atteint YouTube</string>
     <!-- Second line under an artist's name in the search results, saying the result is an artist -->
     <string name="library_search_result_artist">Artiste</string>
     <!-- Library lists (Songs, Albums, Artists), shared -->
     <string name="library_sync_in_progress">Synchronisation de la musique en cours…</string>
-    <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
-    <string name="library_nothing_added_yet">Rien n\'a été ajouté pour le moment.</string>
-    <!-- Empty library: button that opens the YouTube settings -->
-    <string name="library_empty_set_up_youtube">Configurer YouTube</string>
     <!-- Empty library: button that opens the folder settings -->
     <string name="library_empty_choose_folder">Choisir un dossier</string>
     <!-- Empty library: button that opens the music server screen (Navidrome and the like) -->
@@ -667,9 +631,6 @@
     <!-- A file opened from another app, such as a file manager -->
     <string name="opened_file_unreadable">Impossible d\'ouvrir ce fichier</string>
     <string name="opened_file_needs_access">Music Box a besoin d\'accéder aux fichiers musicaux pour jouer celui-là</string>
-    <string name="list_jump_setting">Lettres et points de pages</string>
-    <string name="list_jump_shown">Affiché</string>
-    <string name="list_jump_hidden">Masqué</string>
     <!-- Android 13+ keeps an app installed from a file out of Accessibility, notification access
          and the default phone/texting roles until App info, then ⋮, then Allow restricted settings. -->
     <string name="restricted_hint">Android bloque ceci pour les applications installées à partir d\'un fichier. Ouvrez les infos de l\'application, appuyez sur ⋮, puis autorisez les paramètres restreints, puis réessayez.</string>
@@ -678,4 +639,26 @@
     <string name="main_pull_checking_server">Interrogation du serveur…</string>
     <string name="main_pull_reading_folders">Lecture de la musique du téléphone…</string>
     <string name="main_pull_up_to_date">À jour</string>
+
+    <!-- Pourquoi une piste ne se lit pas : une boîte de dialogue plutôt que le silence -->
+    <string name="trouble_signed_out_title">Non connecté à votre serveur de musique</string>
+    <string name="trouble_signed_out">Cette piste est sur votre serveur de musique, et Music Box n\'a pas d\'identifiants pour y accéder. Après une réinstallation, le mot de passe enregistré n\'est plus lisible. Saisissez-le de nouveau dans Serveur de musique.</string>
+    <string name="trouble_unreachable_title">Serveur de musique injoignable</string>
+    <string name="trouble_unreachable">Le téléphone est en ligne, mais le serveur ne répond pas. Il est peut-être éteint, ou son adresse a changé.</string>
+    <string name="trouble_refused_title">Votre serveur de musique a refusé</string>
+    <string name="trouble_refused">Le serveur a répondu mais n\'a pas envoyé la piste. L\'identifiant ou le mot de passe est peut-être erroné ou périmé. Vérifiez-les dans Serveur de musique.</string>
+    <string name="trouble_no_internet_title">Pas d\'internet</string>
+    <string name="trouble_no_internet">Cette piste est lue en continu, et le téléphone n\'est pas connecté. Les pistes enregistrées sur le téléphone se lisent toujours.</string>
+    <string name="trouble_file_missing_title">Fichier de la piste introuvable</string>
+    <string name="trouble_file_missing">Le fichier de cette piste n\'est pas là où la bibliothèque l\'indique. Il a peut-être été déplacé ou supprimé.</string>
+    <string name="trouble_no_access_title">Music Box ne peut pas lire votre musique</string>
+    <string name="trouble_no_access">Android n\'autorise pas Music Box à lire les pistes du téléphone. Autorisez la musique et l\'audio dans les permissions de Music Box.</string>
+    <string name="trouble_still_loading_title">Toujours en attente de lecture</string>
+    <string name="trouble_still_loading">Cette piste se charge depuis un moment sans démarrer.</string>
+    <string name="trouble_cant_play_title">Impossible de lire cette piste</string>
+    <string name="trouble_cant_play">Un problème est survenu pendant la lecture. Essayez une autre piste, ou celle-ci plus tard.</string>
+    <string name="trouble_fix_server">Serveur de musique</string>
+    <string name="trouble_fix_internet">Réglages internet</string>
+    <string name="trouble_fix_access">Permissions</string>
+    <string name="trouble_close">OK</string>
 </resources>

@@ -183,7 +183,7 @@ fun CalmMusicTopAppBar(
                 }
 
                 (currentDestination?.route == Screen.ArtistDetails.route ||
-                    currentDestination?.route == Screen.YoutubeArtistDetails.route) &&
+                    currentDestination?.route == Screen.OnlineArtistDetails.route) &&
                     selectedArtistName != null -> {
                     TextMMD(
                         text = selectedArtistName,
@@ -313,6 +313,7 @@ private fun CalmMusicTopAppBarActions(
             Icon(
                 imageVector = Icons.Settings,
                 contentDescription = stringResource(R.string.main_cd_settings),
+                modifier = Modifier.size(22.dp),
             )
         }
     }

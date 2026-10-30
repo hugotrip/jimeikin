@@ -109,7 +109,7 @@ object DownloadMove {
             Log.w(TAG, "not moved, the library could not be updated: ${old.name}: ${e.message}")
             return false
         }
-        if (newId != row.id) app.youTubeCopies.rename(row.id, newId)
+        if (newId != row.id) app.online.renameCopy(row.id, newId)
         writeMoved(app, moved(app) + (old.path to saved.file.path))
         Log.i(TAG, "moved ${old.name} to ${saved.file.path}")
         return true

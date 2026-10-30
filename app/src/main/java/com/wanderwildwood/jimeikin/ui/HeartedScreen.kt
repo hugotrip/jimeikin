@@ -34,7 +34,7 @@ fun HeartedScreen(
     onDeleteClick: (SongUiModel) -> Unit,
     onKeepOnPhoneClick: (SongUiModel) -> Unit,
     onKeepAllClick: (List<SongUiModel>) -> Unit,
-    canKeepYouTube: Boolean,
+    canKeepOnline: Boolean,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (songs.isEmpty()) {
@@ -74,7 +74,7 @@ fun HeartedScreen(
                         contentDescription = stringResource(R.string.hearted_shuffle),
                     )
                 }
-                if (songs.hasSongsToKeep(canKeepYouTube, LocalIsDownloaded.current)) {
+                if (songs.hasSongsToKeep(canKeepOnline, LocalIsDownloaded.current)) {
                     IconButton(onClick = { onKeepAllClick(songs) }) {
                         Icon(
                             imageVector = Icons.Download,
