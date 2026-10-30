@@ -1388,6 +1388,10 @@ fun CalmMusic(
                 viewModel.playNextInQueue(controller)
             } else {
                 val failedId = controller.currentMediaItem?.mediaId
+                // Whatever the dialog says, the player is stopped: playWhenReady stays on after
+                // an error, which left the notification and the lock screen saying Playing.
+                // Play prepares the song again.
+                controller.pause()
                 if (failedId != null && failedId == stoppedFor) return@registerErrorCallback
                 val status = generateSequence<Throwable>(error) { it.cause }
                     .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()

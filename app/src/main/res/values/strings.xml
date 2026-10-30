@@ -482,6 +482,14 @@
     <string name="about_privacy_close">There are no ads, no analytics and no tracking. Downloaded songs are saved in Music/Music Box, where other apps on the phone can see them. Lock-screen controls, if you turn them on, are an accessibility service that draws this app\'s buttons over the lock screen and reads nothing else. Show what is playing in Glance, if you turn it on, hands the song\'s name to Glance on this phone.</string>
     <string name="about_terms_heading">Terms</string>
     <string name="about_open_source_heading">Open source</string>
+    <string name="about_licences_row">Licences</string>
+    <string name="licences_title">Licences</string>
+    <string name="licences_source_heading">Source code</string>
+    <string name="licences_source_link">github.com/wanderwildwood/jimeikin</string>
+    <string name="licences_licence_heading">Licence</string>
+    <string name="licences_licence_body">Music Box is free software under the GNU General Public License, version 3 only. Copyright wander wildwood. It comes with no warranty. Built on CalmMusic by David Ray Wilson, also GPL-3.0.</string>
+    <string name="licences_built_with_heading">Built with</string>
+    <string name="licences_texts_heading">Full licence texts</string>
     <string name="about_built_on">Built on CalmMusic by David Ray Wilson, GPL-3.0.</string>
     <!-- A link that opens the app's source code in a browser -->
     <string name="about_source">Source code: github.com/wanderwildwood/jimeikin</string>

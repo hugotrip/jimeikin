@@ -38,7 +38,9 @@ import com.wanderwildwood.jimeikin.ui.PlaylistUiModel
 import com.wanderwildwood.jimeikin.ui.RepeatMode
 import com.wanderwildwood.jimeikin.ui.SongUiModel
 import com.wanderwildwood.jimeikin.ui.OnlineArtistUiModel
+import com.wanderwildwood.jimeikin.data.ArtistAlbumsFill
 import com.wanderwildwood.jimeikin.data.ArtistNames
+import kotlinx.coroutines.CancellationException
 import com.wanderwildwood.jimeikin.data.NameOverrideEntity
 import com.wanderwildwood.jimeikin.data.NameOverrides
 import com.wanderwildwood.jimeikin.data.NamedAlbumDao
@@ -763,6 +765,43 @@ class CalmMusicViewModel(
         }
     }
 
+    /** Whether "Fill in album gaps" is on; always off in an edition without YouTube. */
+    val completeAlbumsFromOnline get() = app.online.completeAlbums
+
+    private val onlineAlbumsCache = HashMap<String, Pair<Long, List<AlbumUiModel>>>()
+
+    /**
+     * The albums and singles YouTube lists for the artist named [name] that [local] lacks, for
+     * the library artist's page. Empty when "Fill in album gaps" is off (nothing is fetched),
+     * when this edition has no YouTube, or when YouTube has no artist of exactly that name -
+     * [ArtistNames.key] decides, so a different artist is never shown. Null when YouTube could
+     * not be reached. Kept for [ONLINE_ALBUMS_KEEP_MS] so opening the page again does not ask again.
+     */
+    suspend fun getOnlineAlbumsFor(name: String, local: List<AlbumUiModel>): List<AlbumUiModel>? {
+        if (!app.online.available || !app.online.completeAlbums.value || name.isBlank()) return emptyList()
+        val key = ArtistNames.key(name)
+        val now = System.currentTimeMillis()
+        val cached = synchronized(onlineAlbumsCache) { onlineAlbumsCache[key] }
+        val all = if (cached != null && now - cached.first < ONLINE_ALBUMS_KEEP_MS) {
+            cached.second
+        } else {
+            val fetched = withContext(Dispatchers.IO) {
+                try {
+                    val artist = app.online.findArtist(name) ?: return@withContext emptyList()
+                    val page = app.online.artistPage(artist.browseId, emptyList())
+                    page.albums + page.singles
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    null
+                }
+            } ?: return null
+            synchronized(onlineAlbumsCache) { onlineAlbumsCache[key] = now to fetched }
+            fetched
+        }
+        return ArtistAlbumsFill.rest(local, all, emptyList())
+    }
+
     suspend fun getOnlineArtistPage(browseId: String): OnlineArtistPage =
         app.online.artistPage(browseId, downloadedOnlineSongs())
 
@@ -1452,6 +1491,28 @@ class CalmMusicViewModel(
     fun startLocalPlaybackMonitoring(controller: MediaController) {
         localPlaybackMonitorJob?.cancel()
         localPlaybackMonitorJob = viewModelScope.launch {
+            // The button follows the player the moment it changes, not at the next tick of the
+            // loop below: a file the player cannot read leaves it idle at once, and the button
+            // that said Pause for a second or two after the error dialog said Play only later.
+            val follow = object : Player.Listener {
+                override fun onEvents(player: Player, events: Player.Events) {
+                    if (!events.containsAny(
+                            Player.EVENT_PLAYBACK_STATE_CHANGED,
+                            Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                            Player.EVENT_PLAYER_ERROR,
+                        )
+                    ) return
+                    val state = _playbackState.value
+                    if (state.nowPlayingSong == null || !playsOnThisPhone(state.nowPlayingSong.sourceType)) return
+                    val playing = player.playWhenReady && player.playbackState != Player.STATE_IDLE &&
+                        player.playbackState != Player.STATE_ENDED
+                    if (state.isPlaybackPlaying != playing) {
+                        _playbackState.value = state.copy(isPlaybackPlaying = playing, isBuffering = false)
+                    }
+                }
+            }
+            controller.addListener(follow)
+            try {
             var lastOnlineQueueIndex: Int? = null
             // Once a second, not five times a second. The seek bar and the clock are the
             // only readers, both show whole seconds, and every republish repaints a panel
@@ -1475,7 +1536,8 @@ class CalmMusicViewModel(
                 // Read controller state. A player left idle by an error (a file it cannot read)
                 // keeps playWhenReady, but nothing is playing: the button must say Play.
                 val playbackState = controller.playbackState
-                val isPlaying = controller.playWhenReady && playbackState != Player.STATE_IDLE
+                val isPlaying = controller.playWhenReady && playbackState != Player.STATE_IDLE &&
+                    playbackState != Player.STATE_ENDED
                 val position = controller.currentPosition
                 val duration = controller.duration
                 // What can stall is what comes over a network. This used to ask
@@ -1586,6 +1648,9 @@ class CalmMusicViewModel(
                     else -> slowIntervalMs
                 }
                 delay(nextDelayMs)
+            }
+            } finally {
+                controller.removeListener(follow)
             }
         }
     }
@@ -2521,6 +2586,8 @@ class CalmMusicViewModel(
     }
 
     companion object {
+        private const val ONLINE_ALBUMS_KEEP_MS = 30 * 60 * 1000L
+
         fun factory(application: Application): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")

@@ -36,15 +36,17 @@ fun buildSearchResults(
         val key: String,
         val place: Int,
         val match: Int,
+        /** 0 for an artist named exactly what was typed, in the library or on YouTube. */
+        val lead: Int,
         val kind: Int,
         val index: Int,
     )
 
     val candidates = mutableListOf<Candidate>()
-    fun add(result: SearchResult, key: String, place: Int, match: Int?, kind: Int) {
+    fun add(result: SearchResult, key: String, place: Int, match: Int?, kind: Int, exactArtist: Boolean = false) {
         // A library item that does not match is not a result.
         val m = match ?: return
-        candidates += Candidate(result, key, place, m, kind, candidates.size)
+        candidates += Candidate(result, key, place, m, if (exactArtist) 0 else 1, kind, candidates.size)
     }
 
     librarySongs.forEach { s ->
@@ -57,12 +59,14 @@ fun buildSearchResults(
         add(SearchResult.Album(a), albumKey(a), placeOf(a.origin), match(q, a.title, a.artist), KIND_ALBUM)
     }
     libraryArtists.forEach { a ->
-        add(SearchResult.LibraryArtist(a), artistKey(a.name), placeOf(a.origin), match(q, a.name), KIND_ARTIST)
+        val m = match(q, a.name)
+        add(SearchResult.LibraryArtist(a), artistKey(a.name), placeOf(a.origin), m, KIND_ARTIST, exactArtist = m == 0)
     }
     // YouTube has already ranked its own results, and knows better than a name match which
     // of forty albums called Moondance is the one meant. Its order is kept, the three lists
     // taken a turn at a time - a song, an album, an artist - with an artist whose name is
-    // exactly what was typed put first.
+    // exactly what was typed put first - and, below, ahead of everything on the phone too:
+    // the artist searched for is the answer, wherever the rest of the list comes from.
     fun onlineTurn(index: Int, exact: Boolean) = if (exact) -1 else index
     onlineSongs.forEachIndexed { i, s ->
         add(SearchResult.Song(s), songKey(s), PLACE_ONLINE, onlineTurn(i, false), KIND_SONG)
@@ -75,11 +79,11 @@ fun buildSearchResults(
     // Artist" is not an answer to it.
     onlineArtists.forEachIndexed { i, a ->
         val m = match(q, a.name) ?: return@forEachIndexed
-        add(SearchResult.OnlineArtist(a), artistKey(a.name), PLACE_ONLINE, onlineTurn(i, m == 0), KIND_ARTIST_ONLINE)
+        add(SearchResult.OnlineArtist(a), artistKey(a.name), PLACE_ONLINE, onlineTurn(i, m == 0), KIND_ARTIST_ONLINE, exactArtist = m == 0)
     }
 
     return candidates
-        .sortedWith(compareBy({ it.place }, { it.match }, { it.kind }, { it.index }))
+        .sortedWith(compareBy({ it.lead }, { it.place }, { it.match }, { it.kind }, { it.index }))
         // Sorted best-first, so the copy kept is the best one there is.
         .distinctBy { it.key }
         .map { it.result }

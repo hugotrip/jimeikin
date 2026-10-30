@@ -56,6 +56,14 @@ class PlaybackService : MediaSessionService() {
         private const val CHANNEL_ID = "calmmusic_playback_channel"
         private var errorCallback: ((PlaybackException) -> Unit)? = null
 
+        /**
+         * True while what the player was given is a live station. Read on the loading thread,
+         * written on the app's, so it is volatile. A station's playlist and streams bypass the
+         * cache: see [LiveAwareDataSource].
+         */
+        @Volatile
+        private var playingLive = false
+
         private const val STREAM_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
 
         /**
@@ -187,6 +195,37 @@ class PlaybackService : MediaSessionService() {
                 super.play()
             }
 
+            // What is being set is what the loading thread will ask about, so it is noted first.
+            override fun setMediaItem(mediaItem: MediaItem) {
+                playingLive = isLiveSet(listOf(mediaItem))
+                super.setMediaItem(mediaItem)
+            }
+
+            override fun setMediaItem(mediaItem: MediaItem, startPositionMs: Long) {
+                playingLive = isLiveSet(listOf(mediaItem))
+                super.setMediaItem(mediaItem, startPositionMs)
+            }
+
+            override fun setMediaItem(mediaItem: MediaItem, resetPosition: Boolean) {
+                playingLive = isLiveSet(listOf(mediaItem))
+                super.setMediaItem(mediaItem, resetPosition)
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>) {
+                playingLive = isLiveSet(mediaItems)
+                super.setMediaItems(mediaItems)
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>, resetPosition: Boolean) {
+                playingLive = isLiveSet(mediaItems)
+                super.setMediaItems(mediaItems, resetPosition)
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>, startIndex: Int, startPositionMs: Long) {
+                playingLive = isLiveSet(mediaItems)
+                super.setMediaItems(mediaItems, startIndex, startPositionMs)
+            }
+
             override fun setPlayWhenReady(playWhenReady: Boolean) {
                 if (playWhenReady) catchUpIfLive()
                 super.setPlayWhenReady(playWhenReady)
@@ -270,7 +309,14 @@ class PlaybackService : MediaSessionService() {
             .setUpstreamDataSourceFactory(resolvingFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
-        return DefaultDataSource.Factory(this, networkAndCacheStack)
+        val cached = DefaultDataSource.Factory(this, networkAndCacheStack)
+        val straightThrough = DefaultDataSource.Factory(this, resolvingFactory)
+        // A live station's HLS playlist is a small file with a length, and the cache kept the
+        // first copy of it: every later fetch of the "moving" playlist came back the same, the
+        // player decided the stream was stuck after the ten seconds or so the first copy held,
+        // and stopped; playing again was handed the same copy and stopped again. Anything
+        // played live goes straight to the network instead.
+        return DataSource.Factory { LiveAwareDataSource(cached.createDataSource(), straightThrough.createDataSource()) { playingLive } }
     }
 
     /** What is loaded, for Glance's lock-screen panel; nothing while stopped or finished. */
@@ -324,6 +370,47 @@ class PlaybackService : MediaSessionService() {
         }
         mediaSession = null
         super.onDestroy()
+    }
+}
+
+/** Whether a set of queue entries is a live station: stations are queued on their own. */
+internal fun isLiveSet(items: List<MediaItem>): Boolean = items.any { isRadio(it.mediaId) }
+
+/**
+ * Reads through [cached] for a song and straight from [direct] for a live station. [isLive] is
+ * asked at every open, so a station's playlist is fetched fresh each time the player asks.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+internal class LiveAwareDataSource(
+    private val cached: DataSource,
+    private val direct: DataSource,
+    private val isLive: () -> Boolean,
+) : DataSource {
+    private var current: DataSource? = null
+
+    override fun addTransferListener(transferListener: androidx.media3.datasource.TransferListener) {
+        cached.addTransferListener(transferListener)
+        direct.addTransferListener(transferListener)
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        val chosen = if (isLive()) direct else cached
+        current = chosen
+        return chosen.open(dataSpec)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int = current!!.read(buffer, offset, length)
+
+    override fun getUri(): android.net.Uri? = current?.uri
+
+    override fun getResponseHeaders(): Map<String, List<String>> = current?.responseHeaders ?: emptyMap()
+
+    override fun close() {
+        try {
+            current?.close()
+        } finally {
+            current = null
+        }
     }
 }
 

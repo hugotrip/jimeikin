@@ -18,6 +18,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +42,11 @@ import com.wanderwildwood.jimeikin.R
  */
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
+    var showLicences by remember { mutableStateOf(false) }
+    if (showLicences) {
+        LicencesDialog(onDismiss = { showLicences = false })
+        return
+    }
     EInkDialog(onDismiss = onDismiss) {
         PagedColumn(Modifier.fillMaxWidth().weight(1f, fill = false)) {
             item {
@@ -56,8 +65,8 @@ fun AboutDialog(onDismiss: () -> Unit) {
             item { Para(stringResource(R.string.about_terms), top = 4.dp) }
             item { Heading(stringResource(R.string.about_open_source_heading)) }
             item { Para(stringResource(R.string.about_built_on), top = 4.dp) }
-            item { Para(stringResource(R.string.about_bundled)) }
-            item { WebLink(stringResource(R.string.about_source), "https://github.com/wanderwildwood/jimeikin") }
+            item { LicenceRow(stringResource(R.string.about_licences_row)) { showLicences = true } }
+            item { WebLink(stringResource(R.string.about_source), SOURCE_ADDRESS) }
             item { Spacer(Modifier.height(6.dp)); Llama() }
         }
 
@@ -101,15 +110,6 @@ private fun WebLink(text: String, url: String) {
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(textDecoration = TextDecoration.Underline),
         )
-    }
-}
-
-/** The Kompakt may have nothing that opens a web address; it says so rather than doing nothing. */
-private fun openWeb(context: Context, url: String) {
-    runCatching {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    }.onFailure {
-        Toast.makeText(context, context.getString(R.string.about_no_browser), Toast.LENGTH_SHORT).show()
     }
 }
 

@@ -30,7 +30,6 @@
     <string name="about_privacy_phone">Your library, playlists, queue, hearts and settings stay on this phone. A music server\'s password and a YouTube sign-in are sealed with a key in the phone\'s keystore before they are saved. Nothing is sent to the app\'s maker.</string>
     <string name="about_privacy_online">The app goes online only for what you use: your own music server (Navidrome or another Subsonic server) at the address you type in; YouTube Music, to search, stream and download, and, if you switch on Keep playing similar songs, to ask what plays next; radio.garden, to browse stations, and each station\'s own stream while it plays; and api.zippopotam.us, only for a US or Canadian postcode typed into the radio search. A server on a home network is often plain http, so what goes to it is not encrypted.</string>
     <string name="about_terms">This app is free software under the GNU General Public License v3. It comes with no warranty: use it at your own risk. YouTube, radio stations and music servers are run by others, under their own terms.</string>
-    <string name="about_bundled">YouTube through NewPipeExtractor, GPL-3.0, with jsoup (MIT), nanojson (MIT or Apache 2.0) and Rhino (MPL 2.0). Tags read and written with jaudiotagger, LGPL 2.1. Mudita MMD, AndroidX, Jetpack Compose, Media3, Room, OkHttp, Kotlin and kotlinx.coroutines, all Apache 2.0. Java library backports (desugar_jdk_libs), GPL 2.0 with the Classpath Exception. The Lato typeface, SIL Open Font Licence 1.1. Icons from Material Symbols, Apache 2.0.</string>
     <string name="origin_online">Streams from YouTube</string>
     <string name="origin_online_download">Downloaded from YouTube</string>
     <!-- YouTube sign-in screen, when the web page fails -->
@@ -41,7 +40,8 @@
     <string name="library_search_searching">Searching YouTube…</string>
     <string name="library_search_failed">The search did not reach YouTube</string>
     <!-- Body of the empty library, under "No songs yet" / "No albums yet" / "No artists yet" -->
-    <string name="library_nothing_added_yet">Music comes from a folder on this phone or its card, from your own music server, or from YouTube.</string>
+    <string name="library_nothing_added_yet">Pick the folder on this phone or its card where your music is kept. Music Box only reads the files there to build your library, and never changes them unless you edit a song\'s details yourself. Or connect your own music server, or search YouTube.</string>
     <!-- Empty library: button that opens the YouTube settings -->
     <string name="library_empty_set_up_youtube">Set up YouTube</string>
+    <string name="library_artist_online_failed">The rest of their albums could not be fetched from YouTube.</string>
 </resources>

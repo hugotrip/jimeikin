@@ -75,6 +75,20 @@ fun ArtistDetailsScreen(
     val refreshTrigger by viewModel.libraryRefreshTrigger.collectAsState()
     val loadFailedText = stringResource(R.string.library_artist_load_failed)
 
+    // The rest of their albums from YouTube, when "Fill in album gaps" is on: shown after the
+    // ones held here. Null until asked; a failed ask is said in one plain line.
+    var onlineAlbums by remember { mutableStateOf<List<AlbumUiModel>>(emptyList()) }
+    var onlineFailed by remember { mutableStateOf(false) }
+    val fillIn by viewModel.completeAlbumsFromOnline.collectAsState()
+    LaunchedEffect(pageArtist, albums, isLoading, fillIn) {
+        onlineAlbums = emptyList()
+        onlineFailed = false
+        val name = pageArtist
+        if (isLoading || name == null || !fillIn) return@LaunchedEffect
+        val rest = viewModel.getOnlineAlbumsFor(name, albums)
+        if (rest == null) onlineFailed = true else onlineAlbums = rest
+    }
+
     LaunchedEffect(artistId, refreshTrigger) {
         if (artistId == null) {
             isLoading = false
@@ -142,13 +156,22 @@ fun ArtistDetailsScreen(
                             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
                             verticalArrangement = Arrangement.Top,
                         ) {
-                            if (albums.isNotEmpty()) {
-                                items(albums) { album ->
+                            if (albums.isNotEmpty() || onlineAlbums.isNotEmpty()) {
+                                val shown = albums + onlineAlbums
+                                items(shown) { album ->
                                     AlbumItem(
                                         album = album,
                                         onClick = { onAlbumClick(album) },
-                                        showDivider = album != albums.lastOrNull(),
+                                        showDivider = album != shown.lastOrNull() || onlineFailed,
                                     )
+                                }
+                                if (onlineFailed) {
+                                    item {
+                                        TextMMD(
+                                            text = stringResource(R.string.library_artist_online_failed),
+                                            modifier = Modifier.padding(vertical = 12.dp),
+                                        )
+                                    }
                                 }
                             } else {
                                 item {
